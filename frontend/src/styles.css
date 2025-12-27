@@ -17,6 +17,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 
 .app { display: flex; flex-direction: column; height: 100%; }
 .app-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--panel); }
+.app-header { position: relative; z-index: 2000; }
 .app-header h1 { margin: 0; font-size: 18px; }
 .status { display: flex; align-items: center; gap: 12px; }
 .badge { padding: 4px 8px; border-radius: 999px; font-size: 12px; }
@@ -58,3 +59,82 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 .textarea { width: 100%; height: 100%; resize: none; padding: 10px; border-radius: 8px; border: none; background: transparent; color: transparent; caret-color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; line-height: 18px; overflow: auto; box-sizing: border-box; position: relative; z-index: 2; }
 .textarea::selection { background: rgba(255,255,255,0.06); }
 .textarea:focus { outline: none; }
+
+/* About modal */
+.about-backdrop { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.about-modal { background: var(--panel); padding: 20px; border-radius: 8px; color: var(--text); min-width: 320px; z-index: 10000; }
+
+/* Header: ensure contrast in light mode */
+.theme-light .app-header { background: var(--panel); border-bottom-color: var(--border); }
+.theme-light .status .link { color: var(--accent) }
+
+/* Light-mode adjustments for log overlay and buttons */
+.theme-light .log-overlay {
+	background: rgba(255,255,255,0.98);
+	color: var(--text);
+	border: 1px solid var(--border);
+}
+.theme-light .log-meta { color: var(--muted); }
+.theme-light .log-level { color: var(--accent); }
+.theme-light .btn { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.theme-light .icon-btn { color: var(--text); background: rgba(0,0,0,0.06); border: 1px solid var(--border); }
+.theme-light .icon-btn:hover { background: rgba(0,0,0,0.08); }
+
+/* Terminal header styles */
+.terminal-root { height: 100%; display: flex; flex-direction: column; }
+.terminal-header { padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.03); background: var(--panel); display: flex; align-items: center; gap: 8px; }
+.terminal-controls { margin-left: auto; display: flex; gap: 8px; }
+.terminal-body { flex: 1; background: #000; }
+
+.theme-light .terminal-header { background: var(--panel); border-bottom-color: var(--border); }
+.theme-light .terminal-body { background: #f8fafc; }
+.theme-light .terminal-header .btn { background: rgba(0,0,0,0.02); border: 1px solid var(--border); color: var(--text); }
+.theme-light .terminal-header .btn:hover { background: rgba(0,0,0,0.04); }
+
+/* Editor code background adjustments per theme */
+.editor-body pre { background: transparent; }
+.theme-light .editor-body pre { background: #f3f4f6; color: var(--text); }
+
+/* TabBar styles */
+.tabbar { display: flex; gap: 8px; padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.06); background: var(--panel); }
+
+/* Prism token color overrides for light theme to improve contrast */
+.theme-light .token.comment { color: #6b7280 }
+.theme-light .token.keyword { color: #b45309 }
+.theme-light .token.string { color: #065f46 }
+.theme-light .token.function { color: #1d4ed8 }
+.theme-light .token.punctuation { color: #374151 }
+.theme-light .token.operator { color: #374151 }
+.theme-light .token.constant { color: #b91c1c }
+.theme-light .token.selector { color: #7c3aed }
+
+/* Remove top black header block when in light theme */
+.theme-light .editor-header { background: var(--panel); border-bottom: 1px solid var(--border); }
+.theme-light .tabbar { background: var(--panel); }
+
+/* Icon button for header actions */
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 28px; border-radius: 6px; border: none; background: transparent; color: var(--accent); cursor: pointer; }
+.icon-btn svg { display: block; }
+.icon-btn:hover { background: rgba(0,0,0,0.04); }
+.theme-light .icon-btn { color: var(--accent); }
+
+/* Log overlay styles (ensure top z-index so controls are clickable) */
+.log-overlay {
+	position: fixed;
+	right: 12px;
+	bottom: 12px;
+	width: 520px;
+	max-height: 40vh;
+	overflow: auto;
+	background: rgba(10,12,16,0.92);
+	border: 1px solid rgba(255,255,255,0.03);
+	padding: 8px;
+	border-radius: 8px;
+	color: var(--text);
+	font-size: 12px;
+	z-index: 11000;
+}
+.log-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.log-entry { margin-bottom: 6px; }
+.log-meta { color: #94a3b8; }
+.log-level { color: #7c3aed; margin-left: 6px; }

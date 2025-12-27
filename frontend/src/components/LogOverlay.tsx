@@ -14,8 +14,8 @@ export default function LogOverlay({ visible = true, onClose }: Props) {
 
   const logs = getLogs().slice(0, 100)
   return (
-    <div style={{ position: 'fixed', right: 12, bottom: 12, width: 520, maxHeight: '40vh', overflow: 'auto', background: 'rgba(10,12,16,0.9)', border: '1px solid rgba(255,255,255,0.03)', padding: 8, borderRadius: 8, color: '#cbd5e1', fontSize: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+    <div className="log-overlay">
+      <div className="log-header">
         <strong>Logs</strong>
         <div>
           <button className="btn" onClick={() => clear()}>Clear</button>
@@ -24,8 +24,8 @@ export default function LogOverlay({ visible = true, onClose }: Props) {
       </div>
       <div>
         {logs.map((l, i) => (
-          <div key={i} style={{ marginBottom: 6 }}>
-            <div style={{ color: '#94a3b8' }}>{l.ts} <span style={{ color: '#7c3aed' }}>{l.level}</span></div>
+          <div key={i} className="log-entry">
+            <div className="log-meta">{l.ts} <span className="log-level">{l.level}</span></div>
             <div>{l.msg}</div>
           </div>
         ))}

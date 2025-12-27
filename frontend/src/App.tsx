@@ -43,14 +43,26 @@ export default function App() {
             setOpenFiles(of => [...of, shellName])
             setActiveFile(shellName)
           }}>New Shell</button>
-          <button className="link" onClick={() => {
+          <button className="link icon-btn" aria-label="Toggle theme" onClick={() => {
             const next = theme === 'dark' ? 'light' : 'dark'
             setTheme(next)
             localStorage.setItem('theme', next)
             if (next === 'light') document.documentElement.classList.add('theme-light')
             else document.documentElement.classList.remove('theme-light')
-          }}>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</button>
-          <button className="link" onClick={() => setShowLogs(s => !s)}>{showLogs ? 'Hide Logs' : 'Show Logs'}</button>
+          }}>
+            {theme === 'dark' ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor"/></svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.8 1.8-1.8zm10.48 0l1.79-1.79 1.79 1.79-1.79 1.8-1.79-1.8zM12 4V1h-1v3h1zm0 19v-3h-1v3h1zM4 13H1v-1h3v1zm19 0h-3v-1h3v1z" fill="currentColor"/></svg>
+            )}
+          </button>
+          <button className="link icon-btn" aria-label="Toggle logs" onClick={() => setShowLogs(s => !s)}>
+            {showLogs ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7zm0 10a3 3 0 110-6 3 3 0 010 6z" fill="currentColor"/></svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 3l19 19-1.5 1.5L.5 4.5 2 3zM12 5c-3 0-5.8 1.6-8 4 1.8 2.1 4.1 3.6 8 3.6 3.9 0 6.2-1.5 8-3.6-2.2-2.4-5-4-8-4z" fill="currentColor"/></svg>
+            )}
+          </button>
           <button className="link" onClick={() => setAboutOpen(true)}>About</button>
         </div>
       </header>
@@ -92,7 +104,7 @@ export default function App() {
             </div>
           )}
           {activeFile && activeFile.startsWith('shell-') ? (
-            <TerminalTab shell={(settings && settings.defaultShell) || 'bash'} path={activeFile} />
+            <TerminalTab key={activeFile} shell={(settings && settings.defaultShell) || 'bash'} path={activeFile} />
           ) : (
             <Editor path={activeFile || selectedPath} settings={settings} onSaved={() => { /* no-op for now */ }} />
           )}
@@ -101,8 +113,8 @@ export default function App() {
       <LogOverlay visible={showLogs} onClose={() => setShowLogs(false)} />
 
       {aboutOpen && (
-        <div style={{ position: 'fixed', left: 0, right: 0, top: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setAboutOpen(false)}>
-          <div style={{ background: '#0b1220', padding: 20, borderRadius: 8, color: '#cbd5e1', minWidth: 320, zIndex: 10000 }} onClick={e => e.stopPropagation()}>
+        <div className="about-backdrop" onClick={() => setAboutOpen(false)}>
+          <div className="about-modal" onClick={e => e.stopPropagation()}>
             <h3>Light Dev</h3>
             <div style={{ marginBottom: 8 }}>Copyright © {new Date().getFullYear()} Michael Lechner</div>
             <div style={{ marginBottom: 8 }}>Version: {health}</div>
