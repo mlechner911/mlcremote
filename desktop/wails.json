@@ -1,0 +1,16 @@
+{
+  "name": "Light Dev",
+  "description": "Lightweight Remote Dev Environment desktop wrapper",
+  "author": "",
+  "license": "",
+  "frontend": {
+    "dir": "../frontend",
+    "install": "npm install",
+    "build": "npm run build",
+    "bridge": "src/wailsjs"
+  },
+  "outputfilename": "lightdev",
+  "assetdir": "../frontend/dist",
+  "devserver": "http://localhost:5173",
+  "version": "0.1.0"
+}
