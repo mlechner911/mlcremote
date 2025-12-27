@@ -215,6 +215,8 @@ UX notes:
 - [ ] Reconnection logic
 - [ ] Display current working directory
 
+See development setup and tooling in [DEV_SETUP](DEV_SETUP.md).
+
 ### Recent UI fixes (Dec 2025)
 - Terminal now uses xterm.js Fit addon to size the terminal to its container and respond to window resizes.
 - Terminal sessions are created per-tab (unique session IDs generated server-side) so multiple independent shells can be opened.
