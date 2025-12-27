@@ -2,6 +2,7 @@ import React from 'react'
 import { readFile, saveFile, deleteFile } from '../api'
 import { isEditable, isProbablyText, extFromPath, probeFileType } from '../filetypes'
 import Prism from 'prismjs'
+// @ts-ignore: allow side-effect CSS import without type declarations
 import 'prismjs/themes/prism-tomorrow.css'
 import 'prismjs/components/prism-javascript'
 import 'prismjs/components/prism-typescript'
@@ -23,20 +24,21 @@ function escapeHtml(unsafe: string) {
 }
 
 function langForExt(ext: string) {
+  const L = Prism.languages as any
   switch (ext) {
-  case 'js': case 'jsx': return Prism.languages.javascript
-  case 'ts': case 'tsx': return Prism.languages.typescript
-  case 'go': return Prism.languages.go
-  case 'php': return Prism.languages.php
-  case 'json': return Prism.languages.json
-  case 'yaml': case 'yml': return Prism.languages.yaml
-  case 'toml': return Prism.languages.toml || Prism.languages.markup
-  case 'md': case 'markdown': return Prism.languages.markdown
-  case 'c': return Prism.languages.c
-  case 'cpp': return Prism.languages.cpp
-  case 'py': return Prism.languages.python
-  case 'sh': case 'bash': return Prism.languages.bash
-  default: return Prism.languages.javascript
+  case 'js': case 'jsx': return L.javascript
+  case 'ts': case 'tsx': return L.typescript
+  case 'go': return L.go
+  case 'php': return L.php
+  case 'json': return L.json
+  case 'yaml': case 'yml': return L.yaml
+  case 'toml': return L.toml || L.markup
+  case 'md': case 'markdown': return L.markdown
+  case 'c': return L.c
+  case 'cpp': return L.cpp
+  case 'py': return L.python
+  case 'sh': case 'bash': return L.bash
+  default: return L.javascript
   }
 }
 
@@ -161,6 +163,31 @@ export default function Editor({ path, onSaved, settings }: Props) {
     }
   }
 
+  const onReload = async () => {
+    if (!path) return
+    // if unsaved changes exist, confirm
+    if (content !== origContent) {
+      if (!confirm('You have unsaved changes. Reloading will discard them. Continue?')) return
+    }
+    setStatus('Reloading...')
+    try {
+      // re-probe and re-read
+      const pt = await probeFileType(path)
+      setProbe(pt)
+      if (!pt.isText) {
+        setContent('')
+        setStatus('Binary or unsupported file type — use Download')
+        return
+      }
+      const text = await readFile(path)
+      setContent(text)
+      setOrigContent(text)
+      setStatus('Reloaded')
+    } catch (e) {
+      setStatus('Reload failed')
+    }
+  }
+
   return (
     <div className="editor">
       <div className="editor-header">
@@ -173,6 +200,7 @@ export default function Editor({ path, onSaved, settings }: Props) {
         </div>
           <div className="actions">
           {/* Format removed until implemented */}
+          <button className="btn" onClick={onReload} disabled={!path}>Reload</button>
           {path && content !== origContent && (
             <button className="btn" onClick={onSave}>Save</button>
           )}
@@ -204,7 +232,7 @@ export default function Editor({ path, onSaved, settings }: Props) {
                 className="textarea"
                 wrap="off"
                 value={content}
-                onChange={e => setContent(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
                 onScroll={() => {
                   if (textareaRef.current && preRef.current) {
                     preRef.current.scrollTop = textareaRef.current.scrollTop

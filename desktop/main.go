@@ -14,7 +14,7 @@ func (a *App) startup() {}
 func main() {
 	a := &App{}
 	err := wails.Run(&options.App{
-		Title:  "Light Dev",
+		Title:  "MLCRemote",
 		Width:  1024,
 		Height: 768,
 		OnStartup: func() { a.startup() },
