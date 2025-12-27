@@ -7,3 +7,6 @@ public/js
 *.exe~
 *.dll
 *.so
+
+# Local npm auth token for frontend (do not commit)
+frontend/.npmrc

@@ -8,9 +8,11 @@ function joinPath(base: string, name: string) {
 
 type Props = {
   onSelect: (path: string) => void
+  showHidden: boolean
+  onToggleHidden?: (v: boolean) => void
 }
 
-export default function FileExplorer({ onSelect }: Props) {
+export default function FileExplorer({ onSelect, showHidden, onToggleHidden }: Props) {
   const [path, setPath] = React.useState<string>('')
   const [entries, setEntries] = React.useState<DirEntry[]>([])
   const [loading, setLoading] = React.useState<boolean>(false)
@@ -20,7 +22,7 @@ export default function FileExplorer({ onSelect }: Props) {
     setLoading(true)
     setError('')
     try {
-      const list = await listTree(p)
+      const list = await listTree(p, { showHidden })
       setEntries(list)
       setPath(p)
     } catch (e: any) {
@@ -28,9 +30,9 @@ export default function FileExplorer({ onSelect }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [showHidden])
 
-  React.useEffect(() => { load('') }, [load])
+  React.useEffect(() => { load('') }, [load, showHidden])
 
   const up = () => {
     if (!path || path === '/') return load('')
@@ -44,6 +46,12 @@ export default function FileExplorer({ onSelect }: Props) {
     <div className="explorer">
       <div className="explorer-header">
         <strong>Files</strong>
+        <div className="explorer-controls">
+          <label className="muted" style={{ fontSize: '0.9rem' }}>
+            <input type="checkbox" checked={showHidden} onChange={e => onToggleHidden?.(e.target.checked)} />{' '}
+            Show hidden
+          </label>
+        </div>
         <div className="breadcrumbs">
           <button className="link" onClick={() => load('')}>root</button>
           {path && path.split('/').filter(Boolean).map((seg, idx, arr) => {
@@ -73,9 +81,12 @@ export default function FileExplorer({ onSelect }: Props) {
                     <span className="icon">📁</span> {e.name}
                   </button>
                 ) : (
-                  <button className="entry" onClick={() => onSelect(e.path)}>
-                    <span className="icon">{iconForEntry(e)}</span> {e.name}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button className="entry" style={{ flex: 1, textAlign: 'left' }} onClick={() => onSelect(e.path)}>
+                      <span className="icon">{iconForEntry(e)}</span> {e.name}
+                    </button>
+                    <a className="btn" href={`/api/file?path=${encodeURIComponent(e.path)}`} download={e.name} style={{ whiteSpace: 'nowrap' }}>Download</a>
+                  </div>
                 )}
               </li>
             ))}

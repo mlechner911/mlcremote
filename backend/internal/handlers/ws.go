@@ -24,46 +24,73 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 		}
 		defer conn.Close()
 
-		shell := os.Getenv("SHELL")
-		if shell == "" {
-			shell = "/bin/bash"
-		}
-		cmd := exec.Command(shell)
-		ptmx, err := pty.Start(cmd)
-		if err != nil {
-			_ = conn.WriteMessage(websocket.TextMessage, []byte("failed to start shell"))
-			return
-		}
-		defer func() { _ = ptmx.Close() }()
+		// Support attaching to an existing session via ?session=<id>
+		sessionID := r.URL.Query().Get("session")
+		if sessionID == "" {
+			// ephemeral PTY for this connection
+			shell := os.Getenv("SHELL")
+			if shell == "" {
+				shell = "/bin/bash"
+			}
+			cmd := exec.Command(shell)
+			ptmx, err := pty.Start(cmd)
+			if err != nil {
+				_ = conn.WriteMessage(websocket.TextMessage, []byte("failed to start shell"))
+				return
+			}
+			defer func() { _ = ptmx.Close() }()
 
-		done := make(chan struct{})
+			done := make(chan struct{})
 
-		// PTY -> WS
-		go func() {
-			buf := make([]byte, 4096)
-			for {
-				n, err := ptmx.Read(buf)
-				if n > 0 {
-					_ = conn.WriteMessage(websocket.BinaryMessage, buf[:n])
+			// PTY -> WS
+			go func() {
+				buf := make([]byte, 4096)
+				for {
+					n, err := ptmx.Read(buf)
+					if n > 0 {
+						_ = conn.WriteMessage(websocket.BinaryMessage, buf[:n])
+					}
+					if err != nil {
+						break
+					}
 				}
+				close(done)
+			}()
+
+			// WS -> PTY
+			for {
+				mt, data, err := conn.ReadMessage()
 				if err != nil {
 					break
 				}
+				if mt == websocket.TextMessage || mt == websocket.BinaryMessage {
+					_, _ = ptmx.Write(data)
+				}
 			}
-			close(done)
-		}()
 
-		// WS -> PTY
+			<-done
+			return
+		}
+
+		// attach to existing persistent session
+		s := getSession(sessionID)
+		if s == nil {
+			_ = conn.WriteMessage(websocket.TextMessage, []byte("session not found"))
+			return
+		}
+
+		s.addConn(conn)
+		defer s.removeConn(conn)
+
+		// WS -> PTY (write into session's PTY)
 		for {
 			mt, data, err := conn.ReadMessage()
 			if err != nil {
 				break
 			}
 			if mt == websocket.TextMessage || mt == websocket.BinaryMessage {
-				_, _ = ptmx.Write(data)
+				s.write(data)
 			}
 		}
-
-		<-done
 	}
 }

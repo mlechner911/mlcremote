@@ -49,8 +49,18 @@ func TreeHandler(root string) http.HandlerFunc {
 			return
 		}
 		entries := make([]dirEntry, 0, len(files))
+		// check whether client requested hidden files
+		showHidden := false
+		sh := r.URL.Query().Get("showHidden")
+		if sh == "1" || sh == "true" || sh == "yes" {
+			showHidden = true
+		}
 		rootAbs, _ := filepath.Abs(root)
 		for _, e := range files {
+			// skip hidden files (starting with '.') unless requested
+			if !showHidden && len(e.Name()) > 0 && e.Name()[0] == '.' {
+				continue
+			}
 			p := filepath.Join(target, e.Name())
 			abs, _ := filepath.Abs(p)
 			rel, _ := filepath.Rel(rootAbs, abs)
@@ -134,10 +144,73 @@ func DeleteFileHandler(root string) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if err := os.Remove(target); err != nil {
-			http.Error(w, "delete failed", http.StatusInternalServerError)
+		// Move to trash instead of deleting
+		ts := time.Now().UTC().Format("20060102-150405")
+		trashBase := filepath.Join(root, ".trash", ts)
+		relPath, _ := filepath.Rel(root, target)
+		dest := filepath.Join(trashBase, relPath)
+		if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+			http.Error(w, "mkdir failed", http.StatusInternalServerError)
 			return
 		}
+		// attempt rename first
+		if err := os.Rename(target, dest); err != nil {
+			// fallback to copy
+			in, err := os.Open(target)
+			if err != nil {
+				http.Error(w, "move failed", http.StatusInternalServerError)
+				return
+			}
+			defer in.Close()
+			out, err := os.Create(dest)
+			if err != nil {
+				http.Error(w, "move failed", http.StatusInternalServerError)
+				return
+			}
+			defer out.Close()
+			if _, err := io.Copy(out, in); err != nil {
+				http.Error(w, "move failed", http.StatusInternalServerError)
+				return
+			}
+			// remove original
+			_ = os.Remove(target)
+		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// StatHandler returns basic file metadata: mime, permissions, modTime
+func StatHandler(root string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		reqPath := r.URL.Query().Get("path")
+		target, err := util.SanitizePath(root, reqPath)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		fi, err := os.Stat(target)
+		if err != nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		mime := ""
+		if !fi.IsDir() {
+			f, err := os.Open(target)
+			if err == nil {
+				defer f.Close()
+				buf := make([]byte, 4100)
+				n, _ := f.Read(buf)
+				mime = http.DetectContentType(buf[:n])
+			}
+		}
+		resp := map[string]interface{}{
+			"isDir":   fi.IsDir(),
+			"size":    fi.Size(),
+			"mode":    fi.Mode().String(),
+			"modTime": fi.ModTime(),
+			"mime":    mime,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
 	}
 }

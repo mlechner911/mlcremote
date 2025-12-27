@@ -50,6 +50,7 @@ export async function probeFileType(path: string): Promise<ProbeResult> {
     if (!r.ok) throw new Error('probe failed')
     return await r.json()
   } catch (e) {
-    return { mime: 'application/octet-stream', isText: false, ext: extFromPath(path) }
+    const ext = extFromPath(path)
+    return { mime: 'application/octet-stream', isText: isProbablyText(path), ext }
   }
 }

@@ -1,7 +1,6 @@
 {
   "name": "lightdev-frontend",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.1.1",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,7 +9,15 @@
   },
   "dependencies": {
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "@uiw/react-codemirror": "^4.0.0",
+    "@codemirror/lang-javascript": "^6.1.4",
+    "@codemirror/lang-python": "^6.1.1",
+    "@codemirror/lang-go": "^6.0.0",
+    "@codemirror/lang-php": "^6.0.0",
+    "@codemirror/lang-markdown": "^6.0.1",
+    "@codemirror/lang-yaml": "^6.0.0",
+    "@xterm/xterm": "^5.1.0"
   },
   "optionalDependencies": {
     "prismjs": "^1.29.0"
@@ -20,6 +27,6 @@
     "prettier": "2.8.8",
     "prettier-plugin-toml": "0.4.0",
     "typescript": "5.6.3",
-    "vite": "5.0.0"
+    "vite": "latest"
   }
 }

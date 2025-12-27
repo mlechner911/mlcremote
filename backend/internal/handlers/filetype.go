@@ -13,45 +13,45 @@ import (
 )
 
 type fileTypeResp struct {
-    Mime   string `json:"mime"`
-    IsText bool   `json:"isText"`
-    Ext    string `json:"ext"`
+	Mime   string `json:"mime"`
+	IsText bool   `json:"isText"`
+	Ext    string `json:"ext"`
 }
 
 // FileTypeHandler inspects the file bytes to determine a mime type and
 // whether the file is likely text. It returns JSON with {mime,isText,ext}.
 func FileTypeHandler(root string) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        reqPath := r.URL.Query().Get("path")
-        target, err := util.SanitizePath(root, reqPath)
-        if err != nil {
-            http.Error(w, err.Error(), http.StatusBadRequest)
-            return
-        }
-        fi, err := os.Stat(target)
-        if err != nil || fi.IsDir() {
-            http.Error(w, "not a file", http.StatusBadRequest)
-            return
-        }
-        f, err := os.Open(target)
-        if err != nil {
-            http.Error(w, "cannot open file", http.StatusInternalServerError)
-            return
-        }
-        defer f.Close()
-        buf := make([]byte, 4100)
-        n, _ := f.Read(buf)
-        mimeType := http.DetectContentType(buf[:n])
-        // try using filetype lib to get more specific type
-        kind, _ := filetype.Match(buf[:n])
-        if kind != filetype.Unknown {
-            mimeType = kind.MIME.Value
-        }
-        ext := strings.TrimPrefix(strings.ToLower(filepath.Ext(target)), ".")
-        // heuristics for text-like types
-        isText := strings.HasPrefix(mimeType, "text/") || strings.Contains(mimeType, "json") || strings.Contains(mimeType, "xml") || strings.Contains(mimeType, "javascript") || strings.Contains(mimeType, "yaml") || strings.Contains(mimeType, "toml")
+	return func(w http.ResponseWriter, r *http.Request) {
+		reqPath := r.URL.Query().Get("path")
+		target, err := util.SanitizePath(root, reqPath)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		fi, err := os.Stat(target)
+		if err != nil || fi.IsDir() {
+			http.Error(w, "not a file", http.StatusBadRequest)
+			return
+		}
+		f, err := os.Open(target)
+		if err != nil {
+			http.Error(w, "cannot open file", http.StatusInternalServerError)
+			return
+		}
+		defer f.Close()
+		buf := make([]byte, 4100)
+		n, _ := f.Read(buf)
+		mimeType := http.DetectContentType(buf[:n])
+		// try using filetype lib to get more specific type
+		kind, _ := filetype.Match(buf[:n])
+		if kind != filetype.Unknown {
+			mimeType = kind.MIME.Value
+		}
+		ext := strings.TrimPrefix(strings.ToLower(filepath.Ext(target)), ".")
+		// heuristics for text-like types
+		isText := strings.HasPrefix(mimeType, "text/") || strings.Contains(mimeType, "json") || strings.Contains(mimeType, "xml") || strings.Contains(mimeType, "javascript") || strings.Contains(mimeType, "yaml") || strings.Contains(mimeType, "toml")
 
-        w.Header().Set("Content-Type", "application/json")
-        _ = json.NewEncoder(w).Encode(fileTypeResp{Mime: mimeType, IsText: isText, Ext: ext})
-    }
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(fileTypeResp{Mime: mimeType, IsText: isText, Ext: ext})
+	}
 }
