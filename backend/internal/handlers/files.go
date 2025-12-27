@@ -1,3 +1,7 @@
+// Copyright (c) 2025 MLCRemote authors
+// All rights reserved. Use of this source code is governed by an
+// MIT-style license that can be found in the LICENSE file.
+
 package handlers
 
 import (
@@ -135,7 +139,7 @@ func PostFileHandler(root string) http.HandlerFunc {
 	}
 }
 
-// DeleteFileHandler deletes a file at path.
+// DeleteFileHandler deletes a file at path (moves to .trash for safety).
 func DeleteFileHandler(root string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		reqPath := r.URL.Query().Get("path")

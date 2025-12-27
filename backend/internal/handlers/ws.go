@@ -1,3 +1,7 @@
+// Copyright (c) 2025 MLCRemote authors
+// All rights reserved. Use of this source code is governed by an
+// MIT-style license that can be found in the LICENSE file.
+
 package handlers
 
 import (
@@ -9,7 +13,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// WsTerminalHandler upgrades to WebSocket and bridges data to a PTY shell.
+// WsTerminalHandler upgrades the HTTP connection to a WebSocket and bridges
+// data between the websocket and either an ephemeral PTY or an existing session.
 func WsTerminalHandler(root string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		up := websocket.Upgrader{

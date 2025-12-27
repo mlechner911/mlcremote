@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 )
@@ -13,13 +14,13 @@ func (a *App) startup() {}
 
 func main() {
 	a := &App{}
-	err := wails.Run(&options.App{
+	app := wails.CreateApp(&options.App{
 		Title:  "MLCRemote",
 		Width:  1024,
 		Height: 768,
-		OnStartup: func() { a.startup() },
+		OnStartup: func(ctx context.Context) { a.startup() },
 	})
-	if err != nil {
+	if err := app.Run(); err != nil {
 		println("Error:", err.Error())
 	}
 }

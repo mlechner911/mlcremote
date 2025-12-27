@@ -1,3 +1,7 @@
+// Copyright (c) 2025 MLCRemote authors
+// All rights reserved. Use of this source code is governed by an
+// MIT-style license that can be found in the LICENSE file.
+
 package server
 
 import (
@@ -9,22 +13,26 @@ import (
 	"lightdev/internal/handlers"
 )
 
+// Server represents the HTTP server configuration and mux.
 type Server struct {
-	Root      string
-	StaticDir string
+	Root        string
+	StaticDir   string
 	OpenAPIPath string
-	Mux       *http.ServeMux
+	Mux         *http.ServeMux
+	httpServer  *http.Server
 }
 
+// New creates a Server with the provided root and static directory.
 func New(root, staticDir string, openapiPath string) *Server {
 	return &Server{
-		Root:      root,
-		StaticDir: staticDir,
+		Root:        root,
+		StaticDir:   staticDir,
 		OpenAPIPath: openapiPath,
-		Mux:       http.NewServeMux(),
+		Mux:         http.NewServeMux(),
 	}
 }
 
+// Routes registers all HTTP handlers on the server mux.
 func (s *Server) Routes() {
 	s.Mux.HandleFunc("/health", handlers.Health)
 
@@ -37,10 +45,10 @@ func (s *Server) Routes() {
 		http.ServeFile(w, r, s.OpenAPIPath)
 	})
 
-		// Swagger UI docs page
-		s.Mux.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				page := `<!doctype html>
+	// Swagger UI docs page
+	s.Mux.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		page := `<!doctype html>
 <html>
 	<head>
 		<meta charset="utf-8" />
@@ -61,16 +69,16 @@ func (s *Server) Routes() {
 		</script>
 	</body>
 </html>`
-				_, _ = w.Write([]byte(page))
-		})
+		_, _ = w.Write([]byte(page))
+	})
 
 	// APIs
 	s.Mux.Handle("/ws/terminal", handlers.WsTerminalHandler(s.Root))
 	s.Mux.Handle("/api/tree", handlers.TreeHandler(s.Root))
 	s.Mux.Handle("/api/filetype", handlers.FileTypeHandler(s.Root))
 	s.Mux.Handle("/api/stat", handlers.StatHandler(s.Root))
-		s.Mux.Handle("/api/settings", handlers.SettingsHandler())
-		s.Mux.HandleFunc("/api/terminal/new", handlers.NewTerminalAPI())
+	s.Mux.Handle("/api/settings", handlers.SettingsHandler())
+	s.Mux.HandleFunc("/api/terminal/new", handlers.NewTerminalAPI())
 	s.Mux.Handle("/api/file", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -100,8 +108,30 @@ func (s *Server) Routes() {
 	}
 }
 
+// Start starts the HTTP server on the given port bound to localhost.
+// Start starts the HTTP server on the given port bound to localhost.
+// It runs ListenAndServe in a goroutine and returns immediately.
 func (s *Server) Start(port int) error {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	log.Printf("starting server on %s, root=%s", addr, s.Root)
-	return http.ListenAndServe(addr, s.Mux)
+	s.httpServer = &http.Server{Addr: addr, Handler: s.Mux}
+	go func() {
+		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("server error: %v", err)
+		}
+	}()
+	return nil
+}
+
+// Shutdown gracefully shuts down the HTTP server and closes terminal sessions.
+func (s *Server) Shutdown() error {
+	// attempt to stop accepting new connections
+	if s.httpServer != nil {
+		if err := s.httpServer.Close(); err != nil {
+			log.Printf("error closing http server: %v", err)
+		}
+	}
+	// cleanup terminal sessions
+	handlers.ShutdownAllSessions()
+	return nil
 }

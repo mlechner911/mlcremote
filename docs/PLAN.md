@@ -27,42 +27,29 @@ Shell spawned as SSH user
 ### Backend (Go)
 **Goals:** Single binary, <50MB memory, minimal dependencies, localhost-only
 
-**Components:**
-1. **HTTP/WebSocket Server**
-   - Framework: `net/http` (stdlib)
-   - WebSocket: `gorilla/websocket`
-   - Static file serving for frontend
-   - **Binds to 127.0.0.1 only**
+Progress / current implementation:
 
-2. **Terminal Handler**
-   - Library: `github.com/creack/pty`
-   - One goroutine per terminal session
-   - WebSocket bidirectional pipe
-   - Spawns shell as current user (no privilege escalation needed)
+- HTTP server using `net/http`, static file serving support (dev `--static-dir`).
+- WebSocket terminal support using `gorilla/websocket` and PTYs via `github.com/creack/pty`.
+- Persistent terminal sessions: server-side session manager creates a PTY per session and generates session IDs that the frontend can attach to; multiple tabs may attach to the same session ID.
+- File API endpoints implemented: directory listing, file read, save, delete (delete moves files to `.trash/<timestamp>`).
+- Path sanitization implemented in `internal/util/path.go` to prevent traversal outside the configured root.
+- Graceful shutdown: server(s) now handle SIGINT/SIGTERM to close PTYs and websocket connections via `handlers.ShutdownAllSessions()`.
 
-3. **File System API**
-   - REST endpoints for CRUD operations
-   - File watcher: `github.com/fsnotify/fsnotify`
-   - Stream large files (chunked reading)
-   - Operates with user's filesystem permissions
+Notes on design decisions:
+- The server binds to `127.0.0.1` by default and is intended to be used behind an SSH tunnel.
+- No built-in authentication; SSH tunnel or wrapper tooling expected to provide transport security.
+- Delete operations are safe-delete by moving files into a `.trash` folder under the configured root.
 
-4. **Security**
-   - Listen on localhost only
-   - Optional: session token for browser refresh
-   - Path traversal protection
-   - No TLS (handled by SSH tunnel)
+### Frontend Options (current status)
 
-### Frontend Options
+The repository includes a React + TypeScript frontend built with Vite. Key points:
 
-**Option A: Browser-based (Recommended for MVP)**
-- Pure web app, no installation needed
-- Access via `https://your-server:8443`
+- Editor: Prism overlay editor is present as a lightweight default; CodeMirror 6 is added lazily as an alternative (to reduce initial bundle size).
+- Terminal UI: xterm.js with the Fit addon is integrated; terminal tabs request persistent sessions from the server and attach via WebSocket using session IDs.
+- Theme support: light/dark theme via CSS variables and localStorage toggle.
 
-**Option B: Desktop Wrapper**
-- **Tauri** (Rust + web) - ~3MB binary, very lightweight
-- **Neutralino** (C++ + web) - ~2MB binary, even lighter
-- **Wails** (Go + web) - ~10MB, Go-native
-- Avoid Electron (too heavy)
+Desktop wrapper options remain the same (Wails recommended for Go integration). The frontend is usable directly via `--static-dir` serving.
 
 User preference notes:
 - **Target shell:** Remote bash (or user's default shell) is the primary target for terminal sessions.
@@ -123,43 +110,17 @@ UX notes:
 - xterm.js for terminal
 - Tailwind CSS for minimal styling
 
-## Phase 1: MVP Backend (Week 1)
+### Completed MVP work (what's in the repo)
 
-### Deliverables:
-1. **Basic Go Server**
-   - HTTP server listening on `127.0.0.1:8443`
-   - Static file serving
-   - Health check endpoint
-   - Configuration via flags/env vars
+The core backend and frontend MVP items have been implemented and validated:
 
-2. **Terminal WebSocket**
-   - `/ws/terminal` endpoint
-   - PTY session management (spawns user's default shell)
-   - Clean disconnect handling
-   - Automatic shell environment ($USER, $HOME, etc.)
+- HTTP server with static serving and `/health` endpoint.
+- File API: `/api/tree`, `/api/file` (GET/POST/DELETE), `/api/stat`, and `/api/filetype`.
+- Terminal API: `/api/terminal/new` to create persistent sessions and `/ws/terminal` to attach via WebSocket; ephemeral per-connection PTYs are still supported as a fallback.
+- Session management: server generates crypto-random session IDs, stores PTY handles and attached connections in-memory, and broadcasts PTY output to all attached connections.
+- Graceful shutdown: signal handlers added in both `cmd/dev-server` and `backend/main.go` that call `ShutdownAllSessions()` to close PTYs and websockets.
 
-3. **File API**
-   - `GET /api/tree?path=` - directory listing (respects permissions)
-   - `GET /api/file?path=` - file content
-   - `POST /api/file` - save file
-   - `DELETE /api/file?path=` - delete file
-   - All operations run with user's permissions
-
-4. **Configuration**
-   - Command-line flags: `--port`, `--root` (working directory)
-   - Environment variables
-   - Default shell detection ($SHELL)
-
-5. **Deployment Scripts**
-   - `install.sh` - copies binary, sets up SystemD user service
-   - `connect.sh` - SSH tunnel + opens browser
-
-### Success Criteria:
-- Runs with <30MB RAM idle
-- Single binary deployment via `scp`
-- Starts automatically on server boot (SystemD)
-- Can spawn shell and proxy I/O
-- Works over SSH tunnel
+These items satisfy most of the Phase 1 MVP requirements. See the `backend` and `frontend` directories for implementation details.
 
 ## Phase 2: MVP Frontend (Week 1-2)
 
@@ -194,26 +155,23 @@ UX notes:
 - Terminal fully functional
 - Works in modern browsers
 
-## Phase 3: Polish (Week 2-3)
+### Remaining / suggested improvements (Polish)
 
-### Backend Enhancements:
-- [ ] File watcher for live updates
-- [ ] Multiple terminal sessions
-- [ ] Search in files endpoint
-- [ ] Gzip compression for responses
-- [ ] Graceful shutdown
-- [ ] Logging and metrics
-- [ ] Automatic reconnect on SSH tunnel drop
+Backend suggestions:
+- [ ] File watcher (fsnotify) to push updates to the frontend (useful for external edits).
+- [x] Multiple terminal sessions (server-side sessions implemented) — consider adding expiration and persistence.
+- [ ] Search-in-files API.
+- [ ] Response compression (gzip/brotli) for static assets and APIs.
+- [x] Graceful shutdown implemented; consider `http.Server.Shutdown(ctx)` for graceful draining with a timeout.
+- [ ] Improved logging, structured logs and basic metrics (Prometheus endpoint).
+- [ ] Session management improvements: expiration, max-sessions-per-user, and optional persistence.
 
-### Frontend Enhancements:
-- [ ] Tab system for multiple files
-- [ ] File search (Ctrl+P)
-- [ ] Settings panel
-- [ ] Theme support (light/dark)
-- [ ] Keyboard shortcuts
-- [ ] Connection status indicator
-- [ ] Reconnection logic
-- [ ] Display current working directory
+Frontend suggestions:
+- [x] Tab system for multiple files (already present in UI state; expand UX polish).
+- [ ] File search (Ctrl+P) and fuzzy file opening.
+- [x] Theme support implemented (light/dark).
+- [ ] Full reconnection logic for terminal websockets (retry/backoff).
+- [ ] Accessibility improvements and keyboard shortcut mapping.
 
 See development setup and tooling in [DEV_SETUP](DEV_SETUP.md).
 
@@ -453,10 +411,9 @@ If you'd like, I can apply these changes directly as edits (done), or split them
 
 ### Nice to Have:
 - Search across files
-- Multiple terminals
-- Syntax highlighting for 20+ languages
-- Git integration
-- Desktop app
+- Multiple terminals (done noww)
+- Syntax highlighting for more  languages
+- Desktop app (prepared)
 
 ## Risks & Mitigations
 

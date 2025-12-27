@@ -1,13 +1,20 @@
+// Copyright (c) 2025 MLCRemote authors
+// All rights reserved. Use of this source code is governed by an
+// MIT-style license that can be found in the LICENSE file.
+
 package main
 
 import (
 	"flag"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"lightdev/internal/server"
 )
 
+// main starts the dev-server with flags for root, static-dir and openapi.
 func main() {
 	port := flag.Int("port", 8443, "port to listen on")
 	root := flag.String("root", "", "working directory root (default $HOME)")
@@ -23,5 +30,14 @@ func main() {
 	s.Routes()
 	if err := s.Start(*port); err != nil {
 		log.Fatalf("server error: %v", err)
+	}
+
+	// wait for interrupt (Ctrl-C) or termination signal
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	<-sig
+	log.Println("shutdown signal received, shutting down server...")
+	if err := s.Shutdown(); err != nil {
+		log.Printf("shutdown error: %v", err)
 	}
 }
