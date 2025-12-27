@@ -1,18 +1,13 @@
 import React from 'react'
 import { DirEntry, listTree } from '../api'
 
-function joinPath(base: string, name: string) {
-  if (!base || base === '/') return `/${name}`
-  return `${base}/${name}`.replaceAll('//', '/')
-}
-
 type Props = {
   onSelect: (path: string) => void
   showHidden: boolean
   onToggleHidden?: (v: boolean) => void
 }
 
-export default function FileExplorer({ onSelect, showHidden, onToggleHidden }: Props) {
+export default function FileExplorer({ onSelect, showHidden, onToggleHidden }: Props): JSX.Element {
   const [path, setPath] = React.useState<string>('')
   const [entries, setEntries] = React.useState<DirEntry[]>([])
   const [loading, setLoading] = React.useState<boolean>(false)
@@ -32,10 +27,10 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden }: P
     }
   }, [showHidden])
 
-  React.useEffect(() => { load('') }, [load, showHidden])
+  React.useEffect(() => { load('') }, [load])
 
-  const up = () => {
-    if (!path || path === '/') return load('')
+  const up = (): void => {
+    if (!path || path === '/') { load(''); return }
     const parts = path.split('/').filter(Boolean)
     parts.pop()
     const parent = `/${parts.join('/')}`
@@ -48,12 +43,12 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden }: P
         <strong>Files</strong>
         <div className="explorer-controls">
           <label className="muted" style={{ fontSize: '0.9rem' }}>
-            <input type="checkbox" checked={showHidden} onChange={e => onToggleHidden?.(e.target.checked)} />{' '}
+            <input type="checkbox" checked={showHidden} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onToggleHidden?.(e.target.checked)} />{' '}
             Show hidden
           </label>
         </div>
         <div className="breadcrumbs">
-          <button className="link" onClick={() => load('')}>root</button>
+          <button type="button" className="link" onClick={() => load('')}>root</button>
           {path && path.split('/').filter(Boolean).map((seg, idx, arr) => {
             const p = `/${arr.slice(0, idx + 1).join('/')}`
             return (
@@ -70,19 +65,19 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden }: P
         {!loading && !error && (
           <ul className="entry-list">
             {path && path !== '/' && (
-              <li>
-                <button className="entry" onClick={up}>..</button>
+              <li key="up">
+                <button type="button" className="entry" onClick={up}>..</button>
               </li>
             )}
             {entries.map(e => (
               <li key={e.path}>
                 {e.isDir ? (
-                  <button className="entry" onClick={() => load(e.path)}>
+                  <button type="button" className="entry" onClick={() => load(e.path)}>
                     <span className="icon">📁</span> {e.name}
                   </button>
                 ) : (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button className="entry" style={{ flex: 1, textAlign: 'left' }} onClick={() => onSelect(e.path)}>
+                    <button type="button" className="entry" style={{ flex: 1, textAlign: 'left' }} onClick={() => onSelect(e.path)}>
                       <span className="icon">{iconForEntry(e)}</span> {e.name}
                     </button>
                     <a className="btn" href={`/api/file?path=${encodeURIComponent(e.path)}`} download={e.name} style={{ whiteSpace: 'nowrap' }}>Download</a>

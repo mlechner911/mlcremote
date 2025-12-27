@@ -1,3 +1,7 @@
+// Copyright (c) 2025 MLCRemote authors
+// All rights reserved. Use of this source code is governed by an
+// MIT-style license that can be found in the LICENSE file.
+
 package handlers
 
 import (
@@ -13,6 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// terminalSession represents a server-side PTY and its attached websocket connections.
 type terminalSession struct {
 	id    string
 	ptmx  *os.File
@@ -25,6 +30,7 @@ var (
 	sessions   = map[string]*terminalSession{}
 )
 
+// newTerminalSession starts a PTY running the given shell and registers it.
 func newTerminalSession(shell string) (*terminalSession, error) {
 	if shell == "" {
 		shell = os.Getenv("SHELL")
@@ -69,31 +75,47 @@ func newTerminalSession(shell string) (*terminalSession, error) {
 	return s, nil
 }
 
+// addConn attaches a websocket connection to the session for broadcasting.
 func (s *terminalSession) addConn(c *websocket.Conn) {
 	sessionsMu.Lock()
 	s.conns[c] = struct{}{}
 	sessionsMu.Unlock()
 }
 
+// removeConn detaches a websocket connection from the session.
 func (s *terminalSession) removeConn(c *websocket.Conn) {
 	sessionsMu.Lock()
 	delete(s.conns, c)
 	sessionsMu.Unlock()
 }
 
+// write writes bytes into the PTY backing the session.
 func (s *terminalSession) write(data []byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, _ = s.ptmx.Write(data)
 }
 
+// close cleanly shuts down the session by closing all websockets and the PTY.
+func (s *terminalSession) close() {
+	sessionsMu.Lock()
+	for c := range s.conns {
+		_ = c.Close()
+		delete(s.conns, c)
+	}
+	sessionsMu.Unlock()
+	// attempt to close PTY
+	_ = s.ptmx.Close()
+}
+
+// getSession returns a registered session by id or nil.
 func getSession(id string) *terminalSession {
 	sessionsMu.Lock()
 	defer sessionsMu.Unlock()
 	return sessions[id]
 }
 
-// generateSessionID returns a simple unique id. Replace with crypto secure id if needed.
+// generateSessionID returns a random hex id prefixed with 's'.
 func generateSessionID() string {
 	// generate a 16-byte random id and hex-encode it
 	b := make([]byte, 16)
@@ -108,7 +130,18 @@ func generateSessionID() string {
 	return "s" + hex.EncodeToString(b)
 }
 
-// NewTerminalAPI creates a session and returns {id}
+// ShutdownAllSessions attempts to close all active terminal sessions and their
+// associated PTYs/connections. It is safe to call multiple times.
+func ShutdownAllSessions() {
+	sessionsMu.Lock()
+	defer sessionsMu.Unlock()
+	for id, s := range sessions {
+		s.close()
+		delete(sessions, id)
+	}
+}
+
+// NewTerminalAPI creates a session and returns {"id": "..."} as JSON.
 func NewTerminalAPI() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		shell := r.URL.Query().Get("shell")

@@ -1,3 +1,7 @@
+// Copyright (c) 2025 MLCRemote authors
+// All rights reserved. Use of this source code is governed by an
+// MIT-style license that can be found in the LICENSE file.
+
 package main
 
 import (
@@ -6,12 +10,15 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"lightdev/internal/handlers"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/creack/pty"
@@ -292,8 +299,25 @@ func main() {
 	}
 
 	addr := fmt.Sprintf("127.0.0.1:%d", *port)
+	srv := &http.Server{Addr: addr, Handler: mux}
 	log.Printf("starting server on %s, root=%s", addr, *root)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatalf("server error: %v", err)
+
+	// run server in goroutine
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
+
+	// wait for interrupt (Ctrl-C) or termination signal
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	<-sig
+	log.Println("shutdown signal received, shutting down server...")
+
+	// close active sessions and stop server
+	handlers.ShutdownAllSessions()
+	if err := srv.Close(); err != nil {
+		log.Printf("error closing server: %v", err)
 	}
 }
