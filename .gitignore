@@ -1,0 +1,36 @@
+# Binaries
+/bin/
+/bin/*
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/tmp/*.log
+
+# Go build
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Misc
+.env
+
+# Ignore existing markdown docs to avoid checking in
+*.md
+# Allow top-level repo docs we intentionally add
+!README.md
+!CONTRIBUTING.md

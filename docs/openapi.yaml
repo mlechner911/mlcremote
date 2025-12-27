@@ -1,0 +1,157 @@
+openapi: 3.0.3
+info:
+  title: Lightweight Remote Dev Environment API
+  version: 0.1.0
+  description: |
+    Backend API for lightweight remote development.
+    - Health endpoint for status/version
+    - WebSocket terminal for PTY shell
+    - File operations (list, read, save, delete) scoped to configured root
+servers:
+  - url: http://localhost:8443
+    description: Local development server
+tags:
+  - name: Health
+  - name: Terminal
+  - name: Files
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health status
+      description: Returns server health and version.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /ws/terminal:
+    get:
+      tags: [Terminal]
+      summary: WebSocket terminal
+      description: |
+        Upgrades to a WebSocket connection and attaches to a PTY running the user's default shell.
+        The server expects binary/text messages carrying terminal I/O.
+        Note: WebSocket upgrade is not formally described in OpenAPI; this documentation is informational.
+      responses:
+        '101':
+          description: Switching Protocols (WebSocket)
+        '400':
+          description: Bad Request (upgrade failed)
+  /api/tree:
+    get:
+      tags: [Files]
+      summary: List directory tree
+      parameters:
+        - in: query
+          name: path
+          schema:
+            type: string
+          description: Path relative to the configured root. Empty or '/' lists the root.
+      responses:
+        '200':
+          description: List of entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DirEntry'
+        '400':
+          description: Invalid path or not a directory
+        '404':
+          description: Not found
+  /api/file:
+    get:
+      tags: [Files]
+      summary: Read file contents
+      parameters:
+        - in: query
+          name: path
+          schema:
+            type: string
+          required: true
+          description: Path to file relative to root.
+      responses:
+        '200':
+          description: File contents
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Invalid path or not a file
+        '404':
+          description: Not found
+    post:
+      tags: [Files]
+      summary: Save file contents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveRequest'
+      responses:
+        '204':
+          description: Saved
+        '400':
+          description: Invalid path or body
+        '500':
+          description: Write failed
+    delete:
+      tags: [Files]
+      summary: Delete file
+      parameters:
+        - in: query
+          name: path
+          schema:
+            type: string
+          required: true
+          description: Path to file relative to root.
+      responses:
+        '204':
+          description: Deleted
+        '400':
+          description: Invalid path
+        '500':
+          description: Delete failed
+components:
+  schemas:
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: string
+          example: 0.1.0
+      required: [status, version]
+    DirEntry:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+          description: Path relative to root, prefixed with '/'.
+        isDir:
+          type: boolean
+        size:
+          type: integer
+          format: int64
+        modTime:
+          type: string
+          format: date-time
+      required: [name, path, isDir, size, modTime]
+    SaveRequest:
+      type: object
+      properties:
+        path:
+          type: string
+        content:
+          type: string
+      required: [path, content]
