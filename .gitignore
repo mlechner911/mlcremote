@@ -1,0 +1,9 @@
+frontend/node_modules/
+bin/
+dist/
+frontend/dist/
+public/js
+*.exe
+*.exe~
+*.dll
+*.so
