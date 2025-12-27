@@ -20,8 +20,11 @@ export async function getHealth(): Promise<Health> {
   return r.json()
 }
 
-export async function listTree(path = ''): Promise<DirEntry[]> {
-  const q = path ? `?path=${encodeURIComponent(path)}` : ''
+export async function listTree(path = '', opts?: { showHidden?: boolean }): Promise<DirEntry[]> {
+  const params = new URLSearchParams()
+  if (path) params.set('path', path)
+  if (opts?.showHidden) params.set('showHidden', '1')
+  const q = params.toString() ? `?${params.toString()}` : ''
   info(`GET /api/tree${q}`)
   const r = await fetch(`/api/tree${q}`)
   info(`/api/tree${q} => ${r.status}`)
@@ -41,6 +44,14 @@ export async function readFile(path: string): Promise<string> {
     throw new Error('read failed')
   }
   return r.text()
+}
+
+export async function statPath(path: string): Promise<any> {
+  info(`GET /api/stat?path=${path}`)
+  const r = await fetch(`/api/stat?path=${encodeURIComponent(path)}`)
+  info(`/api/stat?path=${path} => ${r.status}`)
+  if (!r.ok) throw new Error('stat failed')
+  return r.json()
 }
 
 export async function saveFile(path: string, content: string): Promise<void> {

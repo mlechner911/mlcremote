@@ -1,12 +1,16 @@
 import React from 'react'
 import { getLogs, subscribe, clear } from '../logger'
 
-export default function LogOverlay() {
+type Props = { visible?: boolean; onClose?: () => void }
+
+export default function LogOverlay({ visible = true, onClose }: Props) {
   const [, setTick] = React.useState(0)
   React.useEffect(() => {
     const unsub = subscribe(() => setTick(t => t + 1))
     return unsub
   }, [])
+
+  if (!visible) return null
 
   const logs = getLogs().slice(0, 100)
   return (
@@ -15,6 +19,7 @@ export default function LogOverlay() {
         <strong>Logs</strong>
         <div>
           <button className="btn" onClick={() => clear()}>Clear</button>
+          <button className="btn" onClick={() => onClose && onClose()} style={{ marginLeft: 8 }}>Close</button>
         </div>
       </div>
       <div>

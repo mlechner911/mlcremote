@@ -68,6 +68,9 @@ func (s *Server) Routes() {
 	s.Mux.Handle("/ws/terminal", handlers.WsTerminalHandler(s.Root))
 	s.Mux.Handle("/api/tree", handlers.TreeHandler(s.Root))
 	s.Mux.Handle("/api/filetype", handlers.FileTypeHandler(s.Root))
+	s.Mux.Handle("/api/stat", handlers.StatHandler(s.Root))
+		s.Mux.Handle("/api/settings", handlers.SettingsHandler())
+		s.Mux.HandleFunc("/api/terminal/new", handlers.NewTerminalAPI())
 	s.Mux.Handle("/api/file", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
