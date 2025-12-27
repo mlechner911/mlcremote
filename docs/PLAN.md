@@ -215,6 +215,12 @@ UX notes:
 - [ ] Reconnection logic
 - [ ] Display current working directory
 
+### Recent UI fixes (Dec 2025)
+- Terminal now uses xterm.js Fit addon to size the terminal to its container and respond to window resizes.
+- Terminal sessions are created per-tab (unique session IDs generated server-side) so multiple independent shells can be opened.
+- Copy/Paste controls were added to the terminal header; clipboard support uses the Clipboard API when available and falls back to prompt/selection-based shims when not.
+- Light-mode contrast fixes: header and log overlay styles were adjusted so controls are readable and clickable in the `.theme-light` UI.
+
 ### Security:
 - [ ] Path traversal protection (never access outside root)
 - [ ] Rate limiting

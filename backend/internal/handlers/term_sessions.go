@@ -1,8 +1,9 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
@@ -94,10 +95,17 @@ func getSession(id string) *terminalSession {
 
 // generateSessionID returns a simple unique id. Replace with crypto secure id if needed.
 func generateSessionID() string {
-	sessionsMu.Lock()
-	id := fmt.Sprintf("s%v", len(sessions)+1)
-	sessionsMu.Unlock()
-	return id
+	// generate a 16-byte random id and hex-encode it
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		// fallback to a naive counter-based id (should be rare)
+		sessionsMu.Lock()
+		id := "s" + string(len(sessions)+1)
+		sessionsMu.Unlock()
+		return id
+	}
+	return "s" + hex.EncodeToString(b)
 }
 
 // NewTerminalAPI creates a session and returns {id}
