@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
 )
 
 // App struct
@@ -42,7 +43,7 @@ func main() {
 	app := NewApp()
 
 	// Create application with options
-	err := wails.Run(&wails.Options{
+	err := wails.Run(&options.App{
 		Title:  "MLCRemote Desktop Prototype",
 		Width:  900,
 		Height: 700,
