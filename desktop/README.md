@@ -1,4 +1,4 @@
-# Light Dev Desktop (Wails)
+# MLCRemote Desktop (Wails)
 
 This is the Wails desktop wrapper for the Lightweight Remote Dev Environment.
 It loads the same React frontend used for the browser client and wraps it in a native window.

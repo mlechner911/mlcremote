@@ -12,7 +12,7 @@ export default function App() {
   const [openFiles, setOpenFiles] = React.useState<string[]>([])
   const [activeFile, setActiveFile] = React.useState<string>('')
   const [showHidden, setShowHidden] = React.useState<boolean>(false)
-  const [showLogs, setShowLogs] = React.useState<boolean>(true)
+  const [showLogs, setShowLogs] = React.useState<boolean>(false)
   const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
   const [settings, setSettings] = React.useState<{ allowDelete: boolean; defaultShell: string } | null>(null)
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
@@ -32,7 +32,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Light Dev</h1>
+        <h1>MLCRemote</h1>
         <div className="status">
           <span className={health.startsWith('offline') ? 'badge badge-error' : 'badge badge-ok'}>
             {health}
@@ -103,11 +103,16 @@ export default function App() {
               </React.Suspense>
             </div>
           )}
-          {activeFile && activeFile.startsWith('shell-') ? (
-            <TerminalTab key={activeFile} shell={(settings && settings.defaultShell) || 'bash'} path={activeFile} />
-          ) : (
-            <Editor path={activeFile || selectedPath} settings={settings} onSaved={() => { /* no-op for now */ }} />
-          )}
+          {/* Render all open files but keep only active one visible so their state (e.g., terminal buffer) is preserved */}
+          {openFiles.map(f => (
+            <div key={f} style={{ display: f === activeFile ? 'block' : 'none', height: '100%' }}>
+              {f.startsWith('shell-') ? (
+                <TerminalTab key={f} shell={(settings && settings.defaultShell) || 'bash'} path={f} />
+              ) : (
+                <Editor path={f} settings={settings} onSaved={() => { /* no-op for now */ }} />
+              )}
+            </div>
+          ))}
         </main>
       </div>
       <LogOverlay visible={showLogs} onClose={() => setShowLogs(false)} />
@@ -115,7 +120,7 @@ export default function App() {
       {aboutOpen && (
         <div className="about-backdrop" onClick={() => setAboutOpen(false)}>
           <div className="about-modal" onClick={e => e.stopPropagation()}>
-            <h3>Light Dev</h3>
+            <h3>MLCRemote</h3>
             <div style={{ marginBottom: 8 }}>Copyright © {new Date().getFullYear()} Michael Lechner</div>
             <div style={{ marginBottom: 8 }}>Version: {health}</div>
             <div style={{ marginTop: 12 }}><button className="btn" onClick={() => setAboutOpen(false)}>Close</button></div>
