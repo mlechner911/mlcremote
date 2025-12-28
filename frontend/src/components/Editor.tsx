@@ -72,6 +72,17 @@ function safeHighlight(text: string, ext: string) {
   }
 }
 
+function formatBytes(n?: number) {
+  if (!n || n <= 0) return '0 B'
+  const KB = 1024
+  const MB = KB * 1024
+  const GB = MB * 1024
+  if (n >= GB) return `${(n / GB).toFixed(2)} GB`
+  if (n >= MB) return `${(n / MB).toFixed(2)} MB`
+  if (n >= KB) return `${(n / KB).toFixed(2)} KB`
+  return `${n} B`
+}
+
 type Props = {
   path: string
   onSaved?: () => void
@@ -221,7 +232,9 @@ export default function Editor({ path, onSaved, settings }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span className="muted">{path || 'Select a file'}</span>
           {meta && (
-            <span className="muted" style={{ fontSize: 11 }}>{meta.mime || (meta.isDir ? 'directory' : '')} · {meta.mode} · {new Date(meta.modTime).toLocaleString()}</span>
+            <span className="muted" style={{ fontSize: 11 }}>
+              {meta.mime || (meta.isDir ? 'directory' : '')} · {meta.mode} · {formatBytes(meta.size)} · {new Date(meta.modTime).toLocaleString()}
+            </span>
           )}
         </div>
           <div className="actions">
