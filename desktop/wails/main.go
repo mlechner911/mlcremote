@@ -319,10 +319,8 @@ func streamReaderToEvents(ctx context.Context, r io.Reader) {
 func main() {
 	app := NewApp()
 
-	// Check if a local frontend dist exists (useful when assets not embedded)
-	distPath := "appfrontend/dist/index.html"
-	var appOptions options.App
-	appOptions = options.App{
+	// Create application with options
+	err := wails.Run(&options.App{
 		Title:  "MLCRemote Desktop Prototype",
 		Width:  900,
 		Height: 700,
@@ -330,24 +328,7 @@ func main() {
 			app,
 		},
 		OnStartup: app.startup,
-	}
-	if _, err := os.Stat(distPath); os.IsNotExist(err) {
-		// If the dist index is missing on disk, provide a minimal fallback HTTP handler
-		helloHTML := `<!doctype html>
-<html><head><meta charset="utf-8"><title>MLCRemote</title></head><body>
-<h1>MLCRemote Desktop</h1>
-<p>This is the fallback Hello screen. Press Continue to try loading the app UI.</p>
-<button onclick="location.reload()">Continue</button>
-</body></html>`
-		appOptions.Middleware = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(helloHTML))
-		})
-	}
-
-	// Create application with options
-	err := wails.Run(&appOptions)
+	})
 
 	if err != nil {
 		println("Error:", err.Error())
