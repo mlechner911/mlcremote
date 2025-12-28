@@ -47,11 +47,13 @@ if command -v cygpath >/dev/null 2>&1; then
 fi
 
 if [ $NO_FRONTEND -eq 0 ]; then
-  echo "[build-windows] Installing frontend dependencies... (using $WIN_FRONTEND_DIR)"
-  npm install --prefix "$WIN_FRONTEND_DIR"
+  echo "[build-windows] Installing frontend dependencies..."
+  pushd "$FRONTEND_DIR" >/dev/null
+  npm install
 
   echo "[build-windows] Building frontend..."
-  npm run --prefix "$WIN_FRONTEND_DIR" build
+  npm run build
+  popd >/dev/null
 else
   echo "[build-windows] Skipping frontend build (--no-frontend)"
 fi
