@@ -9,7 +9,7 @@
   "frontend": {
     "dir": "../frontend",
     "install": "npm install",
-    "build": "npm run build",
+    "build": "npm run build:desktop",
     "bridge": "src/wailsjs"
   },
   "outputfilename": "lightdev",
