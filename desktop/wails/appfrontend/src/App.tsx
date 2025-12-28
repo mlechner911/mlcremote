@@ -2,10 +2,13 @@ import React, {useState, useEffect} from 'react'
 import ConnectDialog from './components/ConnectDialog'
 import SettingsDialog from './components/SettingsDialog'
 let runtime: any = null
-if (typeof window !== 'undefined') {
-  import('@wails/runtime')
-    .then((mod) => { runtime = mod })
-    .catch(() => {})
+function loadRuntimeIfPresent(){
+  if (runtime) return runtime
+  try{
+    const maybe = (globalThis as any).WAILS_RUNTIME || (typeof require !== 'undefined' ? require('@wails/runtime') : null)
+    runtime = maybe || null
+  }catch(e){ runtime = null }
+  return runtime
 }
 
 export default function App(){
@@ -13,7 +16,8 @@ export default function App(){
   const [showSettings, setShowSettings] = useState(false)
 
   useEffect(() => {
-    if (!runtime || !runtime.EventsOn) return
+    const rt = loadRuntimeIfPresent()
+    if (!rt || !rt.EventsOn) return
     const handler = async (args: any) => {
       const url = Array.isArray(args) && args.length > 0 ? args[0] : args
       if (typeof url === 'string') {
@@ -26,10 +30,10 @@ export default function App(){
         }catch(e:any){ try{ runtime.EventsEmit('navigate-error', String(e.message || e)) }catch(e){} }
       }
     }
-    runtime.EventsOn('navigate', handler)
+    rt.EventsOn('navigate', handler)
     const errHandler = (args:any)=>{ const msg = Array.isArray(args) && args.length>0? args[0]: args; alert('Navigation error: '+String(msg)) }
-    try{ runtime.EventsOn('navigate-error', errHandler) }catch(e){}
-    return () => { try { runtime.EventsOff('navigate', handler) } catch (e) {} ; try { runtime.EventsOff('navigate-error', errHandler)} catch (e) {} }
+    try{ rt.EventsOn('navigate-error', errHandler) }catch(e){}
+    return () => { try { rt.EventsOff('navigate', handler) } catch (e) {} ; try { rt.EventsOff('navigate-error', errHandler)} catch (e) {} }
   }, [])
 
   return (
