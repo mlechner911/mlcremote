@@ -274,7 +274,10 @@ export default function Editor({ path, onSaved, settings }: Props) {
             </div>
           ) : (
             <div>
-              <div className="muted">{status || 'Binary or unsupported file type'}</div>
+              {/* Only show the textual notice when there is no image preview */}
+              {!(probe && probe.mime && probe.mime.startsWith('image/')) && (
+                <div className="muted">{status || 'Binary or unsupported file type'}</div>
+              )}
               {probe && probe.mime && probe.mime.startsWith('image/') ? (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
