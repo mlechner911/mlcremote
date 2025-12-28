@@ -30,6 +30,8 @@ type healthInfo struct {
 	SysMemTotal uint64  `json:"sys_mem_total_bytes,omitempty"`
 	SysMemFree  uint64  `json:"sys_mem_free_bytes,omitempty"`
 	CPUPercent  float64 `json:"cpu_percent,omitempty"`
+	ServerTime  string  `json:"server_time,omitempty"`
+	Timezone    string  `json:"timezone,omitempty"`
 }
 
 // Health returns a JSON payload including process and lightweight system metrics.
@@ -73,6 +75,11 @@ func Health(w http.ResponseWriter, r *http.Request) {
 	if rss := readProcRSS(); rss > 0 {
 		info.ProcRSS = rss
 	}
+
+	// include server time and timezone
+	now := time.Now()
+	info.ServerTime = now.Format(time.RFC3339)
+	info.Timezone = now.Format("MST")
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
