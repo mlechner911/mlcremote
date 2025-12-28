@@ -43,7 +43,7 @@ Dieses Dokument beschreibt den vorgesehenen Ablauf der Desktop-Anwendung (Wails 
 **Build & Test (Kurz)**
 - Desktop-Frontend bauen (erzeugt `dist/` mit Desktop entry):
   ```bash
-  cd desktop/wails/frontend
+  cd desktop/wails/appfrontend
   npm run build:desktop
   ```
 - Wails/EXE bauen (aus `desktop/wails`):
@@ -56,12 +56,12 @@ Dieses Dokument beschreibt den vorgesehenen Ablauf der Desktop-Anwendung (Wails 
 **Deploy Frontend to Remote (quick)**
 - Build frontend (desktop entry):
   ```bash
-  cd desktop/wails/frontend
+  cd desktop/wails/appfrontend
   npm run build:desktop
   ```
 - Copy `dist/` to remote server (example using `rsync`):
   ```bash
-  rsync -avz desktop/wails/frontend/dist/ user@remote:/opt/mlcremote/dist/
+  rsync -avz desktop/wails/appfrontend/dist/ user@remote:/opt/mlcremote/dist/
   ```
 - Start backend on remote and point to static dir:
   ```bash

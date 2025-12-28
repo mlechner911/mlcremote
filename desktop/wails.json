@@ -7,13 +7,13 @@
   },
   "license": "",
   "frontend": {
-    "dir": "../frontend",
+    "dir": "appfrontend",
     "install": "npm install",
     "build": "npm run build:desktop",
     "bridge": "src/wailsjs"
   },
   "outputfilename": "lightdev",
-  "assetdir": "../frontend/dist",
+  "assetdir": "appfrontend/dist",
   "devserver": "http://localhost:5173",
   "version": "0.1.0"
 }
