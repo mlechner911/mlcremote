@@ -7,13 +7,13 @@
   },
   "license": "",
   "frontend": {
-    "dir": "appfrontend",
+    "dir": "E:\\mlcremote\\desktop\\wails\\appfrontend",
     "install": "npm install",
     "build": "npm run build:desktop",
     "bridge": "src/wailsjs"
   },
   "outputfilename": "lightdev",
-  "assetdir": "appfrontend/dist",
+  "assetdir": "E:\\mlcremote\\desktop\\wails\\appfrontend\\dist",
   "devserver": "http://localhost:5173",
   "version": "0.1.0"
 }
