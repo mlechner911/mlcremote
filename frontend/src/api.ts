@@ -1,6 +1,14 @@
 import { info, warn } from './logger'
 
+/**
+ * Health payload returned by the server's `/health` endpoint.
+ */
 export type Health = { status: string; version: string; host?: string; cpu_percent?: number; sys_mem_total_bytes?: number; sys_mem_free_bytes?: number }
+
+/**
+ * Directory entry used by the file tree API.
+ * `path` is always relative to the server root and starts with a leading '/'.
+ */
 export type DirEntry = {
   name: string
   path: string // leading '/'
@@ -9,6 +17,9 @@ export type DirEntry = {
   modTime: string
 }
 
+/**
+ * Fetch the server health payload.
+ */
 export async function getHealth(): Promise<Health> {
   info('GET /health')
   const r = await fetch('/health')
@@ -20,6 +31,10 @@ export async function getHealth(): Promise<Health> {
   return r.json()
 }
 
+/**
+ * List directory entries under `path`. When `path` is empty the server root
+ * is listed.
+ */
 export async function listTree(path = '', opts?: { showHidden?: boolean }): Promise<DirEntry[]> {
   const params = new URLSearchParams()
   if (path) params.set('path', path)
@@ -35,6 +50,9 @@ export async function listTree(path = '', opts?: { showHidden?: boolean }): Prom
   return r.json()
 }
 
+/**
+ * Read the contents of the file at `path` as UTF-8 text.
+ */
 export async function readFile(path: string): Promise<string> {
   info(`GET /api/file?path=${path}`)
   const r = await fetch(`/api/file?path=${encodeURIComponent(path)}`)
@@ -46,6 +64,10 @@ export async function readFile(path: string): Promise<string> {
   return r.text()
 }
 
+/**
+ * Retrieve metadata for `path`. The server returns an object describing the
+ * file (mime, size, mode, modTime, etc.). Caller treats the result as `any`.
+ */
 export async function statPath(path: string): Promise<any> {
   info(`GET /api/stat?path=${path}`)
   const r = await fetch(`/api/stat?path=${encodeURIComponent(path)}`)
@@ -54,6 +76,9 @@ export async function statPath(path: string): Promise<any> {
   return r.json()
 }
 
+/**
+ * Save `content` to the server-side path. This creates directories as needed.
+ */
 export async function saveFile(path: string, content: string): Promise<void> {
   info(`POST /api/file path=${path} size=${content.length}`)
   const r = await fetch('/api/file', {
@@ -68,6 +93,9 @@ export async function saveFile(path: string, content: string): Promise<void> {
   }
 }
 
+/**
+ * Delete a file on the server.
+ */
 export async function deleteFile(path: string): Promise<void> {
   info(`DELETE /api/file?path=${path}`)
   const r = await fetch(`/api/file?path=${encodeURIComponent(path)}`, { method: 'DELETE' })

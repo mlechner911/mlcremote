@@ -6,7 +6,15 @@ import TerminalTab from './components/TerminalTab'
 const TabBarComponent = React.lazy(() => import('./components/TabBar'))
 import LogOverlay from './components/LogOverlay'
 
+/**
+ * Top-level application component. Manages UI state for the file explorer,
+ * editor tabs, terminal tabs and global settings such as theme and sidebar
+ * width. Heavy-lifted responsibilities are split into child components.
+ */
 export default function App() {
+  /**
+   * Format bytes into a human-readable string.
+   */
   function formatBytes(n?: number) {
     if (!n || n <= 0) return '0 B'
     const KB = 1024
@@ -25,6 +33,10 @@ export default function App() {
   const [autoOpen, setAutoOpen] = React.useState<boolean>(true)
   const maxTabs = 8
   // openFile ensures we don't exceed maxTabs by closing the oldest when necessary
+  /**
+   * Open a path in a persistent tab. If the maximum number of tabs is
+   * exceeded the oldest tab is closed (simple LRU-like eviction).
+   */
   function openFile(path: string) {
     setOpenFiles(of => {
       if (of.includes(path)) return of

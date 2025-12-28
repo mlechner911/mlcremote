@@ -9,6 +9,11 @@ type Props = {
   onView?: (path: string) => void
 }
 
+/**
+ * FileExplorer component — lists files and directories under the server root
+ * and supports navigation, drag-and-drop upload, and lightweight actions
+ * such as Download and (when `autoOpen` is false) a View button.
+ */
 export default function FileExplorer({ onSelect, showHidden, onToggleHidden, autoOpen = true, onView }: Props): JSX.Element {
   const [path, setPath] = React.useState<string>('')
   const [entries, setEntries] = React.useState<DirEntry[]>([])
