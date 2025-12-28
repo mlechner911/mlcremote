@@ -62,6 +62,12 @@ desktop-build:
 	cd $(FRONTEND_DIR) && npm run build
 	cd $(DESKTOP_DIR) && wails build
 
+.PHONY: desktop-upgrade-wails
+desktop-upgrade-wails:
+	@echo "Upgrading wails to latest in $(DESKTOP_DIR)"
+	cd $(DESKTOP_DIR) && go get github.com/wailsapp/wails/v2@latest && go mod tidy
+	@echo "Upgrade complete. Review and commit changes in $(DESKTOP_DIR)"
+
 .PHONY: desktop-dist
 desktop-dist:
 	@echo "Building frontend and desktop (wails build)"
