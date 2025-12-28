@@ -3,13 +3,14 @@
 
 /* Light theme overrides */
 .theme-light {
-	--bg: #f8fafc;
-	--panel: #ffffff;
-	--text: #0b1220;
+	/* Slightly muted light background to reduce glare */
+	--bg: #f3f4f6; /* softer than pure white */
+	--panel: #ffffff; /* keep panels white but rely on subtle borders */
+	--text: #0f1724; /* a touch darker for better readability */
 	--muted: #6b7280;
 	--accent: #2563eb;
-	--danger: #b91c1c;
-	--border: #e6e9ef;
+	--danger: #991b1b; /* slightly less saturated danger */
+	--border: #e9eef6; /* subtle border */
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
@@ -40,21 +41,21 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 
 /* resizer between sidebar and main */
 .resizer { width: 8px; cursor: col-resize; background: transparent; display: flex; align-items: center; justify-content: center; }
-.resizer:hover { background: rgba(255,255,255,0.02); }
-.resizer .bar { width: 2px; height: 40%; background: rgba(255,255,255,0.04); border-radius: 2px; }
+.resizer:hover { background: rgba(15,20,30,0.03); }
+.resizer .bar { width: 2px; height: 40%; background: rgba(15,20,30,0.06); border-radius: 2px; }
 
 .explorer-header { display: flex; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid var(--border); }
 .breadcrumbs { font-size: 12px; color: var(--muted); }
 .explorer-body { padding: 8px; flex: 1; overflow: auto; min-height: 0; }
 .entry-list { list-style: none; padding: 0; margin: 0; }
 .entry { display: flex; align-items: center; width: 100%; text-align: left; gap: 8px; padding: 6px 8px; background: transparent; border: 1px solid transparent; border-radius: 6px; color: var(--text); cursor: pointer; }
-.entry:hover { border-color: var(--border); background: rgba(255, 255, 255, 0.03); }
+.entry:hover { border-color: var(--border); background: rgba(15,20,30,0.03); }
 .icon { width: 18px; }
 
 .editor { height: 100%; display: flex; flex-direction: column; }
 .editor-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid var(--border); background: var(--panel); }
 .actions { margin-left: auto; display: flex; gap: 8px; }
-.btn { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text); cursor: pointer; }
+.btn { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: rgba(15,20,30,0.02); color: var(--text); cursor: pointer; }
 .btn:hover { border-color: var(--accent); }
 .btn[download], .btn.download { padding: 4px 8px; font-size: 12px; }
 .btn-danger { border-color: var(--danger); }
