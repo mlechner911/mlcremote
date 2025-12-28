@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -15,6 +19,7 @@ import (
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -33,6 +38,7 @@ type TunnelProfile struct {
 	RemoteHost string `json:"remoteHost"`
 	RemotePort int `json:"remotePort"`
 	IdentityFile string `json:"identityFile"` // optional path to private key
+	Password string `json:"password"`
 	ExtraArgs []string `json:"extraArgs"` // additional ssh args
 }
 
@@ -82,13 +88,15 @@ func (a *App) StartTunnel(profile string) (string, error) {
 	args = append(args, toks...)
 
 	cmd := exec.Command("ssh", args...)
-	// redirect stdout/stderr to files (or discard)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	stdoutPipe, _ := cmd.StdoutPipe()
+	stderrPipe, _ := cmd.StderrPipe()
 	// start process
 	if err := cmd.Start(); err != nil {
 		return "failed", err
 	}
+	// stream logs
+	go streamReaderToEvents(a.ctx, stdoutPipe)
+	go streamReaderToEvents(a.ctx, stderrPipe)
 	a.tunnelCmd = cmd
 	a.tunnelState = "starting"
 
@@ -166,27 +174,79 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	}
 
 	cmd := exec.Command("ssh", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	stdoutPipe, _ := cmd.StdoutPipe()
+	stderrPipe, _ := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
 		return "failed", err
 	}
+	go streamReaderToEvents(a.ctx, stdoutPipe)
+	go streamReaderToEvents(a.ctx, stderrPipe)
 	a.tunnelCmd = cmd
 	a.tunnelState = "starting"
 
+	// monitor process and emit navigate event when the forwarded service becomes reachable
+	localURL := fmt.Sprintf("http://127.0.0.1:%d", p.LocalPort)
 	go func() {
-		err := cmd.Wait()
-		a.tunnelMu.Lock()
-		defer a.tunnelMu.Unlock()
-		a.tunnelCmd = nil
-		if err != nil {
-			a.tunnelState = "stopped"
-		} else {
-			a.tunnelState = "stopped"
+		// wait for process exit in background
+		waitErrCh := make(chan error, 1)
+		go func() { waitErrCh <- cmd.Wait() }()
+
+		// poll health endpoint until reachable or process exits
+		client := &http.Client{Timeout: 2 * time.Second}
+		pollTicker := time.NewTicker(500 * time.Millisecond)
+		defer pollTicker.Stop()
+		timeout := time.After(15 * time.Second)
+		for {
+			select {
+			case <-pollTicker.C:
+				resp, err := client.Get(fmt.Sprintf("%s/health", localURL))
+				if err == nil {
+					resp.Body.Close()
+					if resp.StatusCode == http.StatusOK {
+						// service reachable — emit navigate event
+						runtime.EventsEmit(a.ctx, "navigate", localURL)
+						// update state to started
+						a.tunnelMu.Lock()
+						a.tunnelState = "started"
+						a.tunnelMu.Unlock()
+						return
+					}
+					// otherwise continue polling
+				}
+			case err := <-waitErrCh:
+				// process exited before service became reachable
+				_ = err
+				a.tunnelMu.Lock()
+				a.tunnelCmd = nil
+				a.tunnelState = "stopped"
+				a.tunnelMu.Unlock()
+				return
+			case <-timeout:
+				// timed out waiting for service
+				a.tunnelMu.Lock()
+				a.tunnelState = "started" // ssh likely started but service not responding
+				a.tunnelMu.Unlock()
+				return
+			}
 		}
 	}()
 
 	return "started", nil
+}
+
+// SaveIdentityFile writes a base64-encoded private key payload to a temp file and returns the path.
+func (a *App) SaveIdentityFile(b64 string, filename string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return "", fmt.Errorf("invalid base64 payload: %w", err)
+	}
+	tmpdir := os.TempDir()
+	// sanitize filename
+	outPath := fmt.Sprintf("%s/mlcremote-key-%d-%s", tmpdir, time.Now().UnixNano(), filename)
+	if err := ioutil.WriteFile(outPath, data, 0600); err != nil {
+		return "", fmt.Errorf("failed to write identity file: %w", err)
+	}
+	return outPath, nil
 }
 
 // StopTunnel stops the running ssh tunnel process
@@ -245,6 +305,15 @@ func splitArgs(s string) []string {
 func netListenTCP(port int) (net.Listener, error) {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	return net.Listen("tcp", addr)
+}
+
+// streamReaderToEvents reads from an io.Reader line-by-line and emits 'ssh-log' events
+func streamReaderToEvents(ctx context.Context, r io.Reader) {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := scanner.Text()
+		runtime.EventsEmit(ctx, "ssh-log", line)
+	}
 }
 
 func main() {
