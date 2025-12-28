@@ -70,8 +70,8 @@ if (-not $NoFrontend) {
     try {
         Write-Host "[build-windows.ps1] Running npm install in $FrontendDir"
         npm install
-        Write-Host "[build-windows.ps1] Running npm run build"
-        npm run build
+        Write-Host "[build-windows.ps1] Running npm run build:desktop"
+        npm run build:desktop
     } catch {
         Write-Error "Frontend build failed: $_"
         Pop-Location
