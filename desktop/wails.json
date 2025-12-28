@@ -1,7 +1,10 @@
 {
   "name": "MLCRemote",
   "description": "Lightweight Remote Dev Environment desktop wrapper",
-  "author": "",
+  "author": {
+    "name": "",
+    "email": ""
+  },
   "license": "",
   "frontend": {
     "dir": "../frontend",
