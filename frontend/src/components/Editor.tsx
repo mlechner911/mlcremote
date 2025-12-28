@@ -78,6 +78,11 @@ type Props = {
   settings?: { allowDelete?: boolean }
 }
 
+/**
+ * Editor component — fetches and renders file contents. Supports syntax
+ * highlighting via Prism, saving, reloading, formatting (via dynamic import),
+ * and inline image preview for image mime types.
+ */
 export default function Editor({ path, onSaved, settings }: Props) {
   const [content, setContent] = React.useState<string>('')
   const [origContent, setOrigContent] = React.useState<string>('')

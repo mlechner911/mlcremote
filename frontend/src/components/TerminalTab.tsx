@@ -9,6 +9,13 @@ type Props = {
   onExit?: () => void
 }
 
+/**
+ * TerminalTab hosts an xterm.js terminal and connects it to a server-side
+ * PTY over WebSocket. It prefers creating a persistent session via
+ * `/api/terminal/new` and then attaching with `?session=...`. If that
+ * fails it falls back to an ephemeral WS-based PTY. The component handles
+ * resize events and exposes copy/paste helpers.
+ */
 export default function TerminalTab({ shell, path, onExit }: Props) {
   const ref = React.useRef<HTMLDivElement | null>(null)
   const termRef = React.useRef<Terminal | null>(null)
