@@ -41,6 +41,7 @@ export default function App() {
   const [showHidden, setShowHidden] = React.useState<boolean>(false)
   const [showLogs, setShowLogs] = React.useState<boolean>(false)
   const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
+  const [serverInfoOpen, setServerInfoOpen] = React.useState<boolean>(false)
   const [settings, setSettings] = React.useState<{ allowDelete: boolean; defaultShell: string } | null>(null)
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
   const [theme, setTheme] = React.useState<'dark'|'light'>(() => (localStorage.getItem('theme') as 'dark'|'light') || 'dark')
@@ -88,7 +89,12 @@ export default function App() {
             <span className={(health ? 'badge badge-ok' : 'badge badge-error')}>
               {health ? `${health.status}@${health.version}` : 'offline'}
             </span>
-            <button className="link" style={{ marginLeft: 8, fontSize: 12, padding: 0 }} onClick={() => setAboutOpen(true)}>{health && health.host ? health.host : 'backend unavailable'}</button>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <button className="link" style={{ marginLeft: 8, fontSize: 12, padding: 0 }} onClick={() => setAboutOpen(true)}>{health && health.host ? health.host : 'backend unavailable'}</button>
+              {health && health.server_time && (
+                <button className="link" style={{ marginLeft: 0, fontSize: 12, padding: '0 6px' }} onClick={() => setServerInfoOpen(true)}>i</button>
+              )}
+            </div>
           </span>
           {/* memory gauge */}
           {health && health.sys_mem_total_bytes ? (
@@ -274,6 +280,17 @@ export default function App() {
         </main>
       </div>
       <LogOverlay visible={showLogs} onClose={() => setShowLogs(false)} />
+
+      {serverInfoOpen && health && (
+        <div className="about-backdrop" onClick={() => setServerInfoOpen(false)}>
+          <div className="about-modal" onClick={e => e.stopPropagation()}>
+            <h4>Server Info</h4>
+            <div style={{ marginBottom: 8 }}>Server time: {health.server_time}</div>
+            <div style={{ marginBottom: 8 }}>Timezone: {health.timezone}</div>
+            <div><button className="btn" onClick={() => setServerInfoOpen(false)}>Close</button></div>
+          </div>
+        </div>
+      )}
 
       {aboutOpen && (
         <div className="about-backdrop" onClick={() => setAboutOpen(false)}>
