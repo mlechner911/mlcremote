@@ -7,7 +7,7 @@
 	--bg: #f3f4f6; /* softer than pure white */
 	--panel: #ffffff; /* keep panels white but rely on subtle borders */
 	--text: #0f1724; /* a touch darker for better readability */
-	--muted: #6b7280;
+	--muted: #4b5563; /* darker muted text for readability */
 	--accent: #2563eb;
 	--danger: #991b1b; /* slightly less saturated danger */
 	--border: #e9eef6; /* subtle border */
@@ -118,13 +118,13 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 	z-index: 5000;
 }
 .dropdown .link { display: block; width: 100%; text-align: left; padding: 6px 8px; border-radius: 4px; }
-.dropdown .link:hover { background: rgba(255,255,255,0.03); }
+.dropdown .link:hover { background: rgba(15,20,30,0.03); }
 
 /* Prism token color overrides for light theme to improve contrast */
-.theme-light .token.comment { color: #6b7280 }
-.theme-light .token.keyword { color: #b45309 }
+.theme-light .token.comment { color: #374151 }
+.theme-light .token.keyword { color: #92400e }
 .theme-light .token.string { color: #065f46 }
-.theme-light .token.function { color: #1d4ed8 }
+.theme-light .token.function { color: #1e40af }
 .theme-light .token.punctuation { color: #374151 }
 .theme-light .token.operator { color: #374151 }
 .theme-light .token.constant { color: #b91c1c }
