@@ -11,3 +11,11 @@
 
 ### Fixed
 - Ctrl-C / server shutdown now terminates PTY-backed shells started from the Web UI.
+
+### UI / UX
+- Frontend: TabBar menu added with `Close`, `Close Others`, and `Close Left` actions; per-tab dropdown is keyboard accessible and themed for light/dark modes.
+- Frontend: FileExplorer `autoOpen` mode added; when disabled, a `View` (eye) button will focus or open files without changing navigation.
+- Frontend: Editor now renders image previews inline and suppresses the binary notice when showing images.
+- Frontend: Editor status messages (e.g., "Reloaded") clear automatically after 2 seconds.
+- Frontend: Large images and editor content scroll inside main content area to avoid creating a page-level scrollbar.
+
