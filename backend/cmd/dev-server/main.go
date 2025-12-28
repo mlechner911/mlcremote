@@ -29,6 +29,7 @@ func main() {
 
 	s := server.New(*root, *staticDir, *openapi)
 	s.Routes()
+	log.Printf("MLCRemote v0.2.0 starting")
 	if err := s.Start(*port); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
