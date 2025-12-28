@@ -101,9 +101,14 @@ func GetFileHandler(root string) http.HandlerFunc {
 			return
 		}
 		defer f.Close()
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		if _, err := io.Copy(w, f); err != nil {
-			// ignore
+		// detect content type from the first bytes
+		buf := make([]byte, 4100)
+		n, _ := f.Read(buf)
+		mime := http.DetectContentType(buf[:n])
+		w.Header().Set("Content-Type", mime)
+		// rewind to start
+		if _, err := f.Seek(0, 0); err == nil {
+			_, _ = io.Copy(w, f)
 		}
 	}
 }
@@ -216,5 +221,52 @@ func StatHandler(root string) http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resp)
+	}
+}
+
+// UploadHandler accepts multipart form file uploads and writes them into the
+// target directory specified by the `path` query parameter (relative to root).
+func UploadHandler(root string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// limit parse size (32MB) to avoid huge memory usage
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			http.Error(w, "failed to parse upload", http.StatusBadRequest)
+			return
+		}
+		reqPath := r.URL.Query().Get("path")
+		targetDir, err := util.SanitizePath(root, reqPath)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		// ensure directory exists
+		if err := os.MkdirAll(targetDir, 0755); err != nil {
+			http.Error(w, "failed to create dir", http.StatusInternalServerError)
+			return
+		}
+		// iterate uploaded files (form field may be 'file' or multiple)
+		files := r.MultipartForm.File
+		for _, fhs := range files {
+			for _, fh := range fhs {
+				in, err := fh.Open()
+				if err != nil {
+					continue
+				}
+				defer in.Close()
+				dstPath := filepath.Join(targetDir, filepath.Base(fh.Filename))
+				out, err := os.Create(dstPath)
+				if err != nil {
+					in.Close()
+					continue
+				}
+				if _, err := io.Copy(out, in); err != nil {
+					out.Close()
+					in.Close()
+					continue
+				}
+				out.Close()
+			}
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

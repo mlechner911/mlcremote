@@ -1,6 +1,6 @@
 import { info, warn } from './logger'
 
-export type Health = { status: string; version: string }
+export type Health = { status: string; version: string; host?: string; cpu_percent?: number; sys_mem_total_bytes?: number; sys_mem_free_bytes?: number }
 export type DirEntry = {
   name: string
   path: string // leading '/'

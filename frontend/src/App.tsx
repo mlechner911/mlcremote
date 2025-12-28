@@ -7,10 +7,22 @@ const TabBarComponent = React.lazy(() => import('./components/TabBar'))
 import LogOverlay from './components/LogOverlay'
 
 export default function App() {
-  const [health, setHealth] = React.useState('unknown')
+  function formatBytes(n?: number) {
+    if (!n || n <= 0) return '0 B'
+    const KB = 1024
+    const MB = KB * 1024
+    const GB = MB * 1024
+    if (n >= GB) return `${(n / GB).toFixed(2)} GB`
+    if (n >= MB) return `${(n / MB).toFixed(2)} MB`
+    if (n >= KB) return `${(n / KB).toFixed(2)} KB`
+    return `${n} B`
+  }
+  const [health, setHealth] = React.useState<null | Health>(null)
+  const [lastHealthAt, setLastHealthAt] = React.useState<number | null>(null)
   const [selectedPath, setSelectedPath] = React.useState<string>('')
   const [openFiles, setOpenFiles] = React.useState<string[]>([])
   const [activeFile, setActiveFile] = React.useState<string>('')
+  const [shellCwds, setShellCwds] = React.useState<Record<string,string>>({})
   const [showHidden, setShowHidden] = React.useState<boolean>(false)
   const [showLogs, setShowLogs] = React.useState<boolean>(false)
   const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
@@ -19,9 +31,21 @@ export default function App() {
   const [theme, setTheme] = React.useState<'dark'|'light'>(() => (localStorage.getItem('theme') as 'dark'|'light') || 'dark')
 
   React.useEffect(() => {
-    getHealth()
-      .then(h => setHealth(`${h.status}@${h.version}`))
-      .catch(() => setHealth('offline'))
+    let mounted = true
+    async function fetchHealth() {
+      try {
+        const h = await getHealth()
+        if (!mounted) return
+        setHealth(h)
+        setLastHealthAt(Date.now())
+      } catch {
+        if (!mounted) return
+        setHealth(null)
+      }
+    }
+    fetchHealth()
+    const id = setInterval(fetchHealth, 60 * 1000)
+    return () => { mounted = false; clearInterval(id) }
     // fetch runtime settings
     fetch('/api/settings').then(r => r.json()).then(j => setSettings(j)).catch(() => setSettings({ allowDelete: false, defaultShell: 'bash' }))
     // apply theme
@@ -34,14 +58,36 @@ export default function App() {
       <header className="app-header">
         <h1>MLCRemote</h1>
         <div className="status">
-          <span className={health.startsWith('offline') ? 'badge badge-error' : 'badge badge-ok'}>
-            {health}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 6, background: health && health.host ? '#10b981' : '#ef4444', display: 'inline-block' }} />
+            <span className={(health ? 'badge badge-ok' : 'badge badge-error')}>
+              {health ? `${health.status}@${health.version}` : 'offline'}
+            </span>
+            <button className="link" style={{ marginLeft: 8, fontSize: 12, padding: 0 }} onClick={() => setAboutOpen(true)}>{health && health.host ? health.host : 'backend unavailable'}</button>
           </span>
+          {/* memory gauge */}
+          {health && health.sys_mem_total_bytes ? (
+            (() => {
+              const total = health.sys_mem_total_bytes || 1
+              const free = health.sys_mem_free_bytes || 0
+              const used = total - free
+              const pct = Math.round((used / total) * 100)
+              return (
+                <div style={{ marginLeft: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 120, height: 10, background: 'rgba(255,255,255,0.06)', borderRadius: 6 }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: pct > 80 ? '#e11d48' : '#10b981', borderRadius: 6 }} />
+                  </div>
+                  <div className="muted" style={{ fontSize: 12 }} title={`Memory usage: ${formatBytes(used)} / ${formatBytes(total)} (${pct}%)`}>{pct}%</div>
+                </div>
+              )
+            })()
+          ) : null}
           <button className="link" onClick={() => {
-            // create a new shell tab
+            // create a new shell tab; use currently selectedPath as initial cwd
             const shellName = `shell-${Date.now()}`
             setOpenFiles(of => [...of, shellName])
             setActiveFile(shellName)
+            setShellCwds(s => ({ ...s, [shellName]: selectedPath || '' }))
           }}>New Shell</button>
           <button className="link icon-btn" aria-label="Toggle theme" onClick={() => {
             const next = theme === 'dark' ? 'light' : 'dark'
@@ -68,8 +114,14 @@ export default function App() {
       </header>
       <div className="app-body" style={{ alignItems: 'stretch' }}>
         <aside className="sidebar" style={{ width: sidebarWidth }}>
-          <FileExplorer showHidden={showHidden} onToggleHidden={(v) => setShowHidden(v)} onSelect={(p) => {
+          <FileExplorer showHidden={showHidden} onToggleHidden={(v) => setShowHidden(v)} onSelect={(p, isDir) => {
             setSelectedPath(p)
+            if (isDir) {
+              // do not open a persistent tab for directories; just navigate
+              setActiveFile(p)
+              return
+            }
+            // file: open editor tab
             setOpenFiles(of => of.includes(p) ? of : [...of, p])
             setActiveFile(p)
           }} />
@@ -88,6 +140,7 @@ export default function App() {
           <div className="bar" />
         </div>
         <main className="main">
+          <div className="main-content">
           {/* Tab bar for multiple open files */}
           <div>
             {/* eslint-disable-next-line @typescript-eslint/no-var-requires */}
@@ -96,23 +149,50 @@ export default function App() {
             <div>
               {/* lazy TabBar import to keep bundle small */}
               <React.Suspense fallback={null}>
-                <TabBarComponent openFiles={openFiles} active={activeFile} onActivate={(p)=>setActiveFile(p)} onClose={(p)=>{
-                  setOpenFiles(of => of.filter(x => x !== p))
-                  if (activeFile === p) setActiveFile(openFiles.filter(x => x !== p)[0] || '')
-                }} />
+                {
+                  (() => {
+                    const titles: Record<string,string> = {}
+                    for (const f of openFiles) {
+                      if (f.startsWith('shell-')) {
+                        const cwd = shellCwds[f] || ''
+                        titles[f] = cwd || f
+                      } else {
+                        titles[f] = f.split('/').pop() || f
+                      }
+                    }
+                    const types: Record<string,'file'|'dir'|'shell'> = {}
+                    for (const f of openFiles) {
+                      if (f.startsWith('shell-')) types[f] = 'shell'
+                      else types[f] = 'file'
+                    }
+                    return (
+                      <TabBarComponent openFiles={openFiles} active={activeFile} titles={titles} types={types} onActivate={(p)=>setActiveFile(p)} onClose={(p)=>{
+                        setOpenFiles(of => of.filter(x => x !== p))
+                        if (activeFile === p) setActiveFile(openFiles.filter(x => x !== p)[0] || '')
+                      }} />
+                    )
+                  })()
+                }
+
               </React.Suspense>
             </div>
           )}
           {/* Render all open files but keep only active one visible so their state (e.g., terminal buffer) is preserved */}
-          {openFiles.map(f => (
+              {openFiles.map(f => (
             <div key={f} style={{ display: f === activeFile ? 'block' : 'none', height: '100%' }}>
               {f.startsWith('shell-') ? (
-                <TerminalTab key={f} shell={(settings && settings.defaultShell) || 'bash'} path={f} />
+                <TerminalTab key={f} shell={(settings && settings.defaultShell) || 'bash'} path={shellCwds[f] || ''} onExit={() => {
+                  // close shell tab when terminal signals exit
+                  setOpenFiles(of => of.filter(x => x !== f))
+                  if (activeFile === f) setActiveFile(openFiles.filter(x => x !== f)[0] || '')
+                  setShellCwds(s => { const ns = { ...s }; delete ns[f]; return ns })
+                }} />
               ) : (
                 <Editor path={f} settings={settings} onSaved={() => { /* no-op for now */ }} />
               )}
             </div>
           ))}
+          </div>
         </main>
       </div>
       <LogOverlay visible={showLogs} onClose={() => setShowLogs(false)} />
@@ -122,7 +202,18 @@ export default function App() {
           <div className="about-modal" onClick={e => e.stopPropagation()}>
             <h3>MLCRemote</h3>
             <div style={{ marginBottom: 8 }}>Copyright © {new Date().getFullYear()} Michael Lechner</div>
-            <div style={{ marginBottom: 8 }}>Version: {health}</div>
+            <div style={{ marginBottom: 8 }}>Version: {health ? `${health.status}@${health.version}` : 'unknown'}</div>
+            {health && (
+              <div style={{ maxHeight: '40vh', overflow: 'auto', background: '#0b0b0b', color: 'white', padding: 12, borderRadius: 6 }}>
+                <div><strong>Host:</strong> {health.host}</div>
+                <div><strong>PID:</strong> {health.pid}</div>
+                <div><strong>Version:</strong> {health.version}</div>
+                <div><strong>App Memory:</strong> {formatBytes(health.go_alloc_bytes)} (alloc) / {formatBytes(health.go_sys_bytes)} (sys)</div>
+                <div><strong>System Memory:</strong> {formatBytes((health.sys_mem_total_bytes || 0) - (health.sys_mem_free_bytes || 0))} / {formatBytes(health.sys_mem_total_bytes || 0)} used</div>
+                <div><strong>CPU:</strong> {Math.round((health.cpu_percent || 0) * 10) / 10}%</div>
+                <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>Last refresh: {lastHealthAt ? new Date(lastHealthAt).toLocaleString() : 'n/a'}</div>
+              </div>
+            )}
             <div style={{ marginTop: 12 }}><button className="btn" onClick={() => setAboutOpen(false)}>Close</button></div>
           </div>
         </div>

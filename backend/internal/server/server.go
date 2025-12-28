@@ -7,6 +7,7 @@ package server
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"path/filepath"
 
@@ -20,6 +21,7 @@ type Server struct {
 	OpenAPIPath string
 	Mux         *http.ServeMux
 	httpServer  *http.Server
+	listener    net.Listener
 }
 
 // New creates a Server with the provided root and static directory.
@@ -78,7 +80,7 @@ func (s *Server) Routes() {
 	s.Mux.Handle("/api/filetype", handlers.FileTypeHandler(s.Root))
 	s.Mux.Handle("/api/stat", handlers.StatHandler(s.Root))
 	s.Mux.Handle("/api/settings", handlers.SettingsHandler())
-	s.Mux.HandleFunc("/api/terminal/new", handlers.NewTerminalAPI())
+	s.Mux.HandleFunc("/api/terminal/new", handlers.NewTerminalAPI(s.Root))
 	s.Mux.Handle("/api/file", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -91,6 +93,9 @@ func (s *Server) Routes() {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 	}))
+
+	// Upload endpoint for drag & drop file uploads
+	s.Mux.HandleFunc("/api/upload", handlers.UploadHandler(s.Root))
 
 	// Static files (for dev)
 	if s.StaticDir != "" {
@@ -114,9 +119,15 @@ func (s *Server) Routes() {
 func (s *Server) Start(port int) error {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	log.Printf("starting server on %s, root=%s", addr, s.Root)
+	// create listener first so we can return binding errors synchronously
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	s.listener = ln
 	s.httpServer = &http.Server{Addr: addr, Handler: s.Mux}
 	go func() {
-		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := s.httpServer.Serve(ln); err != nil && err != http.ErrServerClosed {
 			log.Printf("server error: %v", err)
 		}
 	}()
