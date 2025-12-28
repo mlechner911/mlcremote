@@ -217,7 +217,7 @@ export default function Editor({ path, onSaved, settings }: Props) {
             <button className="btn btn-danger" onClick={onDelete} disabled={!path}>Delete</button>
           ) : null}
         </div>
-        {status && <div className="muted">{status}</div>}
+        {(status && !(probe && probe.mime && probe.mime.startsWith('image/'))) && <div className="muted">{status}</div>}
       </div>
       <div className="editor-body">
         {loading ? (

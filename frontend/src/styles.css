@@ -13,7 +13,7 @@
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; overflow: hidden; }
 
 .app { display: flex; flex-direction: column; height: 100%; }
 .app-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--panel); }
@@ -31,6 +31,12 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 .main { flex: 1; padding: 8px; display: flex; flex-direction: column; min-height: 0; }
 
 .main-content { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+
+/* Ensure large images or other content don't cause the outer page to scroll; they should scroll inside the main area */
+.main-content img, .editor-body img, .terminal-body img { max-width: 100%; height: auto; display: block; }
+
+/* allow interactive content inside main to scroll without affecting the body */
+.main, .editor-body, .terminal-body, .explorer-body { -webkit-overflow-scrolling: touch; }
 
 /* resizer between sidebar and main */
 .resizer { width: 8px; cursor: col-resize; background: transparent; display: flex; align-items: center; justify-content: center; }
@@ -99,6 +105,19 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 
 /* TabBar styles */
 .tabbar { display: flex; gap: 8px; padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.06); background: var(--panel); }
+
+/* Dropdown used by TabBar; themed for light/dark */
+.dropdown {
+	min-width: 140px;
+	background: var(--panel);
+	color: var(--text);
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	padding: 6px;
+	z-index: 5000;
+}
+.dropdown .link { display: block; width: 100%; text-align: left; padding: 6px 8px; border-radius: 4px; }
+.dropdown .link:hover { background: rgba(255,255,255,0.03); }
 
 /* Prism token color overrides for light theme to improve contrast */
 .theme-light .token.comment { color: #6b7280 }
