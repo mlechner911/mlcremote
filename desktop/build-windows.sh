@@ -54,8 +54,8 @@ if [ $NO_FRONTEND -eq 0 ]; then
   pushd "$FRONTEND_DIR" >/dev/null
   npm install
 
-  echo "[build-windows] Building frontend..."
-  npm run build
+  echo "[build-windows] Building frontend (desktop entry)..."
+  npm run build:desktop
   popd >/dev/null
 else
   echo "[build-windows] Skipping frontend build (--no-frontend)"
