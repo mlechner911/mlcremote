@@ -10,3 +10,4 @@ public/js
 
 # Local npm auth token for frontend (do not commit)
 frontend/.npmrc
+desktop/lightdev-desktop
