@@ -34,7 +34,7 @@ Write-Host "[build-windows.ps1] Starting..."
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $RepoRoot = Resolve-Path -Path $ScriptDir
-$FrontendDir = Join-Path $ScriptDir 'wails\frontend'
+$FrontendDir = Join-Path $ScriptDir 'wails\appfrontend'
 
 function Find-Wails {
     param([string]$override)
