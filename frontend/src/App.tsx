@@ -1,10 +1,12 @@
 import React from 'react'
+import type { Health } from './api'
 import { getHealth, statPath } from './api'
 import FileExplorer from './components/FileExplorer'
 import Editor from './components/Editor'
 import TerminalTab from './components/TerminalTab'
 const TabBarComponent = React.lazy(() => import('./components/TabBar'))
 import LogOverlay from './components/LogOverlay'
+import { formatBytes } from './format'
 
 /**
  * Top-level application component. Manages UI state for the file explorer,
@@ -12,19 +14,7 @@ import LogOverlay from './components/LogOverlay'
  * width. Heavy-lifted responsibilities are split into child components.
  */
 export default function App() {
-  /**
-   * Format bytes into a human-readable string.
-   */
-  function formatBytes(n?: number) {
-    if (!n || n <= 0) return '0 B'
-    const KB = 1024
-    const MB = KB * 1024
-    const GB = MB * 1024
-    if (n >= GB) return `${(n / GB).toFixed(2)} GB`
-    if (n >= MB) return `${(n / MB).toFixed(2)} MB`
-    if (n >= KB) return `${(n / KB).toFixed(2)} KB`
-    return `${n} B`
-  }
+
   const [health, setHealth] = React.useState<null | Health>(null)
   const [lastHealthAt, setLastHealthAt] = React.useState<number | null>(null)
   const [selectedPath, setSelectedPath] = React.useState<string>('')
@@ -55,6 +45,7 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
   const [theme, setTheme] = React.useState<'dark'|'light'>(() => (localStorage.getItem('theme') as 'dark'|'light') || 'dark')
 
+  // health polling (mount-only)
   React.useEffect(() => {
     let mounted = true
     async function fetchHealth() {
@@ -71,12 +62,21 @@ export default function App() {
     fetchHealth()
     const id = setInterval(fetchHealth, 60 * 1000)
     return () => { mounted = false; clearInterval(id) }
-    // fetch runtime settings
-    fetch('/api/settings').then(r => r.json()).then(j => setSettings(j)).catch(() => setSettings({ allowDelete: false, defaultShell: 'bash' }))
-    // apply theme
+  }, [])
+
+  // fetch runtime settings once on mount
+  React.useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(j => setSettings(j))
+      .catch(() => setSettings({ allowDelete: false, defaultShell: 'bash' }))
+  }, [])
+
+  // apply theme whenever it changes
+  React.useEffect(() => {
     if (theme === 'light') document.documentElement.classList.add('theme-light')
     else document.documentElement.classList.remove('theme-light')
-  }, [])
+  }, [theme])
 
   return (
     <div className="app">
