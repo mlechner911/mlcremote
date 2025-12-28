@@ -73,8 +73,10 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 			}
 			// attach this websocket to the session
 			s.addConn(conn)
+			log.Printf("ws: attached conn %p to session %s", conn, s.id)
 			defer func() {
 				s.removeConn(conn)
+				log.Printf("ws: detached conn %p from session %s", conn, s.id)
 				// close session (terminates child) when this ephemeral connection ends
 				s.close()
 				// remove from sessions map

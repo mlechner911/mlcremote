@@ -118,6 +118,11 @@ func newTerminalSession(shell string, cwd string) (*terminalSession, error) {
 	sessionsMu.Lock()
 	sessions[s.id] = s
 	sessionsMu.Unlock()
+	if s.cmd != nil && s.cmd.Process != nil {
+		log.Printf("terminal: new session registered id=%s pid=%d shell=%s cwd=%s", s.id, s.cmd.Process.Pid, shell, cwd)
+	} else {
+		log.Printf("terminal: new session registered id=%s shell=%s cwd=%s", s.id, shell, cwd)
+	}
 	return s, nil
 }
 
@@ -282,6 +287,7 @@ func (s *terminalSession) addConn(c *websocket.Conn) {
 	sessionsMu.Lock()
 	s.conns[c] = struct{}{}
 	sessionsMu.Unlock()
+	log.Printf("terminal: session %s - connection attached (conn=%p)", s.id, c)
 }
 
 // removeConn detaches a websocket connection from the session.
@@ -289,6 +295,7 @@ func (s *terminalSession) removeConn(c *websocket.Conn) {
 	sessionsMu.Lock()
 	delete(s.conns, c)
 	sessionsMu.Unlock()
+	log.Printf("terminal: session %s - connection detached (conn=%p)", s.id, c)
 }
 
 // write writes bytes into the PTY backing the session. a nmutex is used to serialize writes.
@@ -317,6 +324,8 @@ func (s *terminalSession) close() {
 	_ = s.ptmx.Close()
 	// attempt to terminate the child process
 	if s.cmd != nil && s.cmd.Process != nil {
+		pid := s.cmd.Process.Pid
+		log.Printf("terminal: closing session id=%s pid=%d", s.id, pid)
 		_ = s.cmd.Process.Signal(syscall.SIGTERM)
 		// give it a short moment to exit gracefully
 		time.Sleep(100 * time.Millisecond)
@@ -350,10 +359,35 @@ func generateSessionID() string {
 // associated PTYs/connections. It is safe to call multiple times.
 func ShutdownAllSessions() {
 	sessionsMu.Lock()
-	defer sessionsMu.Unlock()
-	for id, s := range sessions {
+	// snapshot ids to avoid holding lock while closing
+	ids := make([]string, 0, len(sessions))
+	for id := range sessions {
+		ids = append(ids, id)
+	}
+	sessionsMu.Unlock()
+
+	if len(ids) == 0 {
+		log.Printf("terminal: ShutdownAllSessions called — no active sessions")
+		return
+	}
+
+	log.Printf("terminal: ShutdownAllSessions called — closing %d sessions", len(ids))
+	for _, id := range ids {
+		sessionsMu.Lock()
+		s, ok := sessions[id]
+		sessionsMu.Unlock()
+		if !ok {
+			continue
+		}
+		if s.cmd != nil && s.cmd.Process != nil {
+			log.Printf("terminal: shutting session id=%s pid=%d", s.id, s.cmd.Process.Pid)
+		} else {
+			log.Printf("terminal: shutting session id=%s (no pid)", s.id)
+		}
 		s.close()
+		sessionsMu.Lock()
 		delete(sessions, id)
+		sessionsMu.Unlock()
 	}
 }
 

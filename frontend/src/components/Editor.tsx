@@ -87,6 +87,7 @@ export default function Editor({ path, onSaved, settings }: Props) {
   const [probe, setProbe] = React.useState<{ mime: string; isText: boolean; ext: string } | null>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
   const preRef = React.useRef<HTMLElement | null>(null)
+  const statusTimerRef = React.useRef<number | null>(null)
 
   React.useEffect(() => {
     if (!path) return
@@ -192,10 +193,21 @@ export default function Editor({ path, onSaved, settings }: Props) {
       setContent(text)
       setOrigContent(text)
       setStatus('Reloaded')
+      // clear any previous timer
+      if (statusTimerRef.current) window.clearTimeout(statusTimerRef.current)
+      statusTimerRef.current = window.setTimeout(() => {
+        setStatus('')
+        statusTimerRef.current = null
+      }, 2000)
     } catch (e) {
       setStatus('Reload failed')
     }
   }
+
+  // cleanup any pending timers on unmount
+  React.useEffect(() => {
+    return () => { if (statusTimerRef.current) window.clearTimeout(statusTimerRef.current) }
+  }, [])
 
   return (
     <div className="editor">
