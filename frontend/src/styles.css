@@ -104,6 +104,14 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 .editor-body pre { background: transparent; }
 .theme-light .editor-body pre { background: #f3f4f6; color: var(--text); }
 
+/* Ensure base code/token color is readable in light mode (override Prism defaults) */
+.theme-light .editor-body pre,
+.theme-light .editor-body code {
+	color: var(--text);
+}
+
+.theme-light .textarea::selection { background: rgba(15,20,30,0.08); }
+
 /* TabBar styles */
 .tabbar { display: flex; gap: 8px; padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.06); background: var(--panel); }
 
