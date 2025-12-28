@@ -308,7 +308,7 @@ func main() {
 
 	addr := fmt.Sprintf("127.0.0.1:%d", *port)
 	srv := &http.Server{Addr: addr, Handler: mux}
-	log.Printf("starting server on %s, root=%s", addr, *root)
+	log.Printf("MLC Remote  server on http://%s, root=%s", addr, *root)
 
 	// run server in goroutine
 	go func() {

@@ -31,7 +31,7 @@ func main() {
 	if err := s.Start(*port); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
-
+log.Printf("Server started on http://localhost:%d, waiting for shutdown signal...", *port)
 	// wait for interrupt (Ctrl-C) or termination signal
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

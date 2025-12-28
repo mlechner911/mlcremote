@@ -1,13 +1,17 @@
 import React, {useState, useEffect} from 'react'
 import ConnectDialog from './components/ConnectDialog'
 import SettingsDialog from './components/SettingsDialog'
-// runtime may be undefined when running in web; import via require at runtime
+// runtime may be undefined when running in web; import dynamically at runtime
 let runtime: any = null
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  runtime = require('@wails/runtime')
-} catch (e) {
-  // not running in Wails environment
+// attempt dynamic import; in environments without the module this will reject
+if (typeof window !== 'undefined') {
+  import('@wails/runtime')
+    .then((mod) => {
+      runtime = mod
+    })
+    .catch(() => {
+      // not running in Wails environment
+    })
 }
 
 export default function App(){
