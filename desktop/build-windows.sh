@@ -40,12 +40,18 @@ echo "[build-windows] wails: ${WAILS_BIN:-not-found}"
 
 FRONTEND_DIR="$REPO_ROOT/wails/frontend"
 
+# Convert to Windows path for npm on Git Bash if cygpath is available
+WIN_FRONTEND_DIR="$FRONTEND_DIR"
+if command -v cygpath >/dev/null 2>&1; then
+  WIN_FRONTEND_DIR=$(cygpath -w "$FRONTEND_DIR")
+fi
+
 if [ $NO_FRONTEND -eq 0 ]; then
-  echo "[build-windows] Installing frontend dependencies..."
-  npm install --prefix "$FRONTEND_DIR"
+  echo "[build-windows] Installing frontend dependencies... (using $WIN_FRONTEND_DIR)"
+  npm install --prefix "$WIN_FRONTEND_DIR"
 
   echo "[build-windows] Building frontend..."
-  npm run --prefix "$FRONTEND_DIR" build
+  npm run --prefix "$WIN_FRONTEND_DIR" build
 else
   echo "[build-windows] Skipping frontend build (--no-frontend)"
 fi
