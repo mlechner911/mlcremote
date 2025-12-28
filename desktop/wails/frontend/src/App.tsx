@@ -16,15 +16,32 @@ export default function App(){
 
   useEffect(() => {
     if (!runtime || !runtime.EventsOn) return
-    const handler = (args: any) => {
+    const handler = async (args: any) => {
       const url = Array.isArray(args) && args.length > 0 ? args[0] : args
       if (typeof url === 'string') {
-        window.location.href = url
+        try{
+          const res = await fetch(`${url}/api/version`, {method: 'GET'})
+          if(!res.ok) throw new Error('version check failed')
+          const json = await res.json()
+          if(json && json.frontendCompatible){
+            window.location.href = url
+            return
+          }
+          try{ runtime.EventsEmit('navigate-error', 'incompatible') }catch(e){}
+        }catch(e:any){
+          try{ runtime.EventsEmit('navigate-error', String(e.message || e)) }catch(e){}
+        }
       }
     }
     runtime.EventsOn('navigate', handler)
+    const errHandler = (args:any)=>{
+      const msg = Array.isArray(args) && args.length>0? args[0]: args
+      alert('Navigation error: '+String(msg))
+    }
+    try{ runtime.EventsOn('navigate-error', errHandler) }catch(e){}
     return () => {
       try { runtime.EventsOff('navigate', handler) } catch (e) {}
+      try { runtime.EventsOff('navigate-error', errHandler)} catch (e) {}
     }
   }, [])
 
