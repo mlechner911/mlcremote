@@ -77,10 +77,11 @@ function formatBytes(n?: number) {
   const KB = 1024
   const MB = KB * 1024
   const GB = MB * 1024
-  if (n >= GB) return `${(n / GB).toFixed(2)} GB`
-  if (n >= MB) return `${(n / MB).toFixed(2)} MB`
-  if (n >= KB) return `${(n / KB).toFixed(2)} KB`
-  return `${n} B`
+  const nf = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
+  if (n >= GB) return `${nf.format(n / GB)} GB`
+  if (n >= MB) return `${nf.format(n / MB)} MB`
+  if (n >= KB) return `${nf.format(n / KB)} KB`
+  return `${nf.format(n)} B`
 }
 
 type Props = {
@@ -104,6 +105,7 @@ export default function Editor({ path, onSaved, settings }: Props) {
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
   const preRef = React.useRef<HTMLElement | null>(null)
   const statusTimerRef = React.useRef<number | null>(null)
+
 
   React.useEffect(() => {
     if (!path) return
@@ -233,9 +235,10 @@ export default function Editor({ path, onSaved, settings }: Props) {
           <span className="muted">{path || 'Select a file'}</span>
           {meta && (
             <span className="muted" style={{ fontSize: 11 }}>
-              {meta.mime || (meta.isDir ? 'directory' : '')} · {meta.mode} · {formatBytes(meta.size)} · {new Date(meta.modTime).toLocaleString()}
+              {meta.mime || (meta.isDir ? 'directory' : '')} · {meta.mode} · {formatBytes(meta.size)} · {new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', timeZoneName: 'short' }).format(new Date(meta.modTime))}
             </span>
           )}
+
         </div>
           <div className="actions">
           {/* Format removed until implemented */}

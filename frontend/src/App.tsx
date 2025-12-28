@@ -45,6 +45,12 @@ export default function App() {
   const [settings, setSettings] = React.useState<{ allowDelete: boolean; defaultShell: string } | null>(null)
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
   const [theme, setTheme] = React.useState<'dark'|'light'>(() => (localStorage.getItem('theme') as 'dark'|'light') || 'dark')
+  const [now, setNow] = React.useState<Date>(new Date())
+
+  React.useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000)
+    return () => window.clearInterval(id)
+  }, [])
 
   // health polling (mount-only)
   React.useEffect(() => {
@@ -114,6 +120,7 @@ export default function App() {
             })()
           ) : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="muted" style={{ fontSize: 12 }}>{new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', timeZoneName: 'short' }).format(now)}</div>
             <div className="muted" style={{ fontSize: 12 }}>cwd: {selectedPath || '/'}</div>
             <button className="link" onClick={async () => {
               // determine cwd: prefer selectedPath; if none, fall back to active file's directory
