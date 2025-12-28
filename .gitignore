@@ -21,3 +21,4 @@ desktop/lightdev-desktop
 # MacOS and Windows extras
 .DS_Store
 Thumbs.db
+/desktop/build/
