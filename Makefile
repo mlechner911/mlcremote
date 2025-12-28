@@ -13,7 +13,7 @@ ROOT ?= $(HOME)
 SERVER ?=
 DOCS_SPEC := $(PWD)/docs/openapi.yaml
 
-.PHONY: help backend frontend run docs install connect clean desktop-dev desktop-build
+.PHONY: help backend frontend run docs install connect clean desktop-dev desktop-build desktop-dist desktop-dist-zip
 
 help:
 	@echo "Targets:"
@@ -61,6 +61,32 @@ desktop-dev:
 desktop-build:
 	cd $(FRONTEND_DIR) && npm run build
 	cd $(DESKTOP_DIR) && wails build
+
+.PHONY: desktop-dist
+desktop-dist:
+	@echo "Building frontend and desktop (wails build)"
+	cd $(FRONTEND_DIR) && npm run build
+	cd $(DESKTOP_DIR) && wails build
+	@echo "Packaging desktop artifacts into dist/"
+	@mkdir -p dist
+	OSNAME=`uname -s | tr '[:upper:]' '[:lower:]'` || OSNAME=unknown; \
+	ARCH=`uname -m` || ARCH=unknown; \
+	OUTDIR=dist/desktop-$${OSNAME}-$${ARCH}; \
+	mkdir -p $$OUTDIR; \
+	# copy Wails build output (default: build/bin or build/ for some setups)
+	if [ -d "$(DESKTOP_DIR)/build/bin" ]; then cp -r $(DESKTOP_DIR)/build/bin/* $$OUTDIR/; fi; \
+	if [ -d "$(DESKTOP_DIR)/build" ]; then cp -r $(DESKTOP_DIR)/build/* $$OUTDIR/; fi; \
+	@echo "Packaged to $$OUTDIR"
+
+.PHONY: desktop-dist-zip
+desktop-dist-zip: desktop-dist
+	@echo "Zipping desktop distribution"
+	OSNAME=`uname -s | tr '[:upper:]' '[:lower:]'` || OSNAME=unknown; \
+	ARCH=`uname -m` || ARCH=unknown; \
+	OUTDIR=dist/desktop-$${OSNAME}-$${ARCH}; \
+	ZIPNAME=dist/mlcremote-desktop-$${OSNAME}-$${ARCH}.zip; \
+	if [ -d "$$OUTDIR" ]; then (cd $$OUTDIR && zip -r ../../$$ZIPNAME .); else echo "No desktop build found in $$OUTDIR"; exit 1; fi; \
+	@echo "Created $$ZIPNAME"
 
 clean:
 	@rm -f $(BIN_DIR)/dev-server
