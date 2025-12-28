@@ -1,0 +1,19 @@
+{
+  "name": "MLCRemote",
+  "description": "Lightweight Remote Dev Environment desktop wrapper",
+  "author": {
+    "name": "",
+    "email": ""
+  },
+  "license": "",
+  "frontend": {
+    "dir": "appfrontend",
+    "install": "npm install",
+    "build": "npm run build:desktop",
+    "bridge": "src/wailsjs"
+  },
+  "outputfilename": "lightdev",
+  "assetdir": "appfrontend/dist",
+  "devserver": "http://localhost:5173",
+  "version": "0.1.0"
+}
