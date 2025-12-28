@@ -99,7 +99,12 @@ export default function Editor({ path, onSaved, settings }: Props) {
       import('../api').then(api => api.statPath(path).then(m => setMeta(m)).catch(() => setMeta(null)))
       if (!pt.isText) {
         setContent('')
-        setStatus('Binary or unsupported file type — use Download')
+        // if it's an image, we'll render it inline; otherwise show the binary notice
+        if (!pt.mime || !pt.mime.startsWith('image/')) {
+          setStatus('Binary or unsupported file type — use Download')
+        } else {
+          setStatus('')
+        }
         setLoading(false)
         return
       }
@@ -176,7 +181,11 @@ export default function Editor({ path, onSaved, settings }: Props) {
       setProbe(pt)
       if (!pt.isText) {
         setContent('')
-        setStatus('Binary or unsupported file type — use Download')
+        if (!pt.mime || !pt.mime.startsWith('image/')) {
+          setStatus('Binary or unsupported file type — use Download')
+        } else {
+          setStatus('')
+        }
         return
       }
       const text = await readFile(path)
@@ -249,10 +258,25 @@ export default function Editor({ path, onSaved, settings }: Props) {
           ) : (
             <div>
               <div className="muted">{status || 'Binary or unsupported file type'}</div>
-              {path && (
-                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                  <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
+              {probe && probe.mime && probe.mime.startsWith('image/') ? (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                    <img
+                      src={`/api/file?path=${encodeURIComponent(path)}`}
+                      alt={path.split('/').pop()}
+                      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}
+                    />
+                  </div>
+                  <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                    <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
+                  </div>
                 </div>
+              ) : (
+                path && (
+                  <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                    <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
+                  </div>
+                )
               )}
             </div>
           ))

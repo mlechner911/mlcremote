@@ -5,12 +5,15 @@
 package handlers
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 	"os"
-	"os/exec"
+	"path/filepath"
 
-	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
+
+	"lightdev/internal/util"
 )
 
 // WsTerminalHandler upgrades the HTTP connection to a WebSocket and bridges
@@ -37,43 +40,70 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 			if shell == "" {
 				shell = "/bin/bash"
 			}
-			cmd := exec.Command(shell)
-			ptmx, err := pty.Start(cmd)
+			// validate requested shell from query and use helper with fallbacks
+			reqShell := r.URL.Query().Get("shell")
+			if rs := resolveRequestedShell(reqShell); rs != "" {
+				shell = rs
+			}
+			cwd := r.URL.Query().Get("cwd")
+			// sanitize cwd against provided root; if it is a file, use its parent
+			if cwd != "" {
+				if p, err := util.SanitizePath(root, cwd); err == nil {
+					if fi, err := os.Stat(p); err == nil {
+						if fi.IsDir() {
+							cwd = p
+						} else {
+							cwd = filepath.Dir(p)
+						}
+					} else {
+						log.Printf("WsTerminalHandler: sanitized cwd stat failed: %v", err)
+						cwd = ""
+					}
+				} else {
+					log.Printf("WsTerminalHandler: sanitize cwd failed: %v", err)
+					cwd = ""
+				}
+			}
+			// create a tracked terminal session so ShutdownAllSessions can close it
+			s, err := newTerminalSession(shell, cwd)
 			if err != nil {
-				_ = conn.WriteMessage(websocket.TextMessage, []byte("failed to start shell"))
+				log.Printf("failed to start shell for ephemeral ws: %v", err)
+				_ = conn.WriteMessage(websocket.TextMessage, []byte("failed to start shell: " + err.Error()))
 				return
 			}
-			defer func() { _ = ptmx.Close() }()
-
-			done := make(chan struct{})
-
-			// PTY -> WS
-			go func() {
-				buf := make([]byte, 4096)
-				for {
-					n, err := ptmx.Read(buf)
-					if n > 0 {
-						_ = conn.WriteMessage(websocket.BinaryMessage, buf[:n])
-					}
-					if err != nil {
-						break
-					}
-				}
-				close(done)
+			// attach this websocket to the session
+			s.addConn(conn)
+			defer func() {
+				s.removeConn(conn)
+				// close session (terminates child) when this ephemeral connection ends
+				s.close()
+				// remove from sessions map
+				sessionsMu.Lock()
+				delete(sessions, s.id)
+				sessionsMu.Unlock()
 			}()
 
-			// WS -> PTY
+			// WS -> PTY (write into session's PTY). Support resize JSON messages.
 			for {
 				mt, data, err := conn.ReadMessage()
 				if err != nil {
 					break
 				}
+				if mt == websocket.TextMessage {
+					var msg struct {
+						Type string `json:"type"`
+						Cols int    `json:"cols"`
+						Rows int    `json:"rows"`
+					}
+					if err := json.Unmarshal(data, &msg); err == nil && msg.Type == "resize" && msg.Cols > 0 && msg.Rows > 0 {
+						_ = s.resize(msg.Cols, msg.Rows)
+						continue
+					}
+				}
 				if mt == websocket.TextMessage || mt == websocket.BinaryMessage {
-					_, _ = ptmx.Write(data)
+					s.write(data)
 				}
 			}
-
-			<-done
 			return
 		}
 
@@ -87,11 +117,22 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 		s.addConn(conn)
 		defer s.removeConn(conn)
 
-		// WS -> PTY (write into session's PTY)
+		// WS -> PTY (write into session's PTY). Support resize JSON messages.
 		for {
 			mt, data, err := conn.ReadMessage()
 			if err != nil {
 				break
+			}
+			if mt == websocket.TextMessage {
+				var msg struct {
+					Type string `json:"type"`
+					Cols int    `json:"cols"`
+					Rows int    `json:"rows"`
+				}
+				if err := json.Unmarshal(data, &msg); err == nil && msg.Type == "resize" && msg.Cols > 0 && msg.Rows > 0 {
+					_ = s.resize(msg.Cols, msg.Rows)
+					continue
+				}
 			}
 			if mt == websocket.TextMessage || mt == websocket.BinaryMessage {
 				s.write(data)

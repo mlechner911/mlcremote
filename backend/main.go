@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -14,29 +15,26 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/creack/pty"
-	"github.com/gorilla/websocket"
 )
 
 // healthHandler returns basic health info.
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	hostname, _ := os.Hostname()
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("{\"status\":\"ok\",\"version\":\"0.1.0\"}"))
+	_, _ = w.Write([]byte(fmt.Sprintf("{\"status\":\"ok\",\"version\":\"0.2.0\",\"host\":%q}", hostname)))
 }
 
 // versionHandler returns a small payload that describes backend version and supported frontend version
 func versionHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("{\"backend\":\"0.1.0\",\"frontendCompatible\":\"^0.1\"}"))
+	_, _ = w.Write([]byte("{\"backend\":\"0.2.0\",\"frontendCompatible\":\"^0.2\"}"))
 }
 
 // sanitizePath resolves a requested path against the configured root.
@@ -73,64 +71,7 @@ func sanitizePath(root string, req string) (string, error) {
 	return abs, nil
 }
 
-// wsTerminalHandler upgrades to WebSocket and bridges data to a PTY shell.
-func wsTerminalHandler(root string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		up := websocket.Upgrader{
-			ReadBufferSize:  8192,
-			WriteBufferSize: 8192,
-			CheckOrigin:     func(r *http.Request) bool { return true },
-		}
-		conn, err := up.Upgrade(w, r, nil)
-		if err != nil {
-			http.Error(w, "upgrade failed", http.StatusBadRequest)
-			return
-		}
-		defer conn.Close()
-
-		shell := os.Getenv("SHELL")
-		if shell == "" {
-			shell = "/bin/bash"
-		}
-		cmd := exec.Command(shell)
-		ptmx, err := pty.Start(cmd)
-		if err != nil {
-			_ = conn.WriteMessage(websocket.TextMessage, []byte("failed to start shell"))
-			return
-		}
-		defer func() { _ = ptmx.Close() }()
-
-		done := make(chan struct{})
-
-		// PTY -> WS
-		go func() {
-			buf := make([]byte, 4096)
-			for {
-				n, err := ptmx.Read(buf)
-				if n > 0 {
-					_ = conn.WriteMessage(websocket.BinaryMessage, buf[:n])
-				}
-				if err != nil {
-					break
-				}
-			}
-			close(done)
-		}()
-
-		// WS -> PTY
-		for {
-			mt, data, err := conn.ReadMessage()
-			if err != nil {
-				break
-			}
-			if mt == websocket.TextMessage || mt == websocket.BinaryMessage {
-				_, _ = ptmx.Write(data)
-			}
-		}
-
-		<-done
-	}
-}
+	// use tracked websocket terminal handler from handlers package
 
 // dirEntry describes a file or directory for JSON responses.
 type dirEntry struct {
@@ -275,7 +216,7 @@ func main() {
 	mux.HandleFunc("/api/version", versionHandler)
 
 	// APIs
-	mux.Handle("/ws/terminal", wsTerminalHandler(*root))
+	mux.Handle("/ws/terminal", handlers.WsTerminalHandler(*root))
 	mux.Handle("/api/tree", apiTreeHandler(*root))
 	mux.Handle("/api/file", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -323,9 +264,17 @@ func main() {
 	<-sig
 	log.Println("shutdown signal received, shutting down server...")
 
-	// close active sessions and stop server
+	// close active sessions and stop server gracefully
 	handlers.ShutdownAllSessions()
-	if err := srv.Close(); err != nil {
-		log.Printf("error closing server: %v", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("error during server shutdown: %v", err)
 	}
+	// ensure process exits even if something is stuck
+	go func() {
+		time.Sleep(3500 * time.Millisecond)
+		log.Println("forced exit after shutdown timeout")
+		os.Exit(0)
+	}()
 }

@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"lightdev/internal/server"
@@ -31,7 +32,16 @@ func main() {
 	if err := s.Start(*port); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
-log.Printf("Server started on http://localhost:%d, waiting for shutdown signal...", *port)
+	// log binary size (best-effort)
+	if exe, err := os.Executable(); err == nil {
+		if fi, err := os.Stat(exe); err == nil {
+			log.Printf("Server started on http://localhost:%d, binary=%s size=%d bytes", *port, filepath.Base(exe), fi.Size())
+		} else {
+			log.Printf("Server started on http://localhost:%d", *port)
+		}
+	} else {
+		log.Printf("Server started on http://localhost:%d", *port)
+	}
 	// wait for interrupt (Ctrl-C) or termination signal
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

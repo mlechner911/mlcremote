@@ -38,7 +38,7 @@ frontend:
 	cd $(FRONTEND_DIR) && npm run build
 	@echo "Built $(STATIC_DIR)"
 
-run:
+run: backend
 	@echo "Starting backend on 127.0.0.1:$(PORT) serving $(STATIC_DIR)"
 	./$(BIN_DIR)/dev-server --port $(PORT) --root $(ROOT) --static-dir "$(PWD)/$(STATIC_DIR)"
 
