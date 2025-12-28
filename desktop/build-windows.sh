@@ -20,6 +20,9 @@ if command -v wails >/dev/null 2>&1; then
   WAILS_BIN="$(command -v wails)"
 fi
 
+# ensure GOPATH is set (default to $HOME/go)
+: ${GOPATH:=$HOME/go}
+
 if [ -z "$WAILS_BIN" ]; then
   # try common Go bin locations
   if [ -n "${GOPATH-}" ] && [ -x "$GOPATH/bin/wails" ]; then
