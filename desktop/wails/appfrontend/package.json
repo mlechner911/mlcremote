@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:desktop": "vite build && node scripts/postbuild-desktop.js",
+    "build:desktop": "vite build",
     "preview": "vite preview --port 5173"
   },
   "dependencies": {
