@@ -53,6 +53,36 @@ Dieses Dokument beschreibt den vorgesehenen Ablauf der Desktop-Anwendung (Wails 
   ```
 - Lokaler Test: Startet die EXE, fülle Connect-Formular, starte Tunnel. Alternativ kann man beim Entwickeln die Wails-Dev-Workflow nutzen und das Backend manuell starten.
 
+**Deploy Frontend to Remote (quick)**
+- Build frontend (desktop entry):
+  ```bash
+  cd desktop/wails/frontend
+  npm run build:desktop
+  ```
+- Copy `dist/` to remote server (example using `rsync`):
+  ```bash
+  rsync -avz desktop/wails/frontend/dist/ user@remote:/opt/mlcremote/dist/
+  ```
+- Start backend on remote and point to static dir:
+  ```bash
+  ./lightdev --port 8443 --root /home/user/workdir --static-dir /opt/mlcremote/dist
+  ```
+- Test in browser or via SSH tunnel:
+  ```bash
+  ssh -L8443:127.0.0.1:8443 user@remote
+  # then open http://127.0.0.1:8443
+  ```
+
+**Version / Compatibility check**
+- The backend exposes `/api/version` returning a small JSON with `backend` and `frontendCompatible` hints. The desktop app should call this endpoint before navigating to ensure the remote UI is compatible with the backend API.
+  ```js
+  // example check
+  const v = await fetch('http://127.0.0.1:8443/api/version').then(r=>r.json())
+  if (!semver.satisfies(frontendVersion, v.frontendCompatible)) {
+    throw new Error('incompatible frontend version')
+  }
+  ```
+
 **Appendix — Empfohlene APIs (Wails Bindings)**
 - `StartTunnelWithProfile(profileJSON string) (string, error)` — startet Tunnel und initialisiert Polling.
 - `StopTunnel() (string, error)` — beendet Tunnel-Prozess (SIGTERM/KILL fallback).
