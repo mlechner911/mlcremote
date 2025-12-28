@@ -32,6 +32,13 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("{\"status\":\"ok\",\"version\":\"0.1.0\"}"))
 }
 
+// versionHandler returns a small payload that describes backend version and supported frontend version
+func versionHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("{\"backend\":\"0.1.0\",\"frontendCompatible\":\"^0.1\"}"))
+}
+
 // sanitizePath resolves a requested path against the configured root.
 // It ensures the target path is within root by resolving symlinks.
 func sanitizePath(root string, req string) (string, error) {
@@ -265,6 +272,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/api/version", versionHandler)
 
 	// APIs
 	mux.Handle("/ws/terminal", wsTerminalHandler(*root))
