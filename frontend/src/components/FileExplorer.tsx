@@ -5,9 +5,11 @@ type Props = {
   onSelect: (path: string, isDir: boolean) => void
   showHidden: boolean
   onToggleHidden?: (v: boolean) => void
+  autoOpen?: boolean
+  onView?: (path: string) => void
 }
 
-export default function FileExplorer({ onSelect, showHidden, onToggleHidden }: Props): JSX.Element {
+export default function FileExplorer({ onSelect, showHidden, onToggleHidden, autoOpen = true, onView }: Props): JSX.Element {
   const [path, setPath] = React.useState<string>('')
   const [entries, setEntries] = React.useState<DirEntry[]>([])
   const [loading, setLoading] = React.useState<boolean>(false)
@@ -116,9 +118,19 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden }: P
                   </button>
                 ) : (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button type="button" className="entry" style={{ flex: 1, textAlign: 'left' }} onClick={() => onSelect(e.path, false)}>
+                    <button type="button" className="entry" style={{ flex: 1, textAlign: 'left' }} onClick={() => {
+                      if (autoOpen === false) {
+                        // just select (do not open persistent tab)
+                        onSelect(e.path, false)
+                        return
+                      }
+                      onSelect(e.path, false)
+                    }}>
                       <span className="icon">{iconForEntry(e)}</span> {e.name}
                     </button>
+                    {!autoOpen ? (
+                      <button className="btn" onClick={() => onView ? onView(e.path) : onSelect(e.path, false)} title="View file">👁️</button>
+                    ) : null}
                     <a className="btn" href={`/api/file?path=${encodeURIComponent(e.path)}`} download={e.name} style={{ whiteSpace: 'nowrap' }}>Download</a>
                   </div>
                 )}

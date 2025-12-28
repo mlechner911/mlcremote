@@ -1,5 +1,5 @@
 import React from 'react'
-import { getHealth } from './api'
+import { getHealth, statPath } from './api'
 import FileExplorer from './components/FileExplorer'
 import Editor from './components/Editor'
 import TerminalTab from './components/TerminalTab'
@@ -22,6 +22,19 @@ export default function App() {
   const [selectedPath, setSelectedPath] = React.useState<string>('')
   const [openFiles, setOpenFiles] = React.useState<string[]>([])
   const [activeFile, setActiveFile] = React.useState<string>('')
+  const [autoOpen, setAutoOpen] = React.useState<boolean>(true)
+  const maxTabs = 8
+  // openFile ensures we don't exceed maxTabs by closing the oldest when necessary
+  function openFile(path: string) {
+    setOpenFiles(of => {
+      if (of.includes(path)) return of
+      const next = [...of, path]
+      if (next.length <= maxTabs) return next
+      // close the oldest opened (first) tab
+      return next.slice(1)
+    })
+    setActiveFile(path)
+  }
   const [shellCwds, setShellCwds] = React.useState<Record<string,string>>({})
   const [showHidden, setShowHidden] = React.useState<boolean>(false)
   const [showLogs, setShowLogs] = React.useState<boolean>(false)
@@ -82,13 +95,46 @@ export default function App() {
               )
             })()
           ) : null}
-          <button className="link" onClick={() => {
-            // create a new shell tab; use currently selectedPath as initial cwd
-            const shellName = `shell-${Date.now()}`
-            setOpenFiles(of => [...of, shellName])
-            setActiveFile(shellName)
-            setShellCwds(s => ({ ...s, [shellName]: selectedPath || '' }))
-          }}>New Shell</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="muted" style={{ fontSize: 12 }}>cwd: {selectedPath || '/'}</div>
+            <button className="link" onClick={async () => {
+              // determine cwd: prefer selectedPath; if none, fall back to active file's directory
+              let cwd = selectedPath || ''
+              try {
+                if (cwd) {
+                  const st = await statPath(cwd)
+                  if (!st.isDir && st.path) {
+                    // if a file, use its directory
+                    const parts = st.path.split('/').filter(Boolean)
+                    parts.pop()
+                    cwd = parts.length ? `/${parts.join('/')}` : ''
+                  }
+                } else if (activeFile && !activeFile.startsWith('shell-')) {
+                  try {
+                    const st2 = await statPath(activeFile)
+                    if (st2.isDir) {
+                      cwd = st2.path || activeFile
+                    } else if (st2.path) {
+                      const parts = st2.path.split('/').filter(Boolean)
+                      parts.pop()
+                      cwd = parts.length ? `/${parts.join('/')}` : ''
+                    }
+                  } catch (e) {
+                    // if stat fails, derive directory from activeFile string as a fallback
+                    const parts = activeFile.split('/').filter(Boolean)
+                    parts.pop()
+                    cwd = parts.length ? `/${parts.join('/')}` : ''
+                  }
+                }
+              } catch (e) {
+                // ignore stat errors and fall back to selected/derived path
+              }
+              const shellName = `shell-${Date.now()}`
+              openFile(shellName)
+              setShellCwds(s => ({ ...s, [shellName]: cwd || '' }))
+            }}>New Shell</button>
+          </div>
+          <label style={{ marginLeft: 8, fontSize: 12 }} className="muted"><input type="checkbox" checked={autoOpen} onChange={e => setAutoOpen(e.target.checked)} /> Auto open</label>
           <button className="link icon-btn" aria-label="Toggle theme" onClick={() => {
             const next = theme === 'dark' ? 'light' : 'dark'
             setTheme(next)
@@ -114,16 +160,28 @@ export default function App() {
       </header>
       <div className="app-body" style={{ alignItems: 'stretch' }}>
         <aside className="sidebar" style={{ width: sidebarWidth }}>
-          <FileExplorer showHidden={showHidden} onToggleHidden={(v) => setShowHidden(v)} onSelect={(p, isDir) => {
+          <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} onSelect={(p, isDir) => {
             setSelectedPath(p)
             if (isDir) {
               // do not open a persistent tab for directories; just navigate
               setActiveFile(p)
               return
             }
-            // file: open editor tab
-            setOpenFiles(of => of.includes(p) ? of : [...of, p])
-            setActiveFile(p)
+            // file: open editor tab (respect autoOpen)
+            if (autoOpen) {
+              openFile(p)
+            } else {
+              // autoOpen disabled: selecting will mark but not open a persistent tab
+              setActiveFile(p)
+            }
+          }} onView={(p) => {
+            // if the file is already open, activate it; otherwise open it as a new persistent tab
+            if (openFiles.includes(p)) {
+              setActiveFile(p)
+            } else {
+              openFile(p)
+            }
+            setSelectedPath(p)
           }} />
         </aside>
         <div className="resizer" onMouseDown={(e) => {
@@ -169,6 +227,14 @@ export default function App() {
                       <TabBarComponent openFiles={openFiles} active={activeFile} titles={titles} types={types} onActivate={(p)=>setActiveFile(p)} onClose={(p)=>{
                         setOpenFiles(of => of.filter(x => x !== p))
                         if (activeFile === p) setActiveFile(openFiles.filter(x => x !== p)[0] || '')
+                      }} onCloseOthers={(p) => {
+                        setOpenFiles(of => of.filter(x => x === p || x === activeFile))
+                      }} onCloseLeft={(p) => {
+                        setOpenFiles(of => {
+                          const idx = of.indexOf(p)
+                          if (idx <= 0) return of
+                          return of.slice(idx)
+                        })
                       }} />
                     )
                   })()
