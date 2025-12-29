@@ -13,6 +13,9 @@ export type Health = {
     sys_mem_free_bytes?: number;
     go_alloc_bytes?: number;
     go_sys_bytes?: number;
+
+    server_time?: string;
+
 }
 
 /**

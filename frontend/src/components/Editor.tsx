@@ -1,5 +1,6 @@
 import React from 'react'
-import { readFile, saveFile, deleteFile } from '../api'
+import { readFile, saveFile, deleteFile, listTree } from '../api'
+const PdfPreview = React.lazy(() => import('./PdfPreview'))
 import { formatBytes } from '../bytes'
 import { isEditable, isProbablyText, extFromPath, probeFileType } from '../filetypes'
 import Prism from 'prismjs'
@@ -133,13 +134,19 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       const pt = await probeFileType(path)
       setProbe(pt)
 
+      // If backend reports an image MIME, treat it as an image preview regardless
+      // of `isText` probe. This fixes cases where images were mis-classified as text.
+      if (pt.mime && pt.mime.startsWith('image/')) {
+        setContent('')
+        setStatus('')
+        setLoading(false)
+        return
+      }
+
+      // If backend says it's not text (and not an image), show binary message
       if (!pt.isText) {
         setContent('')
-        if (!pt.mime || !pt.mime.startsWith('image/')) {
-          setStatus('Binary or unsupported file type — use Download')
-        } else {
-          setStatus('')
-        }
+        setStatus('Binary or unsupported file type — use Download')
         setLoading(false)
         return
       }
@@ -194,6 +201,24 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
   React.useEffect(() => {
     loadFile()
   }, [loadFile])
+
+  // If selected path is a directory, fetch listing for display
+  React.useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      if (!meta || !meta.isDir || !path) return
+      try {
+        const entries = await listTree(path)
+        if (!mounted) return
+        setContent('')
+        // store entries as a simple newline-separated preview for now
+        setOrigContent(entries.map((e: any) => e.name).join('\n'))
+      } catch (e) {
+        // ignore
+      }
+    })()
+    return () => { mounted = false }
+  }, [meta, path])
 
   React.useEffect(() => {
     if (reloadTrigger && reloadTrigger > 0) {
@@ -346,7 +371,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
           <span className="muted">{path || 'Select a file'}</span>
           {meta && (
             <span className="muted" style={{ fontSize: 11 }}>
-              {((meta.mime && meta.mime !== 'text/plain') ? meta.mime : (probe && probe.mime ? probe.mime : meta.mime)) || (meta.isDir ? 'directory' : '')}
+              {meta.isDir ? 'directory' : ((meta.mime && meta.mime !== 'text/plain') ? meta.mime : (probe && probe.mime ? probe.mime : meta.mime))}
               {((probe && probe.ext) || (meta && meta.ext)) ? ` (${aliasForExt((probe && probe.ext) || meta.ext)})` : ''} · {meta.mode} · {new Date(meta.modTime).toLocaleString()} {meta.size ? `· ${formatBytes(meta.size)}` : ''}
             </span>
           )}
@@ -380,65 +405,67 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       <div className="editor-body">
         {loading ? (
           <div className="muted">Loading...</div>
+        ) : meta && meta.isDir ? (
+          <div style={{ padding: 12 }}>
+            <div style={{ fontWeight: 600 }}>Directory: {path}</div>
+            <div className="muted" style={{ marginTop: 6 }}>{origContent ? origContent.split('\n').length : '0'} entries</div>
+            <pre style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', padding: 8, background: 'var(--panel)' }}>{origContent}</pre>
+          </div>
+        ) : ((probe?.isText ?? isProbablyText(path)) || isEditable(path)) ? (
+          <div className="editor-edit-area">
+            <pre aria-hidden className={`highlight-wrap language-${alias}`} data-grammar={grammar} ref={el => { preRef.current = el }}>
+              <code className={`language-${alias}`} dangerouslySetInnerHTML={{ __html: safeHighlight(content || '', ext) }} />
+            </pre>
+            <textarea
+              ref={textareaRef}
+              className="textarea"
+              wrap="off"
+              value={content}
+              name={path || 'editor'}
+              id={textareaId}
+              data-grammar={grammar}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
+              onScroll={() => {
+                if (textareaRef.current && preRef.current) {
+                  preRef.current.scrollTop = textareaRef.current.scrollTop
+                  preRef.current.scrollLeft = textareaRef.current.scrollLeft
+                }
+              }}
+              placeholder="Open or create a file to edit"
+              spellCheck={false}
+              autoCorrect="off"
+              autoCapitalize="off"
+              autoComplete="off"
+            />
+          </div>
         ) : (
-          ((probe?.isText ?? isProbablyText(path)) || isEditable(path) ? (
-            <div className="editor-edit-area">
-              {
-                (() => {
-                  return (
-                    <pre aria-hidden className={`highlight-wrap language-${alias}`} data-grammar={grammar} ref={el => { preRef.current = el }}>
-                      <code className={`language-${alias}`} dangerouslySetInnerHTML={{ __html: safeHighlight(content || '', ext) }} />
-                    </pre>
-                  )
-                })()
-              }
-              <textarea
-                ref={textareaRef}
-                className="textarea"
-                wrap="off"
-                value={content}
-                name={path || 'editor'}
-                id={textareaId}
-                data-grammar={grammar}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
-                onScroll={() => {
-                  if (textareaRef.current && preRef.current) {
-                    preRef.current.scrollTop = textareaRef.current.scrollTop
-                    preRef.current.scrollLeft = textareaRef.current.scrollLeft
-                  }
-                }}
-                placeholder="Open or create a file to edit"
-                spellCheck={false}
-                autoCorrect="off"
-                autoCapitalize="off"
-                autoComplete="off"
-              />
-            </div>
-          ) : (
-            <div>
-              <div className="muted">{status || 'Binary or unsupported file type'}</div>
-              {probe && probe.mime && probe.mime.startsWith('image/') ? (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                    <img
-                      src={`/api/file?path=${encodeURIComponent(path)}`}
-                      alt={path.split('/').pop()}
-                      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}
-                    />
-                  </div>
-                  <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                    <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
-                  </div>
+          <div>
+            <div className="muted">{status || 'Binary or unsupported file type'}</div>
+              {probe && probe.mime && probe.mime === 'application/pdf' ? (
+                <React.Suspense fallback={<div className="muted">Loading PDF preview…</div>}>
+                  <PdfPreview path={path} />
+                </React.Suspense>
+              ) : probe && probe.mime && probe.mime.startsWith('image/') ? (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <img
+                    src={`/api/file?path=${encodeURIComponent(path)}`}
+                    alt={path.split('/').pop()}
+                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}
+                  />
                 </div>
-              ) : (
-                path && (
-                  <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                    <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
-                  </div>
-                )
-              )}
-            </div>
-          ))
+                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                  <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
+                </div>
+              </div>
+            ) : (
+              path && (
+                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                  <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
+                </div>
+              )
+            )}
+          </div>
         )}
       </div>
     </div>

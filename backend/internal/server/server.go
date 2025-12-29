@@ -78,6 +78,8 @@ func (s *Server) Routes() {
 	s.Mux.Handle("/ws/terminal", handlers.WsTerminalHandler(s.Root))
 	s.Mux.Handle("/api/tree", handlers.TreeHandler(s.Root))
 	s.Mux.Handle("/api/filetype", handlers.FileTypeHandler(s.Root))
+	// serve file sections for large-file viewing
+	s.Mux.Handle("/api/file/section", handlers.FileSectionHandler(s.Root))
 	s.Mux.Handle("/api/stat", handlers.StatHandler(s.Root))
 	s.Mux.Handle("/api/settings", handlers.SettingsHandler())
 	s.Mux.HandleFunc("/api/terminal/new", handlers.NewTerminalAPI(s.Root))

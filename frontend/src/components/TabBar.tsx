@@ -14,6 +14,24 @@ type Props = {
 export default function TabBar({ openFiles, active, onActivate, onClose, onCloseOthers, onCloseLeft, titles, types }: Props) {
   const [openIdx, setOpenIdx] = React.useState<number | null>(null)
   const containerRef = React.useRef<HTMLDivElement | null>(null)
+  const scrollRef = React.useRef<HTMLDivElement | null>(null)
+  const [showLeft, setShowLeft] = React.useState(false)
+  const [showRight, setShowRight] = React.useState(false)
+
+  const updateScrollButtons = () => {
+    const el = scrollRef.current
+    if (!el) { setShowLeft(false); setShowRight(false); return }
+    setShowLeft(el.scrollLeft > 0)
+    setShowRight(el.scrollWidth > el.clientWidth + el.scrollLeft + 1)
+  }
+
+  const scrollBy = (dx: number) => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollBy({ left: dx, behavior: 'smooth' })
+    // update visibility after a short delay
+    setTimeout(updateScrollButtons, 220)
+  }
 
   React.useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -32,10 +50,19 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
     }
   }, [])
 
+  React.useEffect(() => {
+    updateScrollButtons()
+    function onResize() { updateScrollButtons() }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [openFiles])
+
   return (
     <div className="tabbar" ref={containerRef}>
-      {openFiles.map((p, idx) => (
-        <div key={p} className="tab-item" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px' }}>
+      {showLeft && <button className="tab-scroll tab-scroll-left" aria-label="scroll left" onClick={() => scrollBy(-200)}>◀</button>}
+      <div className="tab-scroll-area" ref={scrollRef} onScroll={updateScrollButtons}>
+        {openFiles.map((p, idx) => (
+          <div key={p} className="tab-item" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px' }}>
           <button className={p === active ? 'btn' : 'link'} onClick={() => onActivate(p)} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="tab-icon">{(types && types[p]) === 'shell' ? '🐚' : (types && types[p]) === 'dir' ? '📁' : '📄'}</span>
               <span className={(titles && titles[p] && titles[p].startsWith('*')) ? 'tab-title tab-unsaved' : 'tab-title'}>{(titles && titles[p]) || p.split('/').pop()}</span>
@@ -51,7 +78,9 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
             )}
           </div>
         </div>
-      ))}
+        ))}
+      </div>
+      {showRight && <button className="tab-scroll tab-scroll-right" aria-label="scroll right" onClick={() => scrollBy(200)}>▶</button>}
     </div>
   )
 }
