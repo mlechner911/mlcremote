@@ -7,6 +7,7 @@ type Props = {
   onToggleHidden?: (v: boolean) => void
   autoOpen?: boolean
   onView?: (path: string) => void
+  onBackendActive?: () => void
 }
 
 /**
@@ -14,7 +15,7 @@ type Props = {
  * and supports navigation, drag-and-drop upload, and lightweight actions
  * such as Download and (when `autoOpen` is false) a View button.
  */
-export default function FileExplorer({ onSelect, showHidden, onToggleHidden, autoOpen = true, onView }: Props): JSX.Element {
+export default function FileExplorer({ onSelect, showHidden, onToggleHidden, autoOpen = true, onView, onBackendActive }: Props): JSX.Element {
   const [path, setPath] = React.useState<string>('')
   const [entries, setEntries] = React.useState<DirEntry[]>([])
   const [loading, setLoading] = React.useState<boolean>(false)
@@ -29,12 +30,14 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
       const list = await listTree(p, { showHidden })
       setEntries(list)
       setPath(p)
+      // notify that backend is active
+      onBackendActive?.()
     } catch (e: any) {
       setError(e.message || 'failed to list')
     } finally {
       setLoading(false)
     }
-  }, [showHidden])
+  }, [showHidden, onBackendActive])
 
   React.useEffect(() => { load('') }, [load])
 

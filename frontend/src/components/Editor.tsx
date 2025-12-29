@@ -19,6 +19,9 @@ import 'prismjs/components/prism-cpp'
 import 'prismjs/components/prism-bash'
 import 'prismjs/components/prism-python'
 
+// @ts-ignore: allow side-effect CSS import without type declarations
+import '../editor.css'
+
 function escapeHtml(unsafe: string) {
   return unsafe.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
@@ -76,30 +79,47 @@ type Props = {
   path: string
   onSaved?: () => void
   settings?: { allowDelete?: boolean }
+  reloadTrigger?: number
 }
 
-export default function Editor({ path, onSaved, settings }: Props) {
+export default function Editor({ path, onSaved, settings, reloadTrigger }: Props) {
   const [content, setContent] = React.useState<string>('')
   const [origContent, setOrigContent] = React.useState<string>('')
   const [status, setStatus] = React.useState<string>('')
   const [loading, setLoading] = React.useState<boolean>(false)
   const [meta, setMeta] = React.useState<any>(null)
   const [probe, setProbe] = React.useState<{ mime: string; isText: boolean; ext: string } | null>(null)
+  const [lastLoadTime, setLastLoadTime] = React.useState<number | null>(null)
+  const [lastModTime, setLastModTime] = React.useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = React.useState<boolean>(false)
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
   const preRef = React.useRef<HTMLElement | null>(null)
 
-  React.useEffect(() => {
+  const loadFile = React.useCallback(async (force = false) => {
     if (!path) return
     setLoading(true)
     setStatus('')
-    // Probe backend for actual file type rather than relying on extension
-    probeFileType(path).then(pt => {
-      setProbe(pt)
+    try {
       // fetch metadata
-      import('../api').then(api => api.statPath(path).then(m => setMeta(m)).catch(() => setMeta(null)))
+      const m = await import('../api').then(api => api.statPath(path))
+      setMeta(m)
+
+      // Check if file has changed since last load
+      if (!force && lastLoadTime && lastModTime && m.modTime !== lastModTime) {
+        if (!confirm('File has been modified externally. Reload?')) {
+          setLoading(false)
+          return
+        }
+      }
+
+      setLastModTime(m.modTime)
+
+      // Probe backend for actual file type
+      const pt = await probeFileType(path)
+      setProbe(pt)
+
       if (!pt.isText) {
         setContent('')
-        // if it's an image, we'll render it inline; otherwise show the binary notice
         if (!pt.mime || !pt.mime.startsWith('image/')) {
           setStatus('Binary or unsupported file type — use Download')
         } else {
@@ -108,15 +128,30 @@ export default function Editor({ path, onSaved, settings }: Props) {
         setLoading(false)
         return
       }
-      readFile(path)
-        .then(text => { setContent(text); setOrigContent(text) })
-        .catch(() => setStatus('Failed to load'))
-        .finally(() => setLoading(false))
-    }).catch(() => {
-      setStatus('Failed to probe file type')
+
+      const text = await readFile(path)
+      setContent(text)
+      setOrigContent(text)
+      setLastLoadTime(Date.now())
+      setLoadFailed(false)
+    } catch (error) {
+      setStatus('Failed to load')
+      setLoadFailed(true)
+      setLastLoadTime(null) // Reset so next attempt will try again
+    } finally {
       setLoading(false)
-    })
-  }, [path])
+    }
+  }, [path, lastLoadTime, lastModTime])
+
+  React.useEffect(() => {
+    loadFile()
+  }, [loadFile])
+
+  React.useEffect(() => {
+    if (reloadTrigger && reloadTrigger > 0) {
+      loadFile(true) // force reload
+    }
+  }, [reloadTrigger, loadFile])
 
   // keep pre scrolled to textarea's scroll position when content changes
   React.useEffect(() => {

@@ -46,6 +46,20 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
   const [theme, setTheme] = React.useState<'dark'|'light'>(() => (localStorage.getItem('theme') as 'dark'|'light') || 'dark')
   const [now, setNow] = React.useState<Date>(new Date())
+  const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine)
+  const [reloadTriggers, setReloadTriggers] = React.useState<Record<string, number>>({})
+
+  // function to check health and update status immediately
+  const checkHealthStatus = React.useCallback(async () => {
+    if (!isOnline) return
+    try {
+      const h = await getHealth()
+      setHealth(h)
+      setLastHealthAt(Date.now())
+    } catch {
+      setHealth(null)
+    }
+  }, [isOnline])
 
   React.useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 1000)
@@ -56,6 +70,7 @@ export default function App() {
   React.useEffect(() => {
     let mounted = true
     async function fetchHealth() {
+      if (!isOnline) return
       try {
         const h = await getHealth()
         if (!mounted) return
@@ -69,7 +84,7 @@ export default function App() {
     fetchHealth()
     const id = setInterval(fetchHealth, 60 * 1000)
     return () => { mounted = false; clearInterval(id) }
-  }, [])
+  }, [isOnline])
 
   // fetch runtime settings once on mount
   React.useEffect(() => {
@@ -85,18 +100,44 @@ export default function App() {
     else document.documentElement.classList.remove('theme-light')
   }, [theme])
 
+  // listen for online/offline events
+  React.useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true)
+      // immediately fetch health when coming online
+      getHealth().then(h => {
+        setHealth(h)
+        setLastHealthAt(Date.now())
+      }).catch(() => {
+        setHealth(null)
+      })
+    }
+    const handleOffline = () => {
+      setIsOnline(false)
+      setHealth(null)
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
   return (
     <div className="app">
       <header className="app-header">
         <h1>MLCRemote</h1>
         <div className="status">
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 6, background: health && health.host ? '#10b981' : '#ef4444', display: 'inline-block' }} />
-            <span className={(health ? 'badge badge-ok' : 'badge badge-error')}>
-              {health ? `${health.status}@${health.version}` : 'offline'}
+            <span style={{ width: 10, height: 10, borderRadius: 6, background: health && health.host ? '#10b981' : (isOnline ? '#f59e0b' : '#ef4444'), display: 'inline-block' }} />
+            <span className={(health ? 'badge badge-ok' : (isOnline ? 'badge badge-error' : 'badge badge-error'))}>
+              {health ? `${health.status}@${health.version}` : (isOnline ? 'connecting...' : 'offline')}
             </span>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <button className="link" style={{ marginLeft: 8, fontSize: 12, padding: 0 }} onClick={() => setAboutOpen(true)}>{health && health.host ? health.host : 'backend unavailable'}</button>
+              <button className="link" style={{ marginLeft: 8, fontSize: 12, padding: 0 }} onClick={() => setAboutOpen(true)}>{health && health.host ? health.host : (isOnline ? 'connecting...' : 'browser offline')}</button>
               {health && health.server_time && (
                 <button className="link" style={{ marginLeft: 0, fontSize: 12, padding: '0 6px' }} onClick={() => setServerInfoOpen(true)}>i</button>
               )}
@@ -167,18 +208,10 @@ export default function App() {
             if (next === 'light') document.documentElement.classList.add('theme-light')
             else document.documentElement.classList.remove('theme-light')
           }}>
-            {theme === 'dark' ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor"/></svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.8 1.8-1.8zm10.48 0l1.79-1.79 1.79 1.79-1.79 1.8-1.79-1.8zM12 4V1h-1v3h1zm0 19v-3h-1v3h1zM4 13H1v-1h3v1zm19 0h-3v-1h3v1z" fill="currentColor"/></svg>
-            )}
+            {theme === 'dark' ? '🌙' : '☀️'}
           </button>
           <button className="link icon-btn" aria-label="Toggle logs" onClick={() => setShowLogs(s => !s)}>
-            {showLogs ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7zm0 10a3 3 0 110-6 3 3 0 010 6z" fill="currentColor"/></svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 3l19 19-1.5 1.5L.5 4.5 2 3zM12 5c-3 0-5.8 1.6-8 4 1.8 2.1 4.1 3.6 8 3.6 3.9 0 6.2-1.5 8-3.6-2.2-2.4-5-4-8-4z" fill="currentColor"/></svg>
-            )}
+            {showLogs ? '👁️' : '🙈'}
           </button>
           <button className="link" onClick={() => setAboutOpen(true)}>About</button>
         </div>
@@ -199,6 +232,8 @@ export default function App() {
               // autoOpen disabled: selecting will mark but not open a persistent tab
               setActiveFile(p)
             }
+            // check health status since backend interaction succeeded
+            checkHealthStatus()
           }} onView={(p) => {
             // if the file is already open, activate it; otherwise open it as a new persistent tab
             if (openFiles.includes(p)) {
@@ -207,7 +242,9 @@ export default function App() {
               openFile(p)
             }
             setSelectedPath(p)
-          }} />
+            // check health status since backend interaction succeeded
+            checkHealthStatus()
+          }} onBackendActive={checkHealthStatus} />
         </aside>
         <div className="resizer" onMouseDown={(e) => {
           const startX = e.clientX
@@ -249,7 +286,16 @@ export default function App() {
                       else types[f] = 'file'
                     }
                     return (
-                      <TabBarComponent openFiles={openFiles} active={activeFile} titles={titles} types={types} onActivate={(p)=>setActiveFile(p)} onClose={(p)=>{
+                      <TabBarComponent openFiles={openFiles} active={activeFile} titles={titles} types={types} onActivate={(p) => {
+                        setActiveFile(p)
+                        // Trigger reload check for file tabs
+                        if (!p.startsWith('shell-')) {
+                          setReloadTriggers(triggers => ({
+                            ...triggers,
+                            [p]: (triggers[p] || 0) + 1
+                          }))
+                        }
+                      }} onClose={(p)=>{
                         setOpenFiles(of => of.filter(x => x !== p))
                         if (activeFile === p) setActiveFile(openFiles.filter(x => x !== p)[0] || '')
                       }} onCloseOthers={(p) => {
@@ -279,7 +325,7 @@ export default function App() {
                   setShellCwds(s => { const ns = { ...s }; delete ns[f]; return ns })
                 }} />
               ) : (
-                <Editor path={f} settings={settings} onSaved={() => { /* no-op for now */ }} />
+                <Editor path={f} settings={settings} onSaved={() => { /* no-op for now */ }} reloadTrigger={reloadTriggers[f] || 0} />
               )}
             </div>
           ))}
