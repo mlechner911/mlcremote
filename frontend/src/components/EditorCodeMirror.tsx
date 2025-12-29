@@ -106,6 +106,32 @@ export default function EditorCodeMirror({ path, onSaved }: Props) {
             extModule = m.javascript()
             break
           }
+          case 'css': {
+            const m = await import('@codemirror/lang-css')
+            extModule = m.css()
+            break
+          }
+          case 'scss': case 'sass': {
+            const m = await import('@codemirror/lang-css')
+            // scss/sass use the postcss/css support in CodeMirror
+            extModule = m.css()
+            break
+          }
+          case 'xml': case 'xsl': case 'xslt': case 'html': case 'htm': {
+            const m = await import('@codemirror/lang-xml')
+            extModule = m.xml()
+            break
+          }
+          case 'c': {
+            const m = await import('@codemirror/lang-cpp')
+            extModule = m.c()
+            break
+          }
+          case 'cpp': case 'cc': case 'cxx': case 'h': case 'hpp': {
+            const m = await import('@codemirror/lang-cpp')
+            extModule = m.cpp()
+            break
+          }
           default: {
             // fallback: no language extension
             extModule = null
@@ -141,16 +167,6 @@ export default function EditorCodeMirror({ path, onSaved }: Props) {
     }
   }
 
-  const onFormat = async () => {
-    if (!path) return
-    try {
-      const mod = await import('../format')
-      const formatted = mod.formatByExt(extFromPath(path), content)
-      setContent(formatted)
-    } catch (e) {
-      console.warn('format failed', e)
-    }
-  }
 
   // Render fallback while CodeMirror or language is loading
   if (!CM) {
@@ -170,7 +186,6 @@ export default function EditorCodeMirror({ path, onSaved }: Props) {
       <div style={{ display: 'flex', gap: 8, padding: 8, borderBottom: '1px solid var(--border)', background: 'var(--panel)' }}>
         <strong style={{ alignSelf: 'center' }}>CodeMirror Editor</strong>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-          <button className="btn" onClick={onFormat} disabled={!path}>Format</button>
           <button className="btn" onClick={onSave} disabled={!path}>Save</button>
           <button className="btn btn-danger" onClick={onDelete} disabled={!path}>Delete</button>
         </div>

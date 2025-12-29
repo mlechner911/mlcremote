@@ -40,6 +40,7 @@ import 'prismjs/components/prism-rust'
 - `frontend/src/components/Editor.tsx` — implementation
 - `frontend/src/filetypes.ts` — probe and extension utilities
 - `frontend/src/format.ts` — human-friendly formatting utilities (filesize)
+ - `frontend/src/format.ts` — formatting utilities (currently a client-side formatter has been removed; the function is a passthrough)
 
 If you want this document extended with screenshots or a small sequence diagram, tell me what level of detail you want.
 
@@ -50,5 +51,14 @@ If you want this document extended with screenshots or a small sequence diagram,
 - After saving, the editor re-stats the file and calls `onMeta` so filesize updates immediately.
 - Added `data-grammar` attributes to the `<pre>` and `<textarea>`, and re-run Prism highlighting when grammar or content changes.
 - Added unique `id` and `name` attributes to the editor `textarea`.
+
+## Formatting (removed from client)
+
+- Historically the project included a client-side "Format" action that used Prettier to format many file types. The client-side Format UI has been removed and formatting no longer runs in the browser by default.
+- The helper `frontend/src/format.ts` remains as a passthrough to avoid breaking callers; if you want to re-enable formatting you can either:
+  - Reintroduce a Format button and lazy-load `prettier/standalone` and only the parser/plugin you need at runtime (recommended to keep bundle size small), or
+  - Move formatting to a backend endpoint that runs Prettier server-side and returns formatted text (no client-side Prettier dependency).
+
+Include either option in your roadmap if you want formatting back in the UI.
 
 These changes are intended to improve accuracy of grammar selection and make the editor behavior more predictable.

@@ -28,6 +28,20 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id) return
+          if (id.includes('node_modules')) {
+            if (id.includes('@codemirror') || id.includes('@uiw/react-codemirror')) return 'vendor-codemirror'
+            if (id.includes('xterm')) return 'vendor-xterm'
+            if (id.includes('prismjs')) return 'vendor-prism'
+            if (id.includes('react') || id.includes('react-dom')) return 'vendor-react'
+            return 'vendor'
+          }
+        }
+      }
+    }
   }
 })
