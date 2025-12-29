@@ -72,29 +72,12 @@ function safeHighlight(text: string, ext: string) {
   }
 }
 
-function formatBytes(n?: number) {
-  if (!n || n <= 0) return '0 B'
-  const KB = 1024
-  const MB = KB * 1024
-  const GB = MB * 1024
-  const nf = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
-  if (n >= GB) return `${nf.format(n / GB)} GB`
-  if (n >= MB) return `${nf.format(n / MB)} MB`
-  if (n >= KB) return `${nf.format(n / KB)} KB`
-  return `${nf.format(n)} B`
-}
-
 type Props = {
   path: string
   onSaved?: () => void
   settings?: { allowDelete?: boolean }
 }
 
-/**
- * Editor component — fetches and renders file contents. Supports syntax
- * highlighting via Prism, saving, reloading, formatting (via dynamic import),
- * and inline image preview for image mime types.
- */
 export default function Editor({ path, onSaved, settings }: Props) {
   const [content, setContent] = React.useState<string>('')
   const [origContent, setOrigContent] = React.useState<string>('')
@@ -104,8 +87,6 @@ export default function Editor({ path, onSaved, settings }: Props) {
   const [probe, setProbe] = React.useState<{ mime: string; isText: boolean; ext: string } | null>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
   const preRef = React.useRef<HTMLElement | null>(null)
-  const statusTimerRef = React.useRef<number | null>(null)
-
 
   React.useEffect(() => {
     if (!path) return
@@ -144,6 +125,19 @@ export default function Editor({ path, onSaved, settings }: Props) {
       preRef.current.scrollLeft = textareaRef.current.scrollLeft
     }
   }, [content])
+
+  // sync line-height and vertical padding from pre to textarea for alignment
+  React.useEffect(() => {
+    if (textareaRef.current && preRef.current) {
+      const cs = window.getComputedStyle(preRef.current)
+      const lh = cs.lineHeight
+      const pt = cs.paddingTop
+      const pb = cs.paddingBottom
+      if (lh) textareaRef.current.style.lineHeight = lh
+      if (pt) textareaRef.current.style.paddingTop = pt
+      if (pb) textareaRef.current.style.paddingBottom = pb
+    }
+  }, [content, path])
 
   const onSave = async () => {
     if (!path) return
@@ -211,21 +205,10 @@ export default function Editor({ path, onSaved, settings }: Props) {
       setContent(text)
       setOrigContent(text)
       setStatus('Reloaded')
-      // clear any previous timer
-      if (statusTimerRef.current) window.clearTimeout(statusTimerRef.current)
-      statusTimerRef.current = window.setTimeout(() => {
-        setStatus('')
-        statusTimerRef.current = null
-      }, 2000)
     } catch (e) {
       setStatus('Reload failed')
     }
   }
-
-  // cleanup any pending timers on unmount
-  React.useEffect(() => {
-    return () => { if (statusTimerRef.current) window.clearTimeout(statusTimerRef.current) }
-  }, [])
 
   return (
     <div className="editor">
@@ -234,11 +217,8 @@ export default function Editor({ path, onSaved, settings }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span className="muted">{path || 'Select a file'}</span>
           {meta && (
-            <span className="muted" style={{ fontSize: 11 }}>
-              {meta.mime || (meta.isDir ? 'directory' : '')} · {meta.mode} · {formatBytes(meta.size)} · {new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', timeZoneName: 'short' }).format(new Date(meta.modTime))}
-            </span>
+            <span className="muted" style={{ fontSize: 11 }}>{meta.mime || (meta.isDir ? 'directory' : '')} · {meta.mode} · {new Date(meta.modTime).toLocaleString()}</span>
           )}
-
         </div>
           <div className="actions">
           {/* Format removed until implemented */}
@@ -250,7 +230,7 @@ export default function Editor({ path, onSaved, settings }: Props) {
             <button className="btn btn-danger" onClick={onDelete} disabled={!path}>Delete</button>
           ) : null}
         </div>
-        {(status && !(probe && probe.mime && probe.mime.startsWith('image/'))) && <div className="muted">{status}</div>}
+        {status && <div className="muted">{status}</div>}
       </div>
       <div className="editor-body">
         {loading ? (
@@ -290,10 +270,7 @@ export default function Editor({ path, onSaved, settings }: Props) {
             </div>
           ) : (
             <div>
-              {/* Only show the textual notice when there is no image preview */}
-              {!(probe && probe.mime && probe.mime.startsWith('image/')) && (
-                <div className="muted">{status || 'Binary or unsupported file type'}</div>
-              )}
+              <div className="muted">{status || 'Binary or unsupported file type'}</div>
               {probe && probe.mime && probe.mime.startsWith('image/') ? (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
