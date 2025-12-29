@@ -4,9 +4,11 @@ import { getHealth, statPath } from './api'
 import FileExplorer from './components/FileExplorer'
 import Editor from './components/Editor'
 import TerminalTab from './components/TerminalTab'
-const TabBarComponent = React.lazy(() => import('./components/TabBar'))
+// const TabBarComponent = React.lazy(() => import('./components/TabBar'))
+
+import  TabBarComponent   from './components/TabBar'
 import LogOverlay from './components/LogOverlay'
-import { formatBytes } from './format'
+import { formatBytes } from './bytes'
 
 /**
  * Top-level application component. Manages UI state for the file explorer,
