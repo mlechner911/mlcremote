@@ -1,5 +1,6 @@
 import React from 'react'
 import { readFile, saveFile, deleteFile } from '../api'
+import { formatBytes } from '../format'
 import { isEditable, isProbablyText, extFromPath, probeFileType } from '../filetypes'
 import Prism from 'prismjs'
 // @ts-ignore: allow side-effect CSS import without type declarations
@@ -80,9 +81,11 @@ type Props = {
   onSaved?: () => void
   settings?: { allowDelete?: boolean }
   reloadTrigger?: number
+  onUnsavedChange?: (hasUnsaved: boolean) => void
+  onMeta?: (m: any) => void
 }
 
-export default function Editor({ path, onSaved, settings, reloadTrigger }: Props) {
+export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta }: Props) {
   const [content, setContent] = React.useState<string>('')
   const [origContent, setOrigContent] = React.useState<string>('')
   const [status, setStatus] = React.useState<string>('')
@@ -94,6 +97,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger }: Props
   const [loadFailed, setLoadFailed] = React.useState<boolean>(false)
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
   const preRef = React.useRef<HTMLElement | null>(null)
+  const prevUnsavedRef = React.useRef<boolean | null>(null)
 
   const loadFile = React.useCallback(async (force = false) => {
     if (!path) return
@@ -103,8 +107,9 @@ export default function Editor({ path, onSaved, settings, reloadTrigger }: Props
       // fetch metadata
       const m = await import('../api').then(api => api.statPath(path))
       setMeta(m)
+      if (typeof onMeta === 'function') onMeta(m)
 
-      // Check if file has changed since last load
+      // Check if file has changed since last load (only if we have previous load data and not forcing)
       if (!force && lastLoadTime && lastModTime && m.modTime !== lastModTime) {
         if (!confirm('File has been modified externally. Reload?')) {
           setLoading(false)
@@ -141,7 +146,20 @@ export default function Editor({ path, onSaved, settings, reloadTrigger }: Props
     } finally {
       setLoading(false)
     }
-  }, [path, lastLoadTime, lastModTime])
+  }, [path])
+
+  // compute grammar/alias for the current path to set on elements
+  // prefer the probed extension from the backend probe if available
+  const detectedExt = probe && probe.ext ? probe.ext : extFromPath(path)
+  const ext = detectedExt
+  const alias = aliasForExt(ext)
+  const grammar = alias || (probe && probe.ext ? probe.ext : 'text')
+  // sanitize id (unique per full path) to avoid duplicate ids and ensure uniqueness
+  const sanitizeId = (p: string) => {
+    if (!p) return 'editor'
+    return 'editor-' + p.replace(/[^a-z0-9_-]/gi, '-').replace(/-+/g, '-')
+  }
+  const textareaId = sanitizeId(path || '')
 
   React.useEffect(() => {
     loadFile()
@@ -151,7 +169,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger }: Props
     if (reloadTrigger && reloadTrigger > 0) {
       loadFile(true) // force reload
     }
-  }, [reloadTrigger, loadFile])
+  }, [reloadTrigger])
 
   // keep pre scrolled to textarea's scroll position when content changes
   React.useEffect(() => {
@@ -162,6 +180,8 @@ export default function Editor({ path, onSaved, settings, reloadTrigger }: Props
   }, [content])
 
   // sync line-height and vertical padding from pre to textarea for alignment
+  // Thius is needed because Prism's line-height can differ from normal textarea line-height
+  // and we had this broken .. .more than once :(
   React.useEffect(() => {
     if (textareaRef.current && preRef.current) {
       const cs = window.getComputedStyle(preRef.current)
@@ -174,6 +194,41 @@ export default function Editor({ path, onSaved, settings, reloadTrigger }: Props
     }
   }, [content, path])
 
+  // keep grammar attributes and Prism highlighting in sync when grammar or content changes
+  React.useEffect(() => {
+    if (preRef.current) {
+      preRef.current.setAttribute('data-grammar', grammar)
+    }
+    if (textareaRef.current) {
+      textareaRef.current.setAttribute('data-grammar', grammar)
+      if (textareaId) textareaRef.current.id = textareaId
+    }
+    // re-run Prism highlight on the code element to ensure grammar changes take effect
+    try {
+      const code = preRef.current?.querySelector('code')
+      if (code) {
+        // @ts-ignore
+        Prism.highlightElement(code)
+      }
+    } catch (e) {
+      // ignore highlight errors
+    }
+  }, [grammar, content, textareaId])
+
+  // notify parent when unsaved status changes, but avoid calling parent every render
+  React.useEffect(() => {
+    if (!onUnsavedChange) return
+    const hasUnsaved = content !== origContent
+    if (prevUnsavedRef.current === null || prevUnsavedRef.current !== hasUnsaved) {
+      try {
+        onUnsavedChange(hasUnsaved)
+      } catch (e) {
+        console.warn('onUnsavedChange threw', e)
+      }
+      prevUnsavedRef.current = hasUnsaved
+    }
+  }, [content, origContent, onUnsavedChange])
+// save action saves the file
   const onSave = async () => {
     if (!path) return
     setStatus('Saving...')
@@ -182,6 +237,14 @@ export default function Editor({ path, onSaved, settings, reloadTrigger }: Props
       setStatus('Saved')
       setOrigContent(content)
       onSaved && onSaved()
+      try {
+        // re-stat the file so parent can update size/metadata
+        const m = await import('../api').then(api => api.statPath(path))
+        setMeta(m)
+        if (typeof onMeta === 'function') onMeta(m)
+      } catch (e) {
+        // ignore stat errors; save still succeeded
+      }
     } catch {
       setStatus('Save failed')
     }
@@ -252,7 +315,10 @@ export default function Editor({ path, onSaved, settings, reloadTrigger }: Props
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span className="muted">{path || 'Select a file'}</span>
           {meta && (
-            <span className="muted" style={{ fontSize: 11 }}>{meta.mime || (meta.isDir ? 'directory' : '')} · {meta.mode} · {new Date(meta.modTime).toLocaleString()}</span>
+            <span className="muted" style={{ fontSize: 11 }}>
+              {((meta.mime && meta.mime !== 'text/plain') ? meta.mime : (probe && probe.mime ? probe.mime : meta.mime)) || (meta.isDir ? 'directory' : '')}
+              {((probe && probe.ext) || (meta && meta.ext)) ? ` (${(probe && probe.ext) || meta.ext})` : ''} · {meta.mode} · {new Date(meta.modTime).toLocaleString()} {meta.size ? `· ${formatBytes(meta.size)}` : ''}
+            </span>
           )}
         </div>
           <div className="actions">
@@ -275,10 +341,8 @@ export default function Editor({ path, onSaved, settings, reloadTrigger }: Props
             <div className="editor-edit-area">
               {
                 (() => {
-                  const ext = extFromPath(path)
-                  const alias = aliasForExt(ext)
                   return (
-                    <pre aria-hidden className={`highlight-wrap language-${alias}`} ref={el => { preRef.current = el }}>
+                    <pre aria-hidden className={`highlight-wrap language-${alias}`} data-grammar={grammar} ref={el => { preRef.current = el }}>
                       <code className={`language-${alias}`} dangerouslySetInnerHTML={{ __html: safeHighlight(content || '', ext) }} />
                     </pre>
                   )
@@ -289,6 +353,9 @@ export default function Editor({ path, onSaved, settings, reloadTrigger }: Props
                 className="textarea"
                 wrap="off"
                 value={content}
+                name={path || 'editor'}
+                id={textareaId}
+                data-grammar={grammar}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
                 onScroll={() => {
                   if (textareaRef.current && preRef.current) {

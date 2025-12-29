@@ -47,6 +47,7 @@ Security & caveats
 
 Contributing
 - Issues and PRs are welcome. See the `docs/` folder for developer notes.
+	- Editor details: see `docs/EDITOR.md` for editor behavior, highlighting, and metadata handling.
 
 License
 - MIT — Michael Lechner

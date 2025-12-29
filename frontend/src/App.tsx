@@ -36,6 +36,12 @@ export default function App() {
       return next.slice(1)
     })
     setActiveFile(path)
+    // fetch and cache metadata for this file (size, modTime, mime)
+    statPath(path).then(m => {
+      setFileMetas(fm => ({ ...fm, [path]: m }))
+    }).catch(() => {
+      // ignore stat errors
+    })
   }
   const [shellCwds, setShellCwds] = React.useState<Record<string,string>>({})
   const [showHidden, setShowHidden] = React.useState<boolean>(false)
@@ -48,6 +54,8 @@ export default function App() {
   const [now, setNow] = React.useState<Date>(new Date())
   const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine)
   const [reloadTriggers, setReloadTriggers] = React.useState<Record<string, number>>({})
+  const [unsavedChanges, setUnsavedChanges] = React.useState<Record<string, boolean>>({})
+  const [fileMetas, setFileMetas] = React.useState<Record<string, any>>({})
 
   // function to check health and update status immediately
   const checkHealthStatus = React.useCallback(async () => {
@@ -277,7 +285,8 @@ export default function App() {
                         const cwd = shellCwds[f] || ''
                         titles[f] = cwd || f
                       } else {
-                        titles[f] = f.split('/').pop() || f
+                        const baseName = f.split('/').pop() || f
+                        titles[f] = unsavedChanges[f] ? `*${baseName}` : baseName
                       }
                     }
                     const types: Record<string,'file'|'dir'|'shell'> = {}
@@ -285,16 +294,10 @@ export default function App() {
                       if (f.startsWith('shell-')) types[f] = 'shell'
                       else types[f] = 'file'
                     }
+
                     return (
                       <TabBarComponent openFiles={openFiles} active={activeFile} titles={titles} types={types} onActivate={(p) => {
                         setActiveFile(p)
-                        // Trigger reload check for file tabs
-                        if (!p.startsWith('shell-')) {
-                          setReloadTriggers(triggers => ({
-                            ...triggers,
-                            [p]: (triggers[p] || 0) + 1
-                          }))
-                        }
                       }} onClose={(p)=>{
                         setOpenFiles(of => of.filter(x => x !== p))
                         if (activeFile === p) setActiveFile(openFiles.filter(x => x !== p)[0] || '')
@@ -325,10 +328,36 @@ export default function App() {
                   setShellCwds(s => { const ns = { ...s }; delete ns[f]; return ns })
                 }} />
               ) : (
-                <Editor path={f} settings={settings} onSaved={() => { /* no-op for now */ }} reloadTrigger={reloadTriggers[f] || 0} />
+                <Editor path={f} settings={settings} onSaved={() => { /* no-op for now */ }} reloadTrigger={reloadTriggers[f] || 0} onUnsavedChange={(hasUnsaved) => {
+                  setUnsavedChanges(changes => ({
+                    ...changes,
+                    [f]: hasUnsaved
+                  }))
+                }} onMeta={(m:any) => {
+                  if (m && m.path) setFileMetas(fm => ({ ...fm, [f]: m }))
+                }} />
               )}
             </div>
           ))}
+          {openFiles.length === 0 && (
+            <div className="welcome-message" style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              color: 'var(--text-muted)',
+              fontSize: '18px',
+              textAlign: 'center',
+              padding: '20px'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '20px' }}>📁</div>
+              <div>Welcome to MLCRemote</div>
+              <div style={{ fontSize: '14px', marginTop: '10px' }}>
+                Select a file from the explorer to start editing
+              </div>
+            </div>
+          )}
           </div>
         </main>
       </div>
