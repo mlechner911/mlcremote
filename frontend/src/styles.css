@@ -3,18 +3,17 @@
 
 /* Light theme overrides */
 .theme-light {
-	/* Slightly muted light background to reduce glare */
-	--bg: #f3f4f6; /* softer than pure white */
-	--panel: #ffffff; /* keep panels white but rely on subtle borders */
-	--text: #0f1724; /* a touch darker for better readability */
-	--muted: #4b5563; /* darker muted text for readability */
+	--bg: #f8fafc;
+	--panel: #ffffff;
+	--text: #0b1220;
+	--muted: #6b7280;
 	--accent: #2563eb;
-	--danger: #991b1b; /* slightly less saturated danger */
-	--border: #e9eef6; /* subtle border */
+	--danger: #b91c1c;
+	--border: #e6e9ef;
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; overflow: hidden; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
 
 .app { display: flex; flex-direction: column; height: 100%; }
 .app-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--panel); }
@@ -33,29 +32,23 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 
 .main-content { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: auto; }
 
-/* Ensure large images or other content don't cause the outer page to scroll; they should scroll inside the main area */
-.main-content img, .editor-body img, .terminal-body img { max-width: 100%; height: auto; display: block; }
-
-/* allow interactive content inside main to scroll without affecting the body */
-.main, .editor-body, .terminal-body, .explorer-body { -webkit-overflow-scrolling: touch; }
-
 /* resizer between sidebar and main */
 .resizer { width: 8px; cursor: col-resize; background: transparent; display: flex; align-items: center; justify-content: center; }
-.resizer:hover { background: rgba(15,20,30,0.03); }
-.resizer .bar { width: 2px; height: 40%; background: rgba(15,20,30,0.06); border-radius: 2px; }
+.resizer:hover { background: rgba(255,255,255,0.02); }
+.resizer .bar { width: 2px; height: 40%; background: rgba(255,255,255,0.04); border-radius: 2px; }
 
 .explorer-header { display: flex; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid var(--border); }
 .breadcrumbs { font-size: 12px; color: var(--muted); }
 .explorer-body { padding: 8px; flex: 1; overflow: auto; min-height: 0; }
 .entry-list { list-style: none; padding: 0; margin: 0; }
 .entry { display: flex; align-items: center; width: 100%; text-align: left; gap: 8px; padding: 6px 8px; background: transparent; border: 1px solid transparent; border-radius: 6px; color: var(--text); cursor: pointer; }
-.entry:hover { border-color: var(--border); background: rgba(15,20,30,0.03); }
+.entry:hover { border-color: var(--border); background: rgba(255, 255, 255, 0.03); }
 .icon { width: 18px; }
 
 .editor { height: 100%; display: flex; flex-direction: column; }
 .editor-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid var(--border); background: var(--panel); }
 .actions { margin-left: auto; display: flex; gap: 8px; }
-.btn { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: rgba(15,20,30,0.02); color: var(--text); cursor: pointer; }
+.btn { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text); cursor: pointer; }
 .btn:hover { border-color: var(--accent); }
 .btn[download], .btn.download { padding: 4px 8px; font-size: 12px; }
 .btn-danger { border-color: var(--danger); }
@@ -64,15 +57,8 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 .editor-edit-area { position: relative; height: 100%; }
 .editor-body .highlight-wrap { position: absolute; inset: 0; overflow: auto; margin: 0; z-index: 1; pointer-events: none; opacity: 1; box-sizing: border-box; }
 .editor-body pre { margin: 0; padding: 10px; white-space: pre; word-break: normal; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; line-height: 18px; }
-.editor-body code { display: block; }
+.editor-body code { display: block; margin: 0; padding: 0; line-height: inherit; }
 .textarea { width: 100%; height: 100%; resize: none; padding: 10px; border-radius: 8px; border: none; background: transparent; color: transparent; caret-color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; line-height: 18px; overflow: auto; box-sizing: border-box; position: relative; z-index: 2; }
-.editor-body .highlight-wrap pre, .textarea {
-	tab-size: 4;
-	-moz-tab-size: 4;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	letter-spacing: normal;
-}
 .textarea::selection { background: rgba(255,255,255,0.06); }
 .textarea:focus { outline: none; }
 
@@ -111,35 +97,14 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 .editor-body pre { background: transparent; }
 .theme-light .editor-body pre { background: #f3f4f6; color: var(--text); }
 
-/* Ensure base code/token color is readable in light mode (override Prism defaults) */
-.theme-light .editor-body pre,
-.theme-light .editor-body code {
-	color: var(--text);
-}
-
-.theme-light .textarea::selection { background: rgba(15,20,30,0.08); }
-
 /* TabBar styles */
 .tabbar { display: flex; gap: 8px; padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.06); background: var(--panel); }
 
-/* Dropdown used by TabBar; themed for light/dark */
-.dropdown {
-	min-width: 140px;
-	background: var(--panel);
-	color: var(--text);
-	border: 1px solid var(--border);
-	border-radius: 6px;
-	padding: 6px;
-	z-index: 5000;
-}
-.dropdown .link { display: block; width: 100%; text-align: left; padding: 6px 8px; border-radius: 4px; }
-.dropdown .link:hover { background: rgba(15,20,30,0.03); }
-
 /* Prism token color overrides for light theme to improve contrast */
-.theme-light .token.comment { color: #374151 }
-.theme-light .token.keyword { color: #92400e }
+.theme-light .token.comment { color: #6b7280 }
+.theme-light .token.keyword { color: #b45309 }
 .theme-light .token.string { color: #065f46 }
-.theme-light .token.function { color: #1e40af }
+.theme-light .token.function { color: #1d4ed8 }
 .theme-light .token.punctuation { color: #374151 }
 .theme-light .token.operator { color: #374151 }
 .theme-light .token.constant { color: #b91c1c }
