@@ -38,7 +38,7 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
         <div key={p} className="tab-item" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px' }}>
           <button className={p === active ? 'btn' : 'link'} onClick={() => onActivate(p)} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="tab-icon">{(types && types[p]) === 'shell' ? '🐚' : (types && types[p]) === 'dir' ? '📁' : '📄'}</span>
-            <span>{(titles && titles[p]) || p.split('/').pop()}</span>
+              <span className={(titles && titles[p] && titles[p].startsWith('*')) ? 'tab-title tab-unsaved' : 'tab-title'}>{(titles && titles[p]) || p.split('/').pop()}</span>
           </button>
           <div style={{ position: 'relative' }}>
             <button aria-haspopup="true" aria-expanded={openIdx === idx} className="btn btn-small" onClick={() => setOpenIdx(openIdx === idx ? null : idx)}>⋮</button>
