@@ -326,6 +326,29 @@ body {
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     background: var(--panel);
 }
+.tabbar {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+.tab-scroll-area {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none; /* firefox */
+    -ms-overflow-style: none; /* ie */
+}
+.tab-scroll-area::-webkit-scrollbar { display: none; }
+.tab-scroll {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+}
+.tab-scroll:focus { outline: 2px solid rgba(255,255,255,0.08); }
+.tab-scroll-left { margin-right: 4px }
+.tab-scroll-right { margin-left: 4px }
 
 /* Unsaved changes indicator in tab titles */
 .tab-unsaved {

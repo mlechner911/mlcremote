@@ -1,6 +1,6 @@
 import React from 'react'
 import { readFile, saveFile, deleteFile } from '../api'
-import { formatBytes } from '../format'
+import { formatBytes } from '../bytes'
 import { isEditable, isProbablyText, extFromPath, probeFileType } from '../filetypes'
 import Prism from 'prismjs'
 // @ts-ignore: allow side-effect CSS import without type declarations
@@ -19,6 +19,9 @@ import 'prismjs/components/prism-c'
 import 'prismjs/components/prism-cpp'
 import 'prismjs/components/prism-bash'
 import 'prismjs/components/prism-python'
+import 'prismjs/components/prism-xml-doc'
+import 'prismjs/components/prism-sass'
+import 'prismjs/components/prism-css'
 
 // @ts-ignore: allow side-effect CSS import without type declarations
 import '../editor.css'
@@ -42,6 +45,9 @@ function langForExt(ext: string) {
   case 'cpp': return L.cpp
   case 'py': return L.python
   case 'sh': case 'bash': return L.bash
+ case 'xml': case 'xml-doc': return L['xml-doc']
+ case 'html': case 'htm': return L.markup
+ case 'sass': case 'scss': return L.sass
   default: return L.javascript
   }
 }
@@ -60,6 +66,9 @@ function aliasForExt(ext: string) {
   case 'cpp': return 'cpp'
   case 'py': return 'python'
   case 'sh': case 'bash': return 'bash'
+    case 'xml': case 'xml-doc': return 'xml-doc'
+    case 'html': case 'htm': return 'markup'
+    case 'sass': case 'scss': return 'sass'
   default: return 'text'
   }
 }
@@ -91,6 +100,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
   const [status, setStatus] = React.useState<string>('')
   const [loading, setLoading] = React.useState<boolean>(false)
   const [meta, setMeta] = React.useState<any>(null)
+  const [sectionLoading, setSectionLoading] = React.useState<boolean>(false)
   const [probe, setProbe] = React.useState<{ mime: string; isText: boolean; ext: string } | null>(null)
   const [lastLoadTime, setLastLoadTime] = React.useState<number | null>(null)
   const [lastModTime, setLastModTime] = React.useState<string | null>(null)
@@ -147,6 +157,26 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       setLoading(false)
     }
   }, [path])
+
+  const editableThreshold = 10 * 1024 * 1024 // 10 MB
+
+  // load a section of the file via the server's section endpoint
+  const loadSection = async (offset: number, length = 64 * 1024) => {
+    if (!path) return
+    setSectionLoading(true)
+    try {
+      const q = `?path=${encodeURIComponent(path)}&offset=${offset}&length=${length}`
+      const r = await fetch(`/api/file/section${q}`)
+      if (!r.ok) throw new Error('section fetch failed')
+      const txt = await r.text()
+      setContent(txt)
+      setOrigContent(txt)
+    } catch (e) {
+      setStatus('Failed to load section')
+    } finally {
+      setSectionLoading(false)
+    }
+  }
 
   // compute grammar/alias for the current path to set on elements
   // prefer the probed extension from the backend probe if available
@@ -317,7 +347,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
           {meta && (
             <span className="muted" style={{ fontSize: 11 }}>
               {((meta.mime && meta.mime !== 'text/plain') ? meta.mime : (probe && probe.mime ? probe.mime : meta.mime)) || (meta.isDir ? 'directory' : '')}
-              {((probe && probe.ext) || (meta && meta.ext)) ? ` (${(probe && probe.ext) || meta.ext})` : ''} · {meta.mode} · {new Date(meta.modTime).toLocaleString()} {meta.size ? `· ${formatBytes(meta.size)}` : ''}
+              {((probe && probe.ext) || (meta && meta.ext)) ? ` (${aliasForExt((probe && probe.ext) || meta.ext)})` : ''} · {meta.mode} · {new Date(meta.modTime).toLocaleString()} {meta.size ? `· ${formatBytes(meta.size)}` : ''}
             </span>
           )}
         </div>
@@ -331,6 +361,20 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
             <button className="btn btn-danger" onClick={onDelete} disabled={!path}>Delete</button>
           ) : null}
         </div>
+        {meta && meta.size && meta.size > editableThreshold ? (
+          <div style={{ marginLeft: 12 }}>
+            <div className="muted" style={{ fontSize: 12 }}>File is large ({formatBytes(meta.size)}). Full edit disabled.</div>
+            <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
+              <button className="btn" onClick={() => loadSection(0, 64*1024)}>View head</button>
+              <button className="btn" onClick={() => loadSection(Math.max(0, (meta.size || 0) - 64*1024), 64*1024)}>View tail</button>
+              <button className="btn" onClick={() => {
+                const off = Math.max(0, Math.floor((meta.size || 0) / 2))
+                loadSection(off, 64*1024)
+              }}>View middle</button>
+            </div>
+            {sectionLoading && <div className="muted">Loading section...</div>}
+          </div>
+        ) : null}
         {status && <div className="muted">{status}</div>}
       </div>
       <div className="editor-body">
