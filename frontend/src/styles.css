@@ -66,6 +66,13 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 .editor-body pre { margin: 0; padding: 10px; white-space: pre; word-break: normal; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; line-height: 18px; }
 .editor-body code { display: block; }
 .textarea { width: 100%; height: 100%; resize: none; padding: 10px; border-radius: 8px; border: none; background: transparent; color: transparent; caret-color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; line-height: 18px; overflow: auto; box-sizing: border-box; position: relative; z-index: 2; }
+.editor-body .highlight-wrap pre, .textarea {
+	tab-size: 4;
+	-moz-tab-size: 4;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	letter-spacing: normal;
+}
 .textarea::selection { background: rgba(255,255,255,0.06); }
 .textarea:focus { outline: none; }
 
