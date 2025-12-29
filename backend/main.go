@@ -27,14 +27,14 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	hostname, _ := os.Hostname()
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(fmt.Sprintf("{\"status\":\"ok\",\"version\":\"0.2.0\",\"host\":%q}", hostname)))
+	_, _ = w.Write([]byte(fmt.Sprintf("{\"status\":\"ok\",\"version\":\"0.2.1\",\"host\":%q}", hostname)))
 }
 
 // versionHandler returns a small payload that describes backend version and supported frontend version
 func versionHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("{\"backend\":\"0.2.0\",\"frontendCompatible\":\"^0.2\"}"))
+	_, _ = w.Write([]byte("{\"backend\":\"0.2.1\",\"frontendCompatible\":\"^0.2\"}"))
 }
 
 // sanitizePath resolves a requested path against the configured root.

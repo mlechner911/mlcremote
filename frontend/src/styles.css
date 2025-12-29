@@ -45,22 +45,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 .entry:hover { border-color: var(--border); background: rgba(255, 255, 255, 0.03); }
 .icon { width: 18px; }
 
-.editor { height: 100%; display: flex; flex-direction: column; }
-.editor-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid var(--border); background: var(--panel); }
-.actions { margin-left: auto; display: flex; gap: 8px; }
-.btn { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text); cursor: pointer; }
-.btn:hover { border-color: var(--accent); }
-.btn[download], .btn.download { padding: 4px 8px; font-size: 12px; }
-.btn-danger { border-color: var(--danger); }
 .muted { color: var(--muted); font-size: 12px; }
-.editor-body { flex: 1; padding: 8px; overflow: auto; min-height: 0; }
-.editor-edit-area { position: relative; height: 100%; }
-.editor-body .highlight-wrap { position: absolute; inset: 0; overflow: auto; margin: 0; z-index: 1; pointer-events: none; opacity: 1; box-sizing: border-box; }
-.editor-body pre { margin: 0; padding: 10px; white-space: pre; word-break: normal; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; line-height: 18px; }
-.editor-body code { display: block; margin: 0; padding: 0; line-height: inherit; }
-.textarea { width: 100%; height: 100%; resize: none; padding: 10px; border-radius: 8px; border: none; background: transparent; color: transparent; caret-color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; line-height: 18px; overflow: auto; box-sizing: border-box; position: relative; z-index: 2; }
-.textarea::selection { background: rgba(255,255,255,0.06); }
-.textarea:focus { outline: none; }
 
 /* About modal */
 .about-backdrop { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
@@ -93,10 +78,6 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 .theme-light .terminal-header .btn { background: rgba(0,0,0,0.02); border: 1px solid var(--border); color: var(--text); }
 .theme-light .terminal-header .btn:hover { background: rgba(0,0,0,0.04); }
 
-/* Editor code background adjustments per theme */
-.editor-body pre { background: transparent; }
-.theme-light .editor-body pre { background: #f3f4f6; color: var(--text); }
-
 /* TabBar styles */
 .tabbar { display: flex; gap: 8px; padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.06); background: var(--panel); }
 
@@ -109,6 +90,12 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 .theme-light .token.operator { color: #374151 }
 .theme-light .token.constant { color: #b91c1c }
 .theme-light .token.selector { color: #7c3aed }
+
+/* Override Prism base color for light theme */
+.theme-light pre[class*="language-"],
+.theme-light code[class*="language-"] {
+	color: var(--text);
+}
 
 /* Remove top black header block when in light theme */
 .theme-light .editor-header { background: var(--panel); border-bottom: 1px solid var(--border); }
@@ -140,3 +127,16 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-san
 .log-entry { margin-bottom: 6px; }
 .log-meta { color: #94a3b8; }
 .log-level { color: #7c3aed; margin-left: 6px; }
+
+/* Dropdown used by TabBar; themed for light/dark */
+.dropdown {
+	min-width: 140px;
+	background: var(--panel);
+	color: var(--text);
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	padding: 6px;
+	z-index: 5000;
+}
+.dropdown .link { display: block; width: 100%; text-align: left; padding: 6px 8px; border-radius: 4px; }
+.dropdown .link:hover { background: rgba(15,20,30,0.03); }

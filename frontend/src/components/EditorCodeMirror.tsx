@@ -23,13 +23,30 @@ export default function EditorCodeMirror({ path, onSaved }: Props) {
         const cmMod = await import('@uiw/react-codemirror')
         const themeMod = await import('@codemirror/theme-one-dark')
         if (!mounted) return
+        const isLight = document.documentElement.classList.contains('theme-light')
         setCM(() => cmMod.default)
-        setTheme(() => themeMod.oneDark)
+        setTheme(() => isLight ? null : themeMod.oneDark)
       } catch (e) {
         console.warn('Failed to load CodeMirror:', e)
       }
     })()
     return () => { mounted = false }
+  }, [])
+
+  // update theme when document class changes
+  React.useEffect(() => {
+    const updateTheme = async () => {
+      const isLight = document.documentElement.classList.contains('theme-light')
+      if (isLight) {
+        setTheme(null)
+      } else {
+        const themeMod = await import('@codemirror/theme-one-dark')
+        setTheme(themeMod.oneDark)
+      }
+    }
+    const observer = new MutationObserver(updateTheme)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
   }, [])
 
   // load file content and probe
