@@ -42,3 +42,13 @@ import 'prismjs/components/prism-rust'
 - `frontend/src/format.ts` — human-friendly formatting utilities (filesize)
 
 If you want this document extended with screenshots or a small sequence diagram, tell me what level of detail you want.
+
+## Recent changes
+
+- Prefer backend `probe` for grammar detection and use `probe.ext` when available.
+- Show a friendly filetype label (via `aliasForExt`) next to the MIME in the editor header (e.g. `text/markdown (markdown)`).
+- After saving, the editor re-stats the file and calls `onMeta` so filesize updates immediately.
+- Added `data-grammar` attributes to the `<pre>` and `<textarea>`, and re-run Prism highlighting when grammar or content changes.
+- Added unique `id` and `name` attributes to the editor `textarea`.
+
+These changes are intended to improve accuracy of grammar selection and make the editor behavior more predictable.
