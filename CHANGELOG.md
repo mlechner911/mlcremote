@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 2025-12-28
+## [0.2.1] - 2025-12-29
 
 ### Added
 - Backend: REST file APIs (`/api/tree`, `/api/file`, `/api/stat`, `/api/filetype`).
@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Build fixes for Wails scaffold (updated to use `options.App` for wails v2 API).
+- Fixed light mode editor text color to be dark instead of light grey for better readability.
 
 
 ## 0.2.0 - 2025-12-28
