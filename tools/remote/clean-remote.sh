@@ -16,92 +16,90 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --port) PORT="$2"; shift 2;;
-    -h|--help) print_usage; exit 0;;
-    *) TARGET="$1"; shift; break;;
-  esac
-done
+    #!/usr/bin/env bash
+    set -euo pipefail
 
-if [[ -z "${TARGET:-}" ]]; then
-  echo "Missing target user@host" >&2; print_usage; exit 2
-fi
+    # Interactive remote cleanup helper (robust: pass PORT into remote bash and use quoted heredocs)
+    # Usage: clean-remote.sh [--port PORT] user@host
 
-echo "Connecting to $TARGET to inspect listeners on port $PORT..."
+    PORT=8443
+    print_usage(){
+      cat <<EOF
+    Usage: $0 [--port PORT] user@host
 
-# Run an inspection block on the remote
-ssh -t "$TARGET" bash -s <<REMOTE_INSPECT
-echo '=== ss -tnlp | grep PORT ==='
-ss -tnlp | grep -E ':${PORT}\b' || true
-echo
-echo '=== processes matching dev-server ==='
-ps aux | grep -E 'dev-server' || true
-echo
-echo '=== PIDs listening on port ${PORT} (extracted) ==='
-ss -tnlp | awk '/:${PORT}\b/ { for(i=1;i<=NF;i++) if (
-$i ~ /pid=/) { match($i, /pid=([0-9]+)/, m); if (m[1]) print m[1] } }' || true
-echo
-echo '=== end remote inspection ==='
-REMOTE_INSPECT
+    Interactive helper to inspect and optionally kill processes holding PORT on the remote.
+    EOF
+    }
 
-read -p "Do you want to attempt to kill dev-server processes listening on port ${PORT}? (y/N) " CONF
-if [[ ! "$CONF" =~ ^[Yy]$ ]]; then
-  echo "Aborting. No changes made."; exit 0
-fi
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --port) PORT="$2"; shift 2;;
+        -h|--help) print_usage; exit 0;;
+        *) TARGET="$1"; shift; break;;
+      esac
+    done
 
-read -p "Attempt kill with remote user privileges or use sudo? (type 'sudo' or press Enter to use user) " MODE
-if [[ "$MODE" = "sudo" ]]; then
-  echo "Killing with sudo on remote (may prompt for password)..."
-  ssh -t "$TARGET" bash -s <<'REMOTE_KILL_SUDO'
-PORT="${PORT}"
-pids=( $(ss -tnlp | awk "/:${PORT}\\b/ { for(i=1;i<=NF;i++) if ($i ~ /pid=/) { match($i, /pid=([0-9]+)/, m); if (m[1]) print m[1] } }") )
-if [ ${#pids[@]} -eq 0 ]; then
-  echo No pids
-  exit 0
-fi
-echo Killing: ${pids[*]}
-sudo kill -TERM ${pids[*]} || true
-sleep 1
-ss -tnlp | grep -E ":${PORT}\\b" || true
-REMOTE_KILL_SUDO
-else
-  echo "Killing as remote user (no sudo):"
-  ssh -t "$TARGET" bash -s <<'REMOTE_KILL'
-PORT="${PORT}"
-pids=( $(ss -tnlp | awk "/:${PORT}\\b/ { for(i=1;i<=NF;i++) if ($i ~ /pid=/) { match($i, /pid=([0-9]+)/, m); if (m[1]) print m[1] } }") )
-if [ ${#pids[@]} -eq 0 ]; then
-  echo No pids
-  exit 0
-fi
-echo Killing: ${pids[*]}
-pkill -f "dev-server --port ${PORT}" || kill -TERM ${pids[*]} || true
-sleep 1
-ss -tnlp | grep -E ":${PORT}\\b" || true
-REMOTE_KILL
-fi
+    if [[ -z "${TARGET:-}" ]]; then
+      echo "Missing target user@host" >&2; print_usage; exit 2
+    fi
 
-echo "Now restarting mlcremote.service (user service) on remote..."
-ssh -t "$TARGET" "systemctl --user daemon-reload; systemctl --user restart mlcremote.service || systemctl --user start mlcremote.service || true; systemctl --user status mlcremote.service --no-pager -l || true"
+    echo "Connecting to $TARGET to inspect listeners on port $PORT..."
 
-echo "Printing recent journal lines for mlcremote.service..."
-ssh "$TARGET" "journalctl --user -u mlcremote.service --no-pager -n 200 || true"
+    # Run an inspection block on the remote; export PORT into the remote bash so remote expands it
+    ssh -t "$TARGET" "PORT=${PORT} bash -s" <<'REMOTE_INSPECT'
+    echo '=== ss -tnlp | grep PORT ==='
+    ss -tnlp | grep -E ':${PORT}\b' || true
+    echo
+    echo '=== processes matching dev-server ==='
+    ps aux | grep -E 'dev-server' || true
+    echo
+    echo '=== PIDs listening on port ${PORT} (extracted) ==='
+    ss -tnlp | awk '/:${PORT}\b/ { for(i=1;i<=NF;i++) if ($i ~ /pid=/) { match($i, /pid=([0-9]+)/, m); if (m[1]) print m[1] } }' || true
+    echo
+    echo '=== end remote inspection ==='
+    REMOTE_INSPECT
 
-echo "Cleanup complete."
-#!/usr/bin/env bash
-set -euo pipefail
+    read -p "Do you want to attempt to kill dev-server processes listening on port ${PORT}? (y/N) " CONF
+    if [[ ! "$CONF" =~ ^[Yy]$ ]]; then
+      echo "Aborting. No changes made."; exit 0
+    fi
 
-# Interactive remote cleanup helper
-# Usage: clean-remote.sh [--port PORT] user@host
+    read -p "Attempt kill with remote user privileges or use sudo? (type 'sudo' or press Enter to use user) " MODE
+    if [[ "$MODE" = "sudo" ]]; then
+      echo "Killing with sudo on remote (may prompt for password)..."
+      ssh -t "$TARGET" "PORT=${PORT} bash -s" <<'REMOTE_KILL_SUDO'
+    pids=( $(ss -tnlp | awk '/:${PORT}\b/ { for(i=1;i<=NF;i++) if ($i ~ /pid=/) { match($i, /pid=([0-9]+)/, m); if (m[1]) print m[1] } }') )
+    if [ ${#pids[@]} -eq 0 ]; then
+      echo No pids
+      exit 0
+    fi
+    echo Killing: ${pids[*]}
+    sudo kill -TERM ${pids[*]} || true
+    sleep 1
+    ss -tnlp | grep -E ':${PORT}\b' || true
+    REMOTE_KILL_SUDO
+    else
+      echo "Killing as remote user (no sudo):"
+      ssh -t "$TARGET" "PORT=${PORT} bash -s" <<'REMOTE_KILL'
+    pids=( $(ss -tnlp | awk '/:${PORT}\b/ { for(i=1;i<=NF;i++) if ($i ~ /pid=/) { match($i, /pid=([0-9]+)/, m); if (m[1]) print m[1] } }') )
+    if [ ${#pids[@]} -eq 0 ]; then
+      echo No pids
+      exit 0
+    fi
+    echo Killing: ${pids[*]}
+    pkill -f "dev-server --port ${PORT}" || kill -TERM ${pids[*]} || true
+    sleep 1
+    ss -tnlp | grep -E ':${PORT}\b' || true
+    REMOTE_KILL
+    fi
 
-PORT=8443
-print_usage(){
-  cat <<EOF
-Usage: $0 [--port PORT] user@host
+    echo "Now restarting mlcremote.service (user service) on remote..."
+    ssh -t "$TARGET" "systemctl --user daemon-reload; systemctl --user restart mlcremote.service || systemctl --user start mlcremote.service || true; systemctl --user status mlcremote.service --no-pager -l || true"
 
-Interactive helper to inspect and optionally kill processes holding PORT on the remote.
-EOF
-}
+    echo "Printing recent journal lines for mlcremote.service..."
+    ssh "$TARGET" "journalctl --user -u mlcremote.service --no-pager -n 200 || true"
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
+    echo "Cleanup complete."
     --port) PORT="$2"; shift 2;;
     -h|--help) print_usage; exit 0;;
     *) TARGET="$1"; shift; break;;
