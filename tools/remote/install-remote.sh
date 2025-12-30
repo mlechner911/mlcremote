@@ -57,12 +57,17 @@ else
   echo "Installed binary to $BIN_DEST/$BASENAME"
 fi
 
-# Copy frontend
-if [ ! -d "$FRONTEND_SRC_DIR" ]; then
-  echo "Frontend build not found at $FRONTEND_SRC_DIR. Please build it first (make frontend)."
+# If the installer was pushed by a sync (push-and-install), the frontend
+# may already be present under ~/.mlcremote/frontend. Prefer that path.
+if [ -d "$DEST_DIR/frontend" ] && [ -n "$(ls -A "$DEST_DIR/frontend")" ]; then
+  echo "Using frontend already present at $DEST_DIR/frontend"
 else
-  rsync -a --delete "$FRONTEND_SRC_DIR/" "$FRONTEND_DEST/"
-  echo "Copied frontend to $FRONTEND_DEST"
+  if [ -d "$FRONTEND_SRC_DIR" ]; then
+    rsync -a --delete "$FRONTEND_SRC_DIR/" "$FRONTEND_DEST/"
+    echo "Copied frontend to $FRONTEND_DEST"
+  else
+    echo "Warning: frontend build not found at $FRONTEND_SRC_DIR and no frontend present at $FRONTEND_DEST. UI assets will be missing." >&2
+  fi
 fi
 
 # Write simple run wrapper
@@ -70,10 +75,7 @@ RUN_SH="$DEST_DIR/run-server.sh"
 cat > "$RUN_SH" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-DIR="
-"
-exec "
-$BIN_DEST/$BASENAME" --port $PORT --root "$HOME" --static-dir "$FRONTEND_DEST"
+exec "$BIN_DEST/$BASENAME" --port $PORT --root "$HOME" --static-dir "$FRONTEND_DEST"
 EOF
 chmod +x "$RUN_SH"
 
