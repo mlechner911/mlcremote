@@ -1,4 +1,5 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash -x
+echo "Running probe-remote.sh with args: $*"
 set -euo pipefail
 
 # probe-remote.sh
@@ -118,9 +119,17 @@ if $JSON; then
   if run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" >/dev/null 2>&1; then
     run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10"
   else
-    # fall back to interactive so user can enter password if needed
-    echo "Non-interactive SSH failed; retrying interactively (you may be prompted for password)" >&2
-    run_ssh_capture "-o ConnectTimeout=10"
+    # fall back: run a plain SSH command without feeding the probe script to
+    # allow the user to accept the host key or enter a password interactively.
+    echo "Non-interactive SSH failed; opening an interactive SSH so you can accept host key / enter password" >&2
+    echo "If prompted, accept the host key (yes) and/or enter your password. After login, the probe will run." >&2
+    if ssh -o ConnectTimeout=30 "$REMOTE" 'echo SSH_OK' ; then
+      # after interactive login/acceptance, run the probe non-interactively
+      run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10"
+    else
+      echo "Interactive SSH attempt failed; aborting probe." >&2
+      exit 1
+    fi
   fi
 else
   echo "Probing $REMOTE..."
@@ -128,9 +137,17 @@ else
   if run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" | jq 2>/dev/null; then
     run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" | jq
   else
-    echo "Non-interactive SSH failed; retrying interactively (you may be prompted for password)" >&2
-    if ! run_ssh_capture "-o ConnectTimeout=10" | jq; then
-      echo "Interactive probe failed too. See SSH stderr above for details." >&2
+    echo "Non-interactive SSH failed; opening an interactive SSH so you can accept host key / enter password" >&2
+    echo "If prompted, accept the host key (yes) and/or enter your password. After login, the probe will run." >&2
+    if ssh -o ConnectTimeout=30 "$REMOTE" 'echo SSH_OK' ; then
+      if run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" | jq; then
+        run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" | jq
+      else
+        echo "Probe failed after interactive login. See SSH stderr above." >&2
+        exit 1
+      fi
+    else
+      echo "Interactive SSH attempt failed; aborting probe." >&2
       exit 1
     fi
   fi
