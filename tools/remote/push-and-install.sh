@@ -14,10 +14,12 @@ shift
 SERVICE=false
 PORT=8443
 OVERWRITE=false
+KILL_OLD=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --service) SERVICE=true; shift ;;
     --overwrite) OVERWRITE=true; shift ;;
+    --kill-old) KILL_OLD=true; shift ;;
     --port) PORT="$2"; shift 2 ;;
     -h|--help) echo "Usage: $0 user@host [--service] [--port PORT]"; exit 0 ;;
     *) echo "Unknown arg: $1"; exit 1 ;;
@@ -39,6 +41,38 @@ if ssh "$REMOTE" 'systemctl --user is-active --quiet mlcremote.service >/dev/nul
     else
       echo "Stopping remote mlcremote.service (overwrite requested)"
       ssh "$REMOTE" 'systemctl --user stop mlcremote.service || true'
+    fi
+  fi
+fi
+
+# If kill-old is requested, list remote processes holding the port and optionally kill them
+if [ "$KILL_OLD" = true ] && [ "$OVERWRITE" = true ]; then
+  echo "Checking for remote processes listening on port $PORT..."
+  # get PIDs of processes listening on the port (local remote command)
+  PIDS=$(ssh "$REMOTE" "ss -tnlp | awk '/:${PORT}\\b/ { for(i=1;i<=NF;i++) if (\$i ~ /pid=/) { match(\$i, /pid=([0-9]+)/, m); if (m[1]) print m[1] } }' || true")
+  if [ -z "${PIDS}" ]; then
+    echo "No processes found listening on port $PORT on remote."
+  else
+    echo "Remote PIDs listening on port $PORT:"
+    echo "$PIDS"
+    read -p "Kill these processes on remote $REMOTE? (y/N) " CONF
+    if [[ "$CONF" =~ ^[Yy]$ ]]; then
+      echo "Killing remote dev-server processes listening on port $PORT..."
+      # attempt a targeted kill using pkill by matching the binary and port
+      ssh "$REMOTE" "pkill -f 'dev-server --port ${PORT}' || true"
+      # wait a bit and verify
+      sleep 1
+      STILL=$(ssh "$REMOTE" "ss -tnlp | grep -E ':${PORT}\\b' || true")
+      if [ -n "$STILL" ]; then
+        echo "Warning: some processes still hold port $PORT after kill attempt:";
+        echo "$STILL"
+        echo "You may need to manually inspect or escalate privileges on the remote host."
+      else
+        echo "Port $PORT freed on remote."
+      fi
+    else
+      echo "User declined to kill remote processes. Aborting to avoid disrupting running services." >&2
+      exit 1
     fi
   fi
 fi
