@@ -24,9 +24,11 @@ fi
 REMOTE="$1"
 shift
 JSON=false
+DEBUG=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --json) JSON=true; shift ;;
+    --debug) DEBUG=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown arg: $1"; usage; exit 1 ;;
   esac
@@ -87,9 +89,49 @@ cat <<JSON
 JSON
 EOF
 
+run_ssh() {
+  local opts="$1"
+  ssh $opts "$REMOTE" "bash -s" <<< "$RSCRIPT"
+}
+
+# Run ssh and capture stdout/stderr into variables
+run_ssh_capture() {
+  local opts="$1"
+  local out
+  local err
+  out=$(mktemp)
+  err=$(mktemp)
+  ssh $opts "$REMOTE" "bash -s" <<< "$RSCRIPT" >"$out" 2>"$err"
+  local rc=$?
+  cat "$out"
+  if [ $rc -ne 0 ] || $DEBUG; then
+    echo "--- SSH STDERR ---" >&2
+    sed -n '1,200p' "$err" >&2
+  fi
+  rm -f "$out" "$err"
+  return $rc
+}
+
 if $JSON; then
-  ssh -o BatchMode=yes -o ConnectTimeout=10 "$REMOTE" "bash -s" <<< "$RSCRIPT"
+  # Try non-interactive first
+  # Try non-interactive first, capture output to detect failure
+  if run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" >/dev/null 2>&1; then
+    run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10"
+  else
+    # fall back to interactive so user can enter password if needed
+    echo "Non-interactive SSH failed; retrying interactively (you may be prompted for password)" >&2
+    run_ssh_capture "-o ConnectTimeout=10"
+  fi
 else
   echo "Probing $REMOTE..."
-  ssh -o BatchMode=yes -o ConnectTimeout=10 "$REMOTE" "bash -s" <<< "$RSCRIPT" | jq || true
+  # Try non-interactive first
+  if run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" | jq 2>/dev/null; then
+    run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" | jq
+  else
+    echo "Non-interactive SSH failed; retrying interactively (you may be prompted for password)" >&2
+    if ! run_ssh_capture "-o ConnectTimeout=10" | jq; then
+      echo "Interactive probe failed too. See SSH stderr above for details." >&2
+      exit 1
+    fi
+  fi
 fi
