@@ -33,10 +33,17 @@ backend:
 	cd $(BACKEND_DIR) && go build -ldflags "-s -w" -o ../$(BIN_DIR)/dev-server ./cmd/dev-server
 	@echo "Built $(BIN_DIR)/dev-server"
 
-frontend:
+frontend: icons
 	cd $(FRONTEND_DIR) && npm install
 	cd $(FRONTEND_DIR) && npm run build
 	@echo "Built $(STATIC_DIR)"
+
+.PHONY: icons-gen
+icons-gen:
+	@mkdir -p $(BIN_DIR)
+	cd cmd/icon-gen && go build -o ../../$(BIN_DIR)/icon-gen .
+	@echo "Built $(BIN_DIR)/icon-gen"
+	@./$(BIN_DIR)/icon-gen --manifest icons/icons.yml --raw icons/raw --out frontend/src/generated
 
 run: backend
 	@echo "Starting backend on 127.0.0.1:$(PORT) serving $(STATIC_DIR)"
@@ -98,3 +105,7 @@ clean:
 	@rm -f $(BIN_DIR)/dev-server
 	@rm -rf $(STATIC_DIR)
 	@echo "Cleaned build artifacts"
+
+.PHONY: icons
+icons:
+	@./scripts/generate-icons.sh

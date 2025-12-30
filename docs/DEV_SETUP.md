@@ -69,6 +69,3 @@ ssh -L 8443:localhost:8443 user@remote
 ```bash
 make backend && cd frontend && npm run build
 ```
-
----
-If you want, I can add a `Makefile` target that starts both the backend and frontend in parallel for local dev.

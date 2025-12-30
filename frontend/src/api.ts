@@ -15,6 +15,7 @@ export type Health = {
     go_sys_bytes?: number;
 
     server_time?: string;
+    timezone?: string;
 
 }
 

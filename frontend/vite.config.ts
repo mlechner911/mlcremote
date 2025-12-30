@@ -1,3 +1,4 @@
+/** was: @type {import('vite').UserConfig} */
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -31,7 +32,7 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
         output: {
-          manualChunks(id) {
+          manualChunks(id: string) {
             if (!id) return
             if (!id.includes('node_modules')) return
             // group specific large packages into their own chunk

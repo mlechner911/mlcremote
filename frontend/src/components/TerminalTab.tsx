@@ -46,7 +46,7 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
         // send initial size
         try {
           const dims = { type: 'resize', cols: (term as any).cols || 80, rows: (term as any).rows || 24 }
-          ws.send(JSON.stringify(dims))
+          if (ws) ws.send(JSON.stringify(dims))
         } catch (_) {}
       }
       ws.onmessage = (ev) => {

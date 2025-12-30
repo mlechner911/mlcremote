@@ -217,6 +217,7 @@ func StatHandler(root string) http.HandlerFunc {
 			"size":    fi.Size(),
 			"mode":    fi.Mode().String(),
 			"modTime": fi.ModTime(),
+			"absPath": target,
 			"mime":    mime,
 		}
 		w.Header().Set("Content-Type", "application/json")

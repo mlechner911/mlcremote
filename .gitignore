@@ -1,3 +1,4 @@
+
 frontend/node_modules/
 bin/*
 dist/
@@ -22,3 +23,14 @@ desktop/lightdev-desktop
 .DS_Store
 Thumbs.db
 /desktop/build/
+
+# Generated icon outputs (sprite + TS wrapper)
+frontend/src/generated/
+
+# Icon generator binary (if built) and other tools
+bin/icon-gen
+cmd/icon-gen/bin/
+
+# Go build artifacts and other executables
+*.out
+*.test

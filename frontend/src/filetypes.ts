@@ -4,6 +4,7 @@
  */
 const textExtensions = new Set([
   'txt','md','markdown','yaml','yml','json','js','ts','jsx','tsx','html','css','env','ini','cfg','conf','gitignore','dockerfile'
+  ,'sql'
 ])
 /**
  * Known binary file extensions. These are treated as non-text/binary and will
