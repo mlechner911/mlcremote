@@ -1,6 +1,82 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Interactive remote cleanup helper (simple and robust)
+# Usage: clean-remote.sh [--port PORT] user@host
+
+PORT=8443
+print_usage(){
+  cat <<EOF
+Usage: $0 [--port PORT] user@host
+
+Interactive helper to inspect and optionally kill processes holding PORT on the remote.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --port) PORT="$2"; shift 2;;
+    -h|--help) print_usage; exit 0;;
+    *) TARGET="$1"; shift; break;;
+  esac
+done
+
+if [[ -z "${TARGET:-}" ]]; then
+  echo "Missing target user@host" >&2; print_usage; exit 2
+fi
+
+echo "Inspecting remote ($TARGET) for listeners on port ${PORT}..."
+
+echo "--- ss -tnlp | grep PORT ---"
+ssh "$TARGET" "ss -tnlp | grep -E ':${PORT}\\b' || true"
+
+echo "--- processes matching dev-server ---"
+ssh "$TARGET" "ps aux | grep -E 'dev-server' || true"
+
+echo "--- PIDs listening on port ${PORT} ---"
+PIDS=$(ssh "$TARGET" "ss -tnlp | awk '/:${PORT}\\b/ { for(i=1;i<=NF;i++) if (\$i ~ /pid=/) { match(\$i, /pid=([0-9]+)/, m); if (m[1]) print m[1] } }' || true")
+if [[ -z "$PIDS" ]]; then
+  echo "No PIDs found listening on port ${PORT}"
+else
+  echo "$PIDS"
+fi
+
+read -p "Attempt to kill found PIDs on remote? (y/N) " CONF
+if [[ ! "$CONF" =~ ^[Yy]$ ]]; then
+  echo "Aborting without killing."; exit 0
+fi
+
+read -p "Kill using sudo on remote if needed? (type 'sudo' to enable, Enter to kill as remote user) " MODE
+if [[ "$MODE" = "sudo" ]]; then
+  echo "Killing remotely with sudo (may prompt for password)..."
+  if [[ -n "$PIDS" ]]; then
+    ssh -t "$TARGET" "sudo kill -TERM $PIDS || true"
+  else
+    echo "No PIDs to kill."
+  fi
+else
+  echo "Killing as remote user (no sudo)..."
+  if [[ -n "$PIDS" ]]; then
+    ssh -t "$TARGET" "pkill -f 'dev-server --port ${PORT}' || kill -TERM $PIDS || true"
+  else
+    echo "No PIDs to kill."
+  fi
+fi
+
+echo "Waiting 1s and verifying port status..."
+sleep 1
+ssh "$TARGET" "ss -tnlp | grep -E ':${PORT}\\b' || true"
+
+echo "Restarting mlcremote.service (user service) on remote..."
+ssh -t "$TARGET" "systemctl --user daemon-reload; systemctl --user restart mlcremote.service || systemctl --user start mlcremote.service || true; systemctl --user status mlcremote.service --no-pager -l || true"
+
+echo "Recent journal lines for mlcremote.service:"
+ssh "$TARGET" "journalctl --user -u mlcremote.service --no-pager -n 200 || true"
+
+echo "Cleanup complete."
+#!/usr/bin/env bash
+set -euo pipefail
+
 # Interactive remote cleanup helper (robust heredoc-based remote commands)
 # Usage: clean-remote.sh [--port PORT] user@host
 
