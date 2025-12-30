@@ -75,6 +75,8 @@ RUN_SH="$DEST_DIR/run-server.sh"
 cat > "$RUN_SH" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
+# ensure we start in the user's home so any relative paths the server relies on work
+cd "$HOME"
 exec "$BIN_DEST/$BASENAME" --port $PORT --root "$HOME" --static-dir "$FRONTEND_DEST"
 EOF
 chmod +x "$RUN_SH"
@@ -84,6 +86,7 @@ if $SERVICE; then
   USER_SERVICE_DIR="$HOME/.config/systemd/user"
   mkdir -p "$USER_SERVICE_DIR"
   SERVICE_FILE="$USER_SERVICE_DIR/mlcremote.service"
+[ -f "$SERVICE_FILE" ] && rm -f "$SERVICE_FILE"
   cat > "$SERVICE_FILE" <<EOF
 [Unit]
 Description=mlcremote user service
@@ -92,6 +95,7 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=$RUN_SH
+WorkingDirectory=$HOME
 Restart=on-failure
 
 [Install]
