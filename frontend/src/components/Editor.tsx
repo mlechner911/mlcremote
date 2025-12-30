@@ -1,5 +1,5 @@
 import React from 'react'
-import { readFile, saveFile, deleteFile, listTree } from '../api'
+import { readFile, saveFile, deleteFile, listTree, statPath } from '../api'
 const PdfPreview = React.lazy(() => import('./PdfPreview'))
 import { formatBytes } from '../bytes'
 import { isEditable, isProbablyText, extFromPath, probeFileType } from '../filetypes'
@@ -23,6 +23,7 @@ import 'prismjs/components/prism-python'
 import 'prismjs/components/prism-xml-doc'
 import 'prismjs/components/prism-sass'
 import 'prismjs/components/prism-css'
+import 'prismjs/components/prism-sql'
 
 // @ts-ignore: allow side-effect CSS import without type declarations
 import '../editor.css'
@@ -91,7 +92,10 @@ type Props = {
   onSaved?: () => void
   settings?: { allowDelete?: boolean }
   reloadTrigger?: number
-  onUnsavedChange?: (hasUnsaved: boolean) => void
+  // onUnsavedChange receives the editor `path` and whether it has
+  // unsaved changes. Parents should pass a stable callback so this
+  // component does not need to create per-render closures.
+  onUnsavedChange?: (path: string, hasUnsaved: boolean) => void
   onMeta?: (m: any) => void
 }
 
@@ -116,7 +120,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     setStatus('')
     try {
       // fetch metadata
-      const m = await import('../api').then(api => api.statPath(path))
+      const m = await statPath(path)
       setMeta(m)
       if (typeof onMeta === 'function') onMeta(m)
 
@@ -142,11 +146,18 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
         setLoading(false)
         return
       }
+      // pdf preview also special case
+        if (pt.mime && pt.mime === 'application/pdf') {
+            setContent('')
+            setStatus('')
+              setLoading(false)
+        return
+        }
 
       // If backend says it's not text (and not an image), show binary message
       if (!pt.isText) {
         setContent('')
-        setStatus('Binary or unsupported file type — use Download')
+        setStatus('no preview available — unsupported file type, use Download')
         setLoading(false)
         return
       }
@@ -276,13 +287,13 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     const hasUnsaved = content !== origContent
     if (prevUnsavedRef.current === null || prevUnsavedRef.current !== hasUnsaved) {
       try {
-        onUnsavedChange(hasUnsaved)
+        onUnsavedChange(path, hasUnsaved)
       } catch (e) {
         console.warn('onUnsavedChange threw', e)
       }
       prevUnsavedRef.current = hasUnsaved
     }
-  }, [content, origContent, onUnsavedChange])
+  }, [content, origContent, onUnsavedChange, path])
 // save action saves the file
   const onSave = async () => {
     if (!path) return
@@ -294,7 +305,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       onSaved && onSaved()
       try {
         // re-stat the file so parent can update size/metadata
-        const m = await import('../api').then(api => api.statPath(path))
+        const m = await statPath(path)
         setMeta(m)
         if (typeof onMeta === 'function') onMeta(m)
       } catch (e) {
@@ -304,22 +315,26 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       setStatus('Save failed')
     }
   }
-
+/*
+  import('../format').catch(() => {}) // ensure type info available to bundler
+  // NOTE: `formatByExt` is imported statically to avoid Vite chunking warnings.
+  // The actual formatting implementation is lightweight now (passthrough), so
+  // the static import cost is acceptable.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { formatByExt } = require('../format') as typeof import('../format')
   const onFormat = async () => {
     if (!path) return
     const ext = extFromPath(path)
     setStatus('Formatting...')
     try {
-      // dynamic import to keep bundle small
-      const mod = await import('../format')
-      const formatted = mod.formatByExt(ext, content)
+      const formatted = formatByExt(ext, content)
       setContent(formatted)
       setStatus('Formatted')
     } catch (e) {
       setStatus('Format failed')
     }
   }
-
+*/
   const onDelete = async () => {
     if (!path) return
     // confirm with user
@@ -348,7 +363,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       if (!pt.isText) {
         setContent('')
         if (!pt.mime || !pt.mime.startsWith('image/')) {
-          setStatus('Binary or unsupported file type — use Download')
+          setStatus('?Binary or unsupported file type — use Download'+pt.mime)
         } else {
           setStatus('')
         }
@@ -368,7 +383,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       <div className="editor-header">
         <strong>Editor</strong>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span className="muted">{path || 'Select a file'}</span>
+          <span className="muted">{(meta && meta.absPath) ? meta.absPath : (path || 'Select a file')}</span>
           {meta && (
             <span className="muted" style={{ fontSize: 11 }}>
               {meta.isDir ? 'directory' : ((meta.mime && meta.mime !== 'text/plain') ? meta.mime : (probe && probe.mime ? probe.mime : meta.mime))}
@@ -440,7 +455,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
           </div>
         ) : (
           <div>
-            <div className="muted">{status || 'Binary or unsupported file type'}</div>
+
               {probe && probe.mime && probe.mime === 'application/pdf' ? (
                 <React.Suspense fallback={<div className="muted">Loading PDF preview…</div>}>
                   <PdfPreview path={path} />
@@ -460,7 +475,9 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
               </div>
             ) : (
               path && (
+
                 <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+
                   <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
                 </div>
               )

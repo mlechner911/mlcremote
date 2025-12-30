@@ -2,13 +2,18 @@ import React from 'react'
 import type { Health } from './api'
 import { getHealth, statPath } from './api'
 import FileExplorer from './components/FileExplorer'
+import SettingsPopup from './components/SettingsPopup'
+import { Icon } from './generated/icons'
+import { getIconForShell, getIconForDir, getIcon } from './generated/icon-helpers'
 import Editor from './components/Editor'
-import TerminalTab from './components/TerminalTab'
+const TerminalTab = React.lazy(() => import('./components/TerminalTab'))
 // const TabBarComponent = React.lazy(() => import('./components/TabBar'))
 
 import  TabBarComponent   from './components/TabBar'
 import LogOverlay from './components/LogOverlay'
 import { formatBytes } from './bytes'
+import { captureElementToPng } from './utils/capture'
+import { defaultStore, boolSerializer, strSerializer } from './utils/storage'
 
 /**
  * Top-level application component. Manages UI state for the file explorer,
@@ -20,9 +25,14 @@ export default function App() {
   const [health, setHealth] = React.useState<null | Health>(null)
   const [lastHealthAt, setLastHealthAt] = React.useState<number | null>(null)
   const [selectedPath, setSelectedPath] = React.useState<string>('')
+  const [explorerDir, setExplorerDir] = React.useState<string>('')
+  const handleExplorerDirChange = React.useCallback((d: string) => setExplorerDir(d), [])
+  const [focusRequest, setFocusRequest] = React.useState<number>(0)
+  const [logoVisible, setLogoVisible] = React.useState<boolean>(true)
   const [openFiles, setOpenFiles] = React.useState<string[]>([])
   const [activeFile, setActiveFile] = React.useState<string>('')
-  const [autoOpen, setAutoOpen] = React.useState<boolean>(true)
+  const [autoOpen, setAutoOpenState] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('autoOpen', boolSerializer, true))
+  const setAutoOpen = (v: boolean) => { setAutoOpenState(v); defaultStore.set('autoOpen', v, boolSerializer) }
   const maxTabs = 8
   // openFile ensures we don't exceed maxTabs by closing the oldest when necessary
   /**
@@ -46,18 +56,32 @@ export default function App() {
     })
   }
   const [shellCwds, setShellCwds] = React.useState<Record<string,string>>({})
-  const [showHidden, setShowHidden] = React.useState<boolean>(false)
-  const [showLogs, setShowLogs] = React.useState<boolean>(false)
+  const [showHidden, setShowHiddenState] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('showHidden', boolSerializer, false))
+  const setShowHidden = (v: boolean) => { setShowHiddenState(v); defaultStore.set('showHidden', v, boolSerializer) }
+  const [canChangeRoot, setCanChangeRoot] = React.useState<boolean>(false)
+  const [showLogs, setShowLogs] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('showLogs', boolSerializer, false))
   const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
+  const [settingsOpen, setSettingsOpen] = React.useState<boolean>(false)
+  const [hideServerName, setHideServerName] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('hideServerName', boolSerializer, false))
+  const [hideMemoryUsage, setHideMemoryUsage] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('hideMemoryUsage', boolSerializer, false))
   const [serverInfoOpen, setServerInfoOpen] = React.useState<boolean>(false)
   const [settings, setSettings] = React.useState<{ allowDelete: boolean; defaultShell: string } | null>(null)
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
-  const [theme, setTheme] = React.useState<'dark'|'light'>(() => (localStorage.getItem('theme') as 'dark'|'light') || 'dark')
+  const [theme, setTheme] = React.useState<'dark'|'light'>(() => defaultStore.getOrDefault<'dark'|'light'>('theme', strSerializer as any, 'dark'))
   const [now, setNow] = React.useState<Date>(new Date())
   const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine)
   const [reloadTriggers, setReloadTriggers] = React.useState<Record<string, number>>({})
   const [unsavedChanges, setUnsavedChanges] = React.useState<Record<string, boolean>>({})
   const [fileMetas, setFileMetas] = React.useState<Record<string, any>>({})
+
+  // Stable handler for child editors to report unsaved status. Using
+  // `useCallback` keeps the reference stable so we can pass the same
+  // function to multiple `Editor` instances without recreating it on
+  // every render (avoids React warnings about changing callback
+  // references).
+  const handleUnsavedChange = React.useCallback((path: string, hasUnsaved: boolean) => {
+    setUnsavedChanges(changes => ({ ...changes, [path]: hasUnsaved }))
+  }, [])
 
   // function to check health and update status immediately
   const checkHealthStatus = React.useCallback(async () => {
@@ -100,8 +124,12 @@ export default function App() {
   React.useEffect(() => {
     fetch('/api/settings')
       .then(r => r.json())
-      .then(j => setSettings(j))
+      .then(j => {
+        setSettings(j)
+        if (j && typeof j.allowChangeRoot !== 'undefined') setCanChangeRoot(!!j.allowChangeRoot)
+      })
       .catch(() => setSettings({ allowDelete: false, defaultShell: 'bash' }))
+    // load persisted prefs handled by LocalStore initializers
   }, [])
 
   // apply theme whenever it changes
@@ -139,22 +167,28 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>MLCRemote</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <img src="/logo.png" alt="MLCRemote logo" style={{ height: 28, display: 'block' }} onLoad={() => setLogoVisible(true)} onError={() => setLogoVisible(false)} />
+          {!logoVisible && <h1 style={{ margin: 0 }}>MLCRemote</h1>}
+        </div>
         <div className="status">
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 10, height: 10, borderRadius: 6, background: health && health.host ? '#10b981' : (isOnline ? '#f59e0b' : '#ef4444'), display: 'inline-block' }} />
-            <span className={(health ? 'badge badge-ok' : (isOnline ? 'badge badge-error' : 'badge badge-error'))}>
-              {health ? `${health.status}@${health.version}` : (isOnline ? 'connecting...' : 'offline')}
-            </span>
+            { !isOnline && (<span className={(health ? 'badge badge-ok' : (isOnline ? 'badge badge-error' : 'badge badge-error'))}>
+              {isOnline ? '' /*'online'*/ : 'offline'}
+                        </span>
+            )}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <button className="link" style={{ marginLeft: 8, fontSize: 12, padding: 0 }} onClick={() => setAboutOpen(true)}>{health && health.host ? health.host : (isOnline ? 'connecting...' : 'browser offline')}</button>
+              {!hideServerName && (
+                <button className="link icon-btn" style={{ marginLeft: 8, fontSize: 12, padding: 0 }} onClick={() => setAboutOpen(true)}>{health && health.host ? health.host : (isOnline ? 'connecting...' : 'browser offline')}</button>
+              )}
               {health && health.server_time && (
-                <button className="link" style={{ marginLeft: 0, fontSize: 12, padding: '0 6px' }} onClick={() => setServerInfoOpen(true)}>i</button>
+                null
               )}
             </div>
           </span>
           {/* memory gauge */}
-          {health && health.sys_mem_total_bytes ? (
+          {!hideMemoryUsage && health && health.sys_mem_total_bytes ? (
             (() => {
               const total = health.sys_mem_total_bytes || 1
               const free = health.sys_mem_free_bytes || 0
@@ -162,8 +196,8 @@ export default function App() {
               const pct = Math.round((used / total) * 100)
               return (
                 <div style={{ marginLeft: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 120, height: 10, background: 'rgba(255,255,255,0.06)', borderRadius: 6 }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: pct > 80 ? '#e11d48' : '#10b981', borderRadius: 6 }} />
+                  <div style={{ width: 120, height: 10, background: 'rgba(255,255,255,0.06)', borderRadius: 6, border: '1px solid rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: pct > 80 ? '#e11d48' : '#10b981', borderRadius: 6, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }} />
                   </div>
                   <div className="muted" style={{ fontSize: 12 }} title={`Memory usage: ${formatBytes(used)} / ${formatBytes(total)} (${pct}%)`}>{pct}%</div>
                 </div>
@@ -172,8 +206,8 @@ export default function App() {
           ) : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div className="muted" style={{ fontSize: 12 }}>{new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', timeZoneName: 'short' }).format(now)}</div>
-            <div className="muted" style={{ fontSize: 12 }}>cwd: {selectedPath || '/'}</div>
-            <button className="link" onClick={async () => {
+            {/* cwd display removed (visible in Files sidebar) */}
+            <button className="link icon-btn" onClick={async () => {
               // determine cwd: prefer selectedPath; if none, fall back to active file's directory
               let cwd = selectedPath || ''
               try {
@@ -206,29 +240,59 @@ export default function App() {
                 // ignore stat errors and fall back to selected/derived path
               }
               const shellName = `shell-${Date.now()}`
+              // normalize: ensure stored cwd is a directory (if it looks like a file, use parent)
+              let norm = cwd || ''
+              if (norm && norm.split('/').pop()?.includes('.')) {
+                const parts = norm.split('/').filter(Boolean)
+                parts.pop()
+                norm = parts.length ? `/${parts.join('/')}` : '/'
+              }
+              setShellCwds(s => ({ ...s, [shellName]: norm }))
               openFile(shellName)
-              setShellCwds(s => ({ ...s, [shellName]: cwd || '' }))
-            }}>New Shell</button>
+            }} title="Open shell" aria-label="Open shell"><Icon name={getIcon('terminal')} title="Open shell" size={16} /></button>
           </div>
-          <label style={{ marginLeft: 8, fontSize: 12 }} className="muted"><input type="checkbox" checked={autoOpen} onChange={e => setAutoOpen(e.target.checked)} /> Auto open</label>
+          {/* Settings moved to popup (icon at the right). */}
           <button className="link icon-btn" aria-label="Toggle theme" onClick={() => {
             const next = theme === 'dark' ? 'light' : 'dark'
             setTheme(next)
-            localStorage.setItem('theme', next)
+            defaultStore.set('theme', next, strSerializer as any)
             if (next === 'light') document.documentElement.classList.add('theme-light')
             else document.documentElement.classList.remove('theme-light')
           }}>
-            {theme === 'dark' ? '🌙' : '☀️'}
+            {theme === 'dark' ? <Icon name={getIcon('moon')} title="Dark theme" size={16} /> : <Icon name={getIcon('sun')} title="Light theme" size={16} />}
           </button>
-          <button className="link icon-btn" aria-label="Toggle logs" onClick={() => setShowLogs(s => !s)}>
-            {showLogs ? '👁️' : '🙈'}
-          </button>
-          <button className="link" onClick={() => setAboutOpen(true)}>About</button>
+          {/* Logs toggle moved into settings popup */}
+            <button className="link icon-btn" title="About" aria-label="About" onClick={() => setAboutOpen(true)}><Icon name={getIcon('info')} title="About" size={16} /></button>
+            <button className="link icon-btn " title="Screenshot" aria-label="Screenshot" onClick={async () => {
+              const root = document.querySelector('.app') as HTMLElement | null
+              if (!root) return
+              try {
+                await captureElementToPng(root, 'mlcremote-screenshot.png')
+              } catch (e) {
+                console.error('Screenshot failed', e)
+              }
+            }}><Icon name={getIcon('screenshot')} title="Screenshot" size={16} /></button>
+            <button className="link icon-btn" aria-label="Open settings" title="Settings" onClick={() => setSettingsOpen(s => !s)}><Icon name={getIcon('settings')} title="Settings" size={16} /></button>
         </div>
+          {settingsOpen && (
+            <SettingsPopup
+              autoOpen={autoOpen}
+              showHidden={showHidden}
+              onToggleAutoOpen={(v) => setAutoOpen(v)}
+              onToggleShowHidden={(v) => setShowHidden(v)}
+              showLogs={showLogs}
+              onToggleLogs={(v) => { setShowLogs(v); defaultStore.set('showLogs', v, boolSerializer) }}
+              hideServerName={hideServerName}
+              onToggleHideServerName={(v) => { setHideServerName(v); defaultStore.set('hideServerName', v, boolSerializer) }}
+              hideMemoryUsage={hideMemoryUsage}
+              onToggleHideMemoryUsage={(v) => { setHideMemoryUsage(v); defaultStore.set('hideMemoryUsage', v, boolSerializer) }}
+              onClose={() => setSettingsOpen(false)}
+            />
+          )}
       </header>
       <div className="app-body" style={{ alignItems: 'stretch' }}>
         <aside className="sidebar" style={{ width: sidebarWidth }}>
-          <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} onSelect={(p, isDir) => {
+          <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} onSelect={(p, isDir) => {
             setSelectedPath(p)
             if (isDir) {
               // do not open a persistent tab for directories; just navigate
@@ -254,7 +318,34 @@ export default function App() {
             setSelectedPath(p)
             // check health status since backend interaction succeeded
             checkHealthStatus()
-          }} onBackendActive={checkHealthStatus} />
+          }} onBackendActive={checkHealthStatus} onChangeRoot={async () => {
+            // Prompt-only flow: we cannot browse remote server; ask for a path and validate it via the server
+            if (!canChangeRoot) {
+              // eslint-disable-next-line no-alert
+              alert('Changing root is not permitted by the server settings')
+              return
+            }
+            // eslint-disable-next-line no-alert
+            const p = window.prompt('Enter the server directory path to use as new root (e.g. /home/user/project):', selectedPath || '/')
+            if (!p) return
+            const chosen = p.trim()
+            try {
+              const st = await statPath(chosen)
+              if (!st.isDir) {
+                // eslint-disable-next-line no-alert
+                alert('Selected path is not a directory')
+                return
+              }
+              // set as selected path and persist
+              setSelectedPath(chosen)
+              try { defaultStore.set('lastRoot', chosen, strSerializer) } catch {}
+              // trigger a reload of explorer by forcing a small setting write (FileExplorer will re-read)
+              try { const cur = defaultStore.getOrDefault('showHidden', boolSerializer, false); defaultStore.set('showHidden', cur, boolSerializer) } catch {}
+            } catch (e:any) {
+              // eslint-disable-next-line no-alert
+              alert('Cannot access selected path: ' + (e?.message || e))
+            }
+          }} />
         </aside>
         <div className="resizer" onMouseDown={(e) => {
           const startX = e.clientX
@@ -285,20 +376,48 @@ export default function App() {
                     for (const f of openFiles) {
                       if (f.startsWith('shell-')) {
                         const cwd = shellCwds[f] || ''
-                        titles[f] = cwd || f
+                        // show basename of cwd (or / if root) for shell tabs
+                        const parts = (cwd || '/').split('/').filter(Boolean)
+                        let name = '/'
+                        if (parts.length) {
+                          const last = parts[parts.length - 1]
+                          // heuristic: if the last segment looks like a filename (contains a dot), use the parent directory
+                          if (last.includes('.') && parts.length > 1) {
+                            name = parts[parts.length - 2]
+                          } else {
+                            name = last
+                          }
+                        }
+                        titles[f] = name
                       } else {
                         const baseName = f.split('/').pop() || f
                         titles[f] = unsavedChanges[f] ? `*${baseName}` : baseName
                       }
                     }
                     const types: Record<string,'file'|'dir'|'shell'> = {}
+                    const fullPaths: Record<string,string> = {}
                     for (const f of openFiles) {
-                      if (f.startsWith('shell-')) types[f] = 'shell'
-                      else types[f] = 'file'
+                      if (f.startsWith('shell-')) {
+                        types[f] = 'shell'
+                        fullPaths[f] = shellCwds[f] || '/'
+                      } else {
+                        types[f] = 'file'
+                        fullPaths[f] = f
+                      }
                     }
 
                     return (
-                      <TabBarComponent openFiles={openFiles} active={activeFile} titles={titles} types={types} onActivate={(p) => {
+                      <TabBarComponent openFiles={openFiles} active={activeFile} titles={titles} fullPaths={fullPaths} types={types} onActivate={(p) => {
+                        // ensure explorer shows this file's directory
+                        if (p && !p.startsWith('shell-')) {
+                          const parts = p.split('/').filter(Boolean)
+                          parts.pop()
+                          const dir = parts.length ? `/${parts.join('/')}` : ''
+                          if (dir !== explorerDir) setExplorerDir(dir)
+                        }
+                        setSelectedPath(p)
+                        // request explorer to focus the selected entry even if directory unchanged
+                        setFocusRequest(Date.now())
                         setActiveFile(p)
                       }} onClose={(p)=>{
                         setOpenFiles(of => of.filter(x => x !== p))
@@ -323,19 +442,16 @@ export default function App() {
               {openFiles.map(f => (
             <div key={f} style={{ display: f === activeFile ? 'block' : 'none', height: '100%' }}>
               {f.startsWith('shell-') ? (
-                <TerminalTab key={f} shell={(settings && settings.defaultShell) || 'bash'} path={shellCwds[f] || ''} onExit={() => {
-                  // close shell tab when terminal signals exit
-                  setOpenFiles(of => of.filter(x => x !== f))
-                  if (activeFile === f) setActiveFile(openFiles.filter(x => x !== f)[0] || '')
-                  setShellCwds(s => { const ns = { ...s }; delete ns[f]; return ns })
-                }} />
+                <React.Suspense fallback={<div className="muted">Loading terminal…</div>}>
+                  <TerminalTab key={f} shell={(settings && settings.defaultShell) || 'bash'} path={shellCwds[f] || ''} onExit={() => {
+                    // close shell tab when terminal signals exit
+                    setOpenFiles(of => of.filter(x => x !== f))
+                    if (activeFile === f) setActiveFile(openFiles.filter(x => x !== f)[0] || '')
+                    setShellCwds(s => { const ns = { ...s }; delete ns[f]; return ns })
+                  }} />
+                </React.Suspense>
               ) : (
-                <Editor path={f} settings={settings} onSaved={() => { /* no-op for now */ }} reloadTrigger={reloadTriggers[f] || 0} onUnsavedChange={(hasUnsaved) => {
-                  setUnsavedChanges(changes => ({
-                    ...changes,
-                    [f]: hasUnsaved
-                  }))
-                }} onMeta={(m:any) => {
+                <Editor path={f} settings={settings || undefined} onSaved={() => { /* no-op for now */ }} reloadTrigger={reloadTriggers[f] || 0} onUnsavedChange={handleUnsavedChange} onMeta={(m:any) => {
                   if (m && m.path) setFileMetas(fm => ({ ...fm, [f]: m }))
                 }} />
               )}
@@ -353,7 +469,7 @@ export default function App() {
               textAlign: 'center',
               padding: '20px'
             }}>
-              <div style={{ fontSize: '48px', marginBottom: '20px' }}>📁</div>
+              <div style={{ fontSize: '48px', marginBottom: '20px' }}><Icon name={getIcon('folder')} size={48} /></div>
               <div>Welcome to MLCRemote</div>
               <div style={{ fontSize: '14px', marginTop: '10px' }}>
                 Select a file from the explorer to start editing
@@ -365,21 +481,15 @@ export default function App() {
       </div>
       <LogOverlay visible={showLogs} onClose={() => setShowLogs(false)} />
 
-      {serverInfoOpen && health && (
-        <div className="about-backdrop" onClick={() => setServerInfoOpen(false)}>
-          <div className="about-modal" onClick={e => e.stopPropagation()}>
-            <h4>Server Info</h4>
-            <div style={{ marginBottom: 8 }}>Server time: {health.server_time}</div>
-            <div style={{ marginBottom: 8 }}>Timezone: {health.timezone}</div>
-            <div><button className="btn" onClick={() => setServerInfoOpen(false)}>Close</button></div>
-          </div>
-        </div>
-      )}
+      {/* Server time and timezone are shown inside the main About popup now. */}
 
       {aboutOpen && (
         <div className="about-backdrop" onClick={() => setAboutOpen(false)}>
           <div className="about-modal" onClick={e => e.stopPropagation()}>
-            <h3>MLCRemote</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0 }}>MLCRemote</h3>
+                <button aria-label="Close about" title="Close" onClick={() => setAboutOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><Icon name="icon-close" size={16} /></button>
+              </div>
             <div style={{ marginBottom: 8 }}>Copyright © {new Date().getFullYear()} Michael Lechner</div>
             <div style={{ marginBottom: 8 }}>Version: {health ? `${health.status}@${health.version}` : 'unknown'}</div>
             {health && (
@@ -390,10 +500,12 @@ export default function App() {
                 <div><strong>App Memory:</strong> {formatBytes(health.go_alloc_bytes)} (alloc) / {formatBytes(health.go_sys_bytes)} (sys)</div>
                 <div><strong>System Memory:</strong> {formatBytes((health.sys_mem_total_bytes || 0) - (health.sys_mem_free_bytes || 0))} / {formatBytes(health.sys_mem_total_bytes || 0)} used</div>
                 <div><strong>CPU:</strong> {Math.round((health.cpu_percent || 0) * 10) / 10}%</div>
+                <div style={{ marginTop: 8 }}><strong>Server time:</strong> {health.server_time}</div>
+                <div style={{ marginTop: 4 }}><strong>Timezone:</strong> {health.timezone}</div>
                 <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>Last refresh: {lastHealthAt ? new Date(lastHealthAt).toLocaleString() : 'n/a'}</div>
               </div>
             )}
-            <div style={{ marginTop: 12 }}><button className="btn" onClick={() => setAboutOpen(false)}>Close</button></div>
+            {/* Close button moved to top-right X for consistency with Settings popup */}
           </div>
         </div>
       )}

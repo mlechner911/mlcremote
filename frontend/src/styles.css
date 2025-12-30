@@ -28,6 +28,8 @@ html,
 body,
 #root {
     height: 100%;
+    /* Prevent the browser page from scrolling — individual panels handle scrolling */
+    overflow: hidden;
 }
 
 body {
@@ -99,10 +101,26 @@ body {
     text-decoration: underline;
 }
 
+/* Icon-like link buttons should not show underline on hover, but keep an accessible focus outline */
+.link.icon-btn,
+.link.icon-btn:hover,
+.link.icon-btn:active {
+    text-decoration: none;
+}
+.link.icon-btn:focus {
+    outline: 2px solid rgba(255,255,255,0.08);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+.hidden {
+    display: none;
+}
 .app-body {
     display: flex;
     flex: 1;
     min-height: 0;
+    /* Hide page scrollbars; child panels scroll internally */
+    overflow: hidden;
 }
 
 .sidebar {
@@ -167,9 +185,18 @@ body {
 
 .explorer-body {
     padding: 8px;
-    flex: 1;
+    flex: 1 1 auto;
     overflow: auto;
     min-height: 0;
+}
+
+/* Ensure explorer's scroll spans full sidebar height and shows scrollbar */
+.sidebar, .explorer-body {
+    max-height: 100vh;
+}
+.explorer-body {
+    /* Always show vertical scrollbar for clarity */
+    scrollbar-width: auto;
 }
 
 .entry-list {
@@ -197,13 +224,51 @@ body {
     background: rgba(255, 255, 255, 0.03);
 }
 
+.entry.selected {
+    border-color: transparent;
+    background: linear-gradient(90deg, var(--accent) 4px, transparent 4px);
+    padding-left: 4px;
+}
+
+/* Focus ring for keyboard navigation and accessibility */
+.entry:focus, .entry:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.18);
+    border-radius: 6px;
+}
+.entry.selected:focus, .entry.selected:focus-visible {
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.22);
+}
+
 .icon {
     width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
+.icon svg { width: 18px; height: 18px; }
+
 
 .muted {
     color: var(--muted);
     font-size: 12px;
+}
+
+/* Ensure modal close buttons are visible against panel backgrounds */
+.about-modal button {
+    color: var(--text);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+.about-modal button:hover {
+    color: var(--accent);
+}
+.about-modal button:focus {
+    outline: 2px solid rgba(255,255,255,0.08);
+    outline-offset: 2px;
 }
 
 /* About modal */
@@ -318,6 +383,31 @@ body {
     background: rgba(0, 0, 0, 0.04);
 }
 
+/* Log overlay styles */
+.log-overlay {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    width: 480px;
+    max-height: 60vh;
+    overflow: auto;
+    background: rgba(0,0,0,0.88);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    z-index: 10000;
+}
+.log-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px }
+.log-entry { padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.02); font-size: 13px }
+.log-meta { color: var(--muted); font-size: 12px; margin-bottom: 4px }
+.log-level { font-weight: 600; margin-left: 6px }
+.log-level-info .log-level { color: #3b82f6 }
+.log-level-warn .log-level { color: #f59e0b }
+.log-level-error .log-level { color: #ef4444 }
+.log-level-debug .log-level { color: #6b7280 }
+.log-path { color: #9ad0ff; font-weight: 600 }
+.log-message { white-space: pre-wrap; word-break: break-word }
+
 /* TabBar styles */
 .tabbar {
     display: flex;
@@ -429,11 +519,34 @@ body {
 }
 
 .icon-btn:hover {
-    background: rgba(0, 0, 0, 0.04);
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04) inset;
 }
 
 .theme-light .icon-btn {
     color: var(--accent);
+}
+
+/* Make plain link buttons look and behave like icon buttons on hover */
+.link.icon-btn,
+.link[aria-label] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 28px;
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+}
+.link.icon-btn:hover,
+.link[aria-label]:hover {
+    background: rgba(255,255,255,0.04);
+}
+.link.icon-btn:focus,
+.link[aria-label]:focus {
+    outline: 2px solid rgba(59,130,246,0.35);
+    outline-offset: 2px;
 }
 
 /* Log overlay styles (ensure top z-index so controls are clickable) */

@@ -19,12 +19,6 @@ Key changes
 
 Developer notes
 
-- The health type used by `getHealth()` includes an optional `host` field; the App uses this to show the remote host.
-- The tooltip is implemented using the `title` attribute for simplicity; if you prefer a richer tooltip component, replace it with a library or custom component.
+- The health type used by `getHealth()` includes an also a  `host` field; the App uses this to show the remote host.
 
-How to verify
 
-1. Start the backend and frontend.
-2. Observe the header: if the backend is up, the host should appear; otherwise the header will show `backend unavailable`.
-3. When the memory gauge is visible, hover the percent value to see the tooltip with detailed usage numbers.
-4. Open a shell tab and then exit the shell — the tab should be removed automatically.

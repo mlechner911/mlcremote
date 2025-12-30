@@ -117,7 +117,21 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 		}
 
 		s.addConn(conn)
-		defer s.removeConn(conn)
+		defer func() {
+			s.removeConn(conn)
+			// If this was the last connection attached to a persistent session,
+			// close the session and remove it from the sessions map to avoid
+			// leaving orphaned shells running after the client disconnects.
+			sessionsMu.Lock()
+			empty := len(s.conns) == 0
+			sessionsMu.Unlock()
+			if empty {
+				s.close()
+				sessionsMu.Lock()
+				delete(sessions, s.id)
+				sessionsMu.Unlock()
+			}
+		}()
 
 		// WS -> PTY (write into session's PTY). Support resize JSON messages.
 		for {

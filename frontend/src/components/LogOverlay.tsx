@@ -13,6 +13,22 @@ export default function LogOverlay({ visible = true, onClose }: Props) {
   if (!visible) return null
 
   const logs = getLogs().slice(0, 100)
+  // simple renderer: color by level and highlight file:line patterns
+  function renderMessage(msg: string) {
+    // highlight file:line (e.g. src/file.ts:123)
+    const parts: Array<{ text: string; cls?: string }> = []
+    const regex = /([\w\/\.\-]+:\d+)/g
+    let last = 0
+    let m: RegExpExecArray | null
+    while ((m = regex.exec(msg)) !== null) {
+      if (m.index > last) parts.push({ text: msg.slice(last, m.index) })
+      parts.push({ text: m[0], cls: 'log-path' })
+      last = m.index + m[0].length
+    }
+    if (last < msg.length) parts.push({ text: msg.slice(last) })
+    return parts.map((p, i) => p.cls ? <span key={i} className={p.cls}>{p.text}</span> : <span key={i}>{p.text}</span>)
+  }
+
   return (
     <div className="log-overlay">
       <div className="log-header">
@@ -24,9 +40,9 @@ export default function LogOverlay({ visible = true, onClose }: Props) {
       </div>
       <div>
         {logs.map((l, i) => (
-          <div key={i} className="log-entry">
+          <div key={i} className={`log-entry log-level-${(l.level || '').toLowerCase()}`}>
             <div className="log-meta">{l.ts} <span className="log-level">{l.level}</span></div>
-            <div>{l.msg}</div>
+            <div className="log-message">{renderMessage(l.msg)}</div>
           </div>
         ))}
       </div>

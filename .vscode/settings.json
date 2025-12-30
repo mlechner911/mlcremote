@@ -1,0 +1,9 @@
+{
+  "typescript.tsdk": "./frontend/node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "eslint.validate": [
+    "javascript",
+    "typescript",
+    "typescriptreact"
+  ]
+}

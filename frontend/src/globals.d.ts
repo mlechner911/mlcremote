@@ -12,6 +12,8 @@ declare module '*.svg'
 // permissive module declarations so TypeScript accepts those imports.
 declare module 'prismjs/themes/*'
 declare module 'prismjs/components/*'
+declare module 'pdfjs-dist/legacy/build/pdf'
+declare module 'pdfjs-dist/*'
 
 // Catch-all to allow dynamic or third-party imports with unknown shapes.
 declare module '*'
