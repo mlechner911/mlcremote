@@ -1,0 +1,203 @@
+version: 1
+defaults:
+  sprite_prefix: "icon"
+
+icons:
+  - id: folder
+    name: Folder
+    file: raw/folder.svg
+    mime: application/x-directory
+    extensions: ["dir"]
+
+  - id: pdf
+    name: PDF
+    file: raw/pdf.svg
+    mime: application/pdf
+    extensions: ["pdf"]
+
+  - id: markdown
+    name: Markdown
+    file: raw/markdown.svg
+    mime: text/markdown
+    extensions: ["md", "markdown"]
+
+  - id: image
+    name: Image
+    file: raw/image.svg
+    mime: image/*
+    extensions: ["png", "jpg", "jpeg", "gif", "svg"]
+
+  - id: text
+    name: Text
+    file: raw/text.svg
+    mime: text/plain
+    extensions: ["txt"]
+
+  - id: archive
+    name: Archive
+    file: raw/archive.svg
+    mime: application/zip
+    extensions: ["zip", "tar", "gz", "bz2"]
+
+  - id: js
+    name: JS
+    file: raw/javascript.svg
+    mime: application/javascript
+    extensions: ["js", "mjs"]
+
+
+  - id: json
+    name: JSON
+    file: raw/json.svg
+    mime: application/json
+    extensions: ["json"]
+
+  - id: download
+    name: Download
+    file: raw/download.svg
+    mime: application/octet-stream
+    extensions: ["download"]
+
+  - id: upload
+    name: Upload
+    file: raw/upload.svg
+    mime: application/octet-stream
+    extensions: ["upload"]
+
+  - id: settings
+    name: Settings
+    file: raw/settings.svg
+    mime: application/x-settings
+    extensions: ["cfg","settings"]
+
+  - id: close
+    name: Close
+    file: raw/close.svg
+    mime: application/x-ui
+    extensions: ["x","close"]
+
+  - id: info
+    name: Info
+    file: raw/info.svg
+    mime: application/x-ui
+    extensions: ["info"]
+
+  - id: warning
+    name: Warning
+    file: raw/warning.svg
+    mime: application/x-ui
+    extensions: ["warn"]
+
+  - id: terminal
+    name: Terminal
+    file: raw/terminal.svg
+    mime: application/x-terminal
+    extensions: ["sh","shell"]
+
+  - id: play
+    name: Play
+    file: raw/play.svg
+    mime: application/x-ui
+    extensions: ["run"]
+
+  - id: stop
+    name: Stop
+    file: raw/stop.svg
+    mime: application/x-ui
+    extensions: ["stop"]
+
+  - id: search
+    name: Search
+    file: raw/search.svg
+    mime: application/x-ui
+    extensions: ["search"]
+
+  - id: refresh
+    name: Refresh
+    file: raw/refresh.svg
+    mime: application/x-ui
+    extensions: ["refresh"]
+
+  - id: chevron-left
+    name: Chevron Left
+    file: raw/chevron-left.svg
+    mime: application/x-ui
+    extensions: ["cl"]
+
+  - id: chevron-right
+    name: Chevron Right
+    file: raw/chevron-right.svg
+    mime: application/x-ui
+    extensions: ["cr"]
+
+  - id: plus
+    name: Plus
+    file: raw/plus.svg
+    mime: application/x-ui
+    extensions: ["plus"]
+
+  - id: minus
+    name: Minus
+    file: raw/minus.svg
+    mime: application/x-ui
+    extensions: ["minus"]
+
+  - id: home
+    name: Home
+    file: raw/home.svg
+    mime: application/x-ui
+    extensions: ["home"]
+
+  - id: up
+    name: Up
+    file: raw/up.svg
+    mime: application/x-ui
+    extensions: ["up"]
+
+  - id: user
+    name: User
+    file: raw/user.svg
+    mime: application/x-ui
+    extensions: ["user"]
+
+  - id: server
+    name: Server
+    file: raw/server.svg
+    mime: application/x-ui
+    extensions: ["server"]
+
+  - id: screenshot
+    name: Screenshot
+    file: raw/screenshot.svg
+    mime: application/x-ui
+    extensions: ["screenshot"]
+
+  - id: log
+    name: Log
+    file: raw/log.svg
+    mime: application/x-ui
+    extensions: ["log"]
+
+  - id: view
+    name: View
+    file: raw/view.svg
+    mime: application/x-ui
+    extensions: ["view"]
+
+  - id: moon
+    name: Moon
+    file: raw/moon.svg
+    mime: application/x-ui
+    extensions: ["moon"]
+
+  - id: sun
+    name: Sun
+    file: raw/sun.svg
+    mime: application/x-ui
+    extensions: ["sun"]
+
+  - id: trash
+    name: Trash
+    file: raw/trash.svg
+    mime: application/x-ui
+    extensions: ["trash"]

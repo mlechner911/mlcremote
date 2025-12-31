@@ -10,9 +10,9 @@ type Props = {
 export default function EditorCodeMirror({ path, onSaved }: Props) {
   const [content, setContent] = React.useState<string>('')
   const [loading, setLoading] = React.useState<boolean>(false)
-  const [CM, setCM] = React.useState<any>(null)
+  const [CM, setCM] = React.useState<React.ComponentType<any> | null>(null)
   const [langExt, setLangExt] = React.useState<any>(null)
-  const [theme, setTheme] = React.useState<any>(null)
+  const [theme, setTheme] = React.useState<any | null>(null)
   const [probe, setProbe] = React.useState<{ mime: string; isText: boolean; ext: string } | null>(null)
 
   // lazy-load CodeMirror wrapper + theme once
