@@ -3,7 +3,7 @@
  * Keep this list conservative — unknown extensions default to text.
  */
 const textExtensions = new Set([
-  'txt','md','markdown','yaml','yml','json','js','ts','jsx','tsx','html','css','env','ini','cfg','conf','gitignore','dockerfile'
+  'txt','md','markdown','yaml','yml','json','js','ts','jsx','tsx','html','css','env','ini','cfg','conf','csh','gitignore','dockerfile'
   ,'sql'
 ])
 /**
@@ -75,6 +75,8 @@ export function isJson(path: string): boolean {
  */
 export type ProbeResult = { mime: string; isText: boolean; ext: string }
 
+import { authedFetch } from './auth'
+
 /**
  * Probe the file type by contacting the backend `/api/filetype` endpoint.
  * If the request fails we fall back to a local heuristic based on extension.
@@ -83,7 +85,8 @@ export async function probeFileType(path: string): Promise<ProbeResult> {
   if (!path) return { mime: 'application/octet-stream', isText: false, ext: '' }
   try {
     const q = `?path=${encodeURIComponent(path)}`
-    const r = await fetch(`/api/filetype${q}`)
+    // use authedFetch so token headers are included when server requires auth
+    const r = await authedFetch(`/api/filetype${q}`)
     if (!r.ok) throw new Error('probe failed')
     return await r.json()
   } catch (e) {

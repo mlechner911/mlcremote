@@ -16,6 +16,7 @@ type Props = {
   activeDir?: string
   onDirChange?: (dir: string) => void
   focusRequest?: number
+  reloadSignal?: number
 }
 
 /**
@@ -87,6 +88,12 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
   }, [activeDir, path, load])
 
   React.useEffect(() => { load('') }, [load])
+
+  // reload when parent signals a change
+  React.useEffect(() => {
+    // this effect will run when reloadSignal prop changes (triggering load of current path)
+    load(path || '')
+  }, [path, load])
 
   const up = (): void => {
     if (!path || path === '/') { load(''); return }

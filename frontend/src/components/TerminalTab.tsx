@@ -1,4 +1,5 @@
 import React from 'react'
+import { statPath } from '../api'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
@@ -65,10 +66,7 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
     // original path.
     const resolveCwd = async (p: string) => {
       try {
-        const res = await fetch(`/api/stat?path=${encodeURIComponent(p)}`)
-        if (!res.ok) return p
-        const j = await res.json()
-        // expected { exists: true, isDir: true/false }
+        const j = await statPath(p)
         if (j && j.exists && j.isDir) return p
         if (j && j.exists && !j.isDir) return p.replace(/\/[^/]*$/, '') || '/'
         return p
@@ -78,13 +76,19 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
     }
 
     resolveCwd(path).then((cwd) => {
-      fetch(`/api/terminal/new?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(cwd)}`).then(r => r.json()).then(j => {
+        const token = localStorage.getItem('mlcremote_token')
+        const q = token ? `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(cwd)}&token=${encodeURIComponent(token)}` : `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(cwd)}`
+        fetch(`/api/terminal/new${q}`).then(r => r.json()).then(j => {
         sessionId = j.id
-        const socket = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/ws/terminal?session=${encodeURIComponent(sessionId!)}`)
+        const token = localStorage.getItem('mlcremote_token')
+        const q = token ? `?session=${encodeURIComponent(sessionId!)}&token=${encodeURIComponent(token)}` : `?session=${encodeURIComponent(sessionId!)}`
+        const socket = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/ws/terminal${q}`)
         attachWS(socket, 'Connected to shell session: ' + sessionId)
       }).catch(() => {
         // fallback to ephemeral connection
-        const socket = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/ws/terminal?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(path)}`)
+        const token = localStorage.getItem('mlcremote_token')
+        const q = token ? `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(path)}&token=${encodeURIComponent(token)}` : `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(path)}`
+        const socket = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/ws/terminal${q}`)
         attachWS(socket, 'Connected to ephemeral shell')
       })
     })

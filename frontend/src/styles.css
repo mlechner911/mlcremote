@@ -15,7 +15,7 @@
     --panel: #ffffff;
     --text: #0b1220;
     --muted: #6b7280;
-    --accent: #2563eb;
+    --accent: #0d307a;
     --danger: #b91c1c;
     --border: #e6e9ef;
 }
@@ -301,7 +301,7 @@ body {
 }
 
 .theme-light .status .link {
-    color: var(--accent)
+    color: var(--text);
 }
 
 /* Light-mode adjustments for log overlay and buttons */
@@ -401,11 +401,11 @@ body {
 .log-entry { padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.02); font-size: 13px }
 .log-meta { color: var(--muted); font-size: 12px; margin-bottom: 4px }
 .log-level { font-weight: 600; margin-left: 6px }
-.log-level-info .log-level { color: #3b82f6 }
+.log-level-info .log-level { color: var(--accent) }
 .log-level-warn .log-level { color: #f59e0b }
-.log-level-error .log-level { color: #ef4444 }
-.log-level-debug .log-level { color: #6b7280 }
-.log-path { color: #9ad0ff; font-weight: 600 }
+.log-level-error .log-level { color: var(--danger) }
+.log-level-debug .log-level { color: var(--muted) }
+.log-path { color: var(--accent); font-weight: 600 }
 .log-message { white-space: pre-wrap; word-break: break-word }
 
 /* TabBar styles */
@@ -452,37 +452,14 @@ body {
 }
 
 /* Prism token color overrides for light theme to improve contrast */
-.theme-light .token.comment {
-    color: #6b7280
-}
-
-.theme-light .token.keyword {
-    color: #b45309
-}
-
-.theme-light .token.string {
-    color: #065f46
-}
-
-.theme-light .token.function {
-    color: #1d4ed8
-}
-
-.theme-light .token.punctuation {
-    color: #374151
-}
-
-.theme-light .token.operator {
-    color: #374151
-}
-
-.theme-light .token.constant {
-    color: #b91c1c
-}
-
-.theme-light .token.selector {
-    color: #7c3aed
-}
+.theme-light .token.comment { color: var(--muted) }
+.theme-light .token.keyword { color: #b45309 }
+.theme-light .token.string { color: #065f46 }
+.theme-light .token.function { color: #1d4ed8 }
+.theme-light .token.punctuation { color: var(--text) }
+.theme-light .token.operator { color: var(--text) }
+.theme-light .token.constant { color: #b91c1c }
+.theme-light .token.selector { color: var(--accent) }
 
 /* Override Prism base color for light theme */
 .theme-light pre[class*="language-"],
@@ -510,12 +487,15 @@ body {
     border-radius: 6px;
     border: none;
     background: transparent;
-    color: var(--accent);
+    color: var(--text);
     cursor: pointer;
 }
 
 .icon-btn svg {
     display: block;
+    /* ensure svg icons pick up the button color */
+    fill: currentColor;
+    color: inherit;
 }
 
 .icon-btn:hover {
@@ -524,7 +504,7 @@ body {
 }
 
 .theme-light .icon-btn {
-    color: var(--accent);
+    color: var(--text);
 }
 
 /* Make plain link buttons look and behave like icon buttons on hover */
@@ -538,6 +518,7 @@ body {
     border-radius: 6px;
     background: transparent;
     cursor: pointer;
+    color: var(--text);
 }
 .link.icon-btn:hover,
 .link[aria-label]:hover {
@@ -576,14 +557,8 @@ body {
     margin-bottom: 6px;
 }
 
-.log-meta {
-    color: #94a3b8;
-}
-
-.log-level {
-    color: #7c3aed;
-    margin-left: 6px;
-}
+.log-meta { color: var(--muted); }
+.log-level { color: var(--accent); margin-left: 6px; }
 
 /* Dropdown used by TabBar; themed for light/dark */
 .dropdown {
@@ -606,4 +581,45 @@ body {
 
 .dropdown .link:hover {
     background: rgba(15, 20, 30, 0.03);
+}
+
+/* Ensure form controls follow theme variables */
+input, textarea, select {
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+button, .btn {
+    color: var(--text);
+}
+
+/* Login / token prompt overlays */
+.login-overlay {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 11000;
+}
+.login-box {
+    background: var(--panel);
+    color: var(--text);
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    min-width: 320px;
+}
+
+.theme-light input, .theme-light textarea, .theme-light select {
+    background: var(--panel);
+    color: var(--text);
+    border-color: var(--border);
 }

@@ -1,4 +1,25 @@
 import { info, warn } from './logger'
+import { getToken, setToken, authedFetch } from './auth'
+
+export async function login(password: string): Promise<string> {
+    info('POST /api/login')
+    const r = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+    })
+    info(`/api/login => ${r.status}`)
+    if (!r.ok) throw new Error('login failed')
+    const j = await r.json()
+    if (j && j.token) {
+        setToken(j.token)
+        return j.token
+    }
+    throw new Error('no token in response')
+}
+
+// re-export authedFetch so other modules can call it from api
+export { authedFetch }
 
 /**
  * Health payload returned by the server's `/health` endpoint.
@@ -13,6 +34,8 @@ export type Health = {
     sys_mem_free_bytes?: number;
     go_alloc_bytes?: number;
     go_sys_bytes?: number;
+    password_auth?: boolean;
+    auth_required?: boolean;
 
     server_time?: string;
     timezone?: string;
@@ -36,13 +59,35 @@ export type DirEntry = {
  */
 export async function getHealth(): Promise<Health> {
     info('GET /health')
-    const r = await fetch('/health')
+    const r = await authedFetch('/health')
     info(`/health => ${r.status}`)
     if (!r.ok) {
         warn('/health not ok')
         throw new Error('health failed')
     }
     return r.json()
+}
+
+// If a token is provided via URL query (e.g., ?token=XXX) set it into storage
+export function captureTokenFromURL() {
+    try {
+        const params = new URLSearchParams(window.location.search)
+        const t = params.get('token')
+        if (t) {
+            setToken(t)
+            return true
+        }
+    } catch (_) {}
+    return false
+}
+
+export async function authCheck(): Promise<boolean> {
+    try {
+        const r = await authedFetch('/api/auth/check')
+        return r.status === 200
+    } catch (e) {
+        return false
+    }
 }
 
 /**
@@ -55,7 +100,7 @@ export async function listTree(path = '', opts?: { showHidden?: boolean }): Prom
     if (opts?.showHidden) params.set('showHidden', '1')
     const q = params.toString() ? `?${params.toString()}` : ''
     info(`GET /api/tree${q}`)
-    const r = await fetch(`/api/tree${q}`)
+    const r = await authedFetch(`/api/tree${q}`)
     info(`/api/tree${q} => ${r.status}`)
     if (!r.ok) {
         warn('/api/tree not ok')
@@ -69,7 +114,7 @@ export async function listTree(path = '', opts?: { showHidden?: boolean }): Prom
  */
 export async function readFile(path: string): Promise<string> {
     info(`GET /api/file?path=${path}`)
-    const r = await fetch(`/api/file?path=${encodeURIComponent(path)}`)
+    const r = await authedFetch(`/api/file?path=${encodeURIComponent(path)}`)
     info(`/api/file?path=${path} => ${r.status}`)
     if (!r.ok) {
         warn('/api/file read failed')
@@ -84,7 +129,7 @@ export async function readFile(path: string): Promise<string> {
  */
 export async function statPath(path: string): Promise<any> {
     info(`GET /api/stat?path=${path}`)
-    const r = await fetch(`/api/stat?path=${encodeURIComponent(path)}`)
+    const r = await authedFetch(`/api/stat?path=${encodeURIComponent(path)}`)
     info(`/api/stat?path=${path} => ${r.status}`)
     if (!r.ok) throw new Error('stat failed')
     return r.json()
@@ -95,7 +140,7 @@ export async function statPath(path: string): Promise<any> {
  */
 export async function saveFile(path: string, content: string): Promise<void> {
     info(`POST /api/file path=${path} size=${content.length}`)
-    const r = await fetch('/api/file', {
+    const r = await authedFetch('/api/file', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path, content })
@@ -112,7 +157,7 @@ export async function saveFile(path: string, content: string): Promise<void> {
  */
 export async function deleteFile(path: string): Promise<void> {
     info(`DELETE /api/file?path=${path}`)
-    const r = await fetch(`/api/file?path=${encodeURIComponent(path)}`, { method: 'DELETE' })
+    const r = await authedFetch(`/api/file?path=${encodeURIComponent(path)}`, { method: 'DELETE' })
     info(`/api/file delete => ${r.status}`)
     if (!r.ok) {
         warn('/api/file delete failed')
