@@ -1,0 +1,390 @@
+openapi: 3.0.0
+info:
+  title: MLCRemote API
+  description: Lightweight remote development server API.
+  version: 0.2.1
+servers:
+  - url: /
+    description: Current server
+components:
+  securitySchemes:
+    TokenAuth:
+      type: apiKey
+      in: header
+      name: X-Auth-Token
+      description: Enter your access token.
+  schemas:
+    HealthInfo:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: string
+          example: 0.2.1
+        pid:
+          type: integer
+        cpu_percent:
+          type: number
+        sys_mem_free_bytes:
+          type: integer
+        password_auth:
+          type: boolean
+          description: True if password login is enabled.
+        auth_required:
+          type: boolean
+          description: True if an auth token is required for protected endpoints.
+    LoginRequest:
+      type: object
+      properties:
+        password:
+          type: string
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+    VersionInfo:
+      type: object
+      properties:
+        backend:
+          type: string
+        frontendCompatible:
+          type: string
+    Settings:
+      type: object
+      properties:
+        allowDelete:
+          type: boolean
+        defaultShell:
+          type: string
+    DirEntry:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        isDir:
+          type: boolean
+        size:
+          type: integer
+        modTime:
+          type: string
+          format: date-time
+    FileStat:
+      type: object
+      properties:
+        isDir:
+          type: boolean
+        size:
+          type: integer
+        mode:
+          type: string
+        modTime:
+          type: string
+          format: date-time
+        absPath:
+          type: string
+        mime:
+          type: string
+    TrashEntry:
+      type: object
+      properties:
+        originalPath:
+          type: string
+        trashPath:
+          type: string
+        deletedAt:
+          type: string
+          format: date-time
+    RestoreRequest:
+      type: object
+      properties:
+        trashPath:
+          type: string
+    TerminalSession:
+      type: object
+      properties:
+        id:
+          type: string
+
+security:
+  - TokenAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Get system health
+      description: Public endpoint. No auth required.
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthInfo'
+
+  /api/login:
+    post:
+      summary: Login with password
+      description: Exchange password for an auth token. Public endpoint.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Login not configured
+
+  /api/auth/check:
+    get:
+      summary: Check auth token validity
+      responses:
+        '200':
+          description: Token is valid
+        '401':
+          description: Token is invalid
+
+  /api/version:
+    get:
+      summary: Get version info
+      description: Public endpoint.
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionInfo'
+
+  /api/settings:
+    get:
+      summary: Get frontend settings
+      description: Public endpoint.
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+
+  /api/tree:
+    get:
+      summary: List directory contents
+      parameters:
+        - name: path
+          in: query
+          schema:
+            type: string
+          description: Relative path to list (default root)
+        - name: showHidden
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DirEntry'
+
+  /api/file:
+    get:
+      summary: Download file content
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream: {}
+    post:
+      summary: Create or overwrite file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                content:
+                  type: string
+      responses:
+        '204':
+          description: Saved successfully
+    delete:
+      summary: Delete file (move to trash)
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted (moved to trash)
+        '403':
+          description: Deletion disabled
+
+  /api/file/section:
+    get:
+      summary: Read file section
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: length
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: File section content
+
+  /api/stat:
+    get:
+      summary: Get file metadata
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStat'
+
+  /api/upload:
+    post:
+      summary: Upload files
+      parameters:
+        - name: path
+          in: query
+          schema:
+            type: string
+          description: Target directory
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '204':
+          description: Upload successful
+
+  /api/trash/recent:
+    get:
+      summary: Get recently deleted files
+      responses:
+        '200':
+          description: List of trashed files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrashEntry'
+
+  /api/trash/restore:
+    post:
+      summary: Restore file from trash
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreRequest'
+      responses:
+        '204':
+          description: Restored successfully
+        '404':
+          description: Trash entry not found
+        '409':
+          description: Destination exists
+
+  /api/trash:
+    delete:
+      summary: Empty trash
+      description: Permanently delete all files in trash. Requires allow_delete=true.
+      responses:
+        '204':
+          description: Trash emptied
+
+  /api/terminal/new:
+    post:
+      summary: Create terminal session
+      parameters:
+        - name: shell
+          in: query
+          schema:
+            type: string
+        - name: cwd
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerminalSession'
+
+  /ws/terminal:
+    get:
+      summary: Connect to terminal WebSocket
+      description: Upgrade request to WebSocket.
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+        - name: token
+          in: query
+          schema:
+            type: string
+      responses:
+        '101':
+          description: Switching Protocols

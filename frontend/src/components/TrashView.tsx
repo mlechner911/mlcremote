@@ -1,6 +1,7 @@
 import React from 'react'
 import { Icon, iconForMimeOrFilename, iconForExtension } from '../generated/icons'
 import { formatBytes } from '../bytes'
+import { authedFetch, getToken } from '../auth'
 
 type TrashEntry = { originalPath: string; trashPath: string; deletedAt: string }
 
@@ -11,7 +12,7 @@ export default function TrashView() {
   const fetchRecent = React.useCallback(async () => {
     setLoading(true)
     try {
-      const r = await fetch('/api/trash/recent')
+      const r = await authedFetch('/api/trash/recent')
       if (!r.ok) throw new Error('fetch failed')
       const arr = await r.json()
       if (Array.isArray(arr) && arr.length > 0) setEntry(arr[0])
@@ -50,7 +51,11 @@ export default function TrashView() {
       </div>
       <div style={{ marginTop: 12 }}>
         <button className="btn" disabled>Undo (coming)</button>
-        <a className="btn" style={{ marginLeft: 8 }} href={`/api/file?path=${encodeURIComponent(entry.trashPath)}`} download={name}>Download</a>
+        {(() => {
+          const token = getToken()
+          const url = `/api/file?path=${encodeURIComponent(entry.trashPath)}` + (token ? `&token=${encodeURIComponent(token)}` : '')
+          return <a className="btn" style={{ marginLeft: 8 }} href={url} download={name}>Download</a>
+        })()}
       </div>
     </div>
   )

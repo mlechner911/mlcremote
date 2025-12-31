@@ -24,7 +24,7 @@ type Props = {
  * and supports navigation, drag-and-drop upload, and lightweight actions
  * such as Download and (when `autoOpen` is false) a View button.
  */
-export default function FileExplorer({ onSelect, showHidden, onToggleHidden, autoOpen = true, onView, onBackendActive, onChangeRoot, canChangeRoot, selectedPath, activeDir, onDirChange, focusRequest }: Props): React.ReactElement {
+export default function FileExplorer({ onSelect, showHidden, onToggleHidden, autoOpen = true, onView, onBackendActive, onChangeRoot, canChangeRoot, selectedPath, activeDir, onDirChange, focusRequest, reloadSignal }: Props): React.ReactElement {
   const [path, setPath] = React.useState<string>('')
   const [entries, setEntries] = React.useState<DirEntry[]>([])
   const [loading, setLoading] = React.useState<boolean>(false)
@@ -89,11 +89,10 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
 
   React.useEffect(() => { load('') }, [load])
 
-  // reload when parent signals a change
+  // reload when parent signals a change (explicit refresh requests from parent)
   React.useEffect(() => {
-    // this effect will run when reloadSignal prop changes (triggering load of current path)
     load(path || '')
-  }, [path, load])
+  }, [path, load, reloadSignal])
 
   const up = (): void => {
     if (!path || path === '/') { load(''); return }

@@ -9,7 +9,6 @@ import ImageView from './ImageView'
 import PdfView from './PdfView'
 import { Icon } from '../generated/icons'
 import { iconForMimeOrFilename as getIcon, iconForExtension } from '../generated/icons'
-import TrashView from './TrashView'
 const ShellView = React.lazy(() => import('./ShellView'))
 
 
@@ -31,7 +30,6 @@ type Props = {
 }
 
 export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta }: Props) {
-  const [trashOpen, setTrashOpen] = React.useState(false)
   const [content, setContent] = React.useState<string>('')
   const [origContent, setOrigContent] = React.useState<string>('')
   const [status, setStatus] = React.useState<string>('')
@@ -333,7 +331,6 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
           )}
         </div>
           <div className="actions">
-          <button className="link icon-btn" title="Trash" aria-label="Trash" onClick={() => setTrashOpen(s => !s)}><Icon name="icon-trash" /></button>
           {/* Format removed until implemented */}
           <button className="btn" onClick={onReload} disabled={!path}>Reload</button>
           {path && content !== origContent && (
@@ -360,11 +357,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
         {status && <div className="muted">{status}</div>}
       </div>
       <div className="editor-body">
-        {trashOpen ? (
-          <div style={{ padding: 8 }}>
-            <TrashView />
-          </div>
-        ) : null}
+        {/* Trash is a global view accessible from the app toolbar */}
         {loading ? (
           <div className="muted">Loading...</div>
         ) : meta && meta.isDir ? (

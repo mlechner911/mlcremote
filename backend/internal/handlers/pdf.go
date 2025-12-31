@@ -1,13 +1,7 @@
 package handlers
 
 import (
-	"io/ioutil"
 	"net/http"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strconv"
-	"time"
 
 	"lightdev/internal/util"
 )
@@ -19,6 +13,13 @@ import (
 //  - dpi: rendering DPI (default 150)
 func PdfRenderHandler(root string) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
+        if util.IsBlocked() {
+            http.Error(w, "service temporarily unavailable", http.StatusServiceUnavailable)
+            return
+        }
+		   http.Error(w, "internal error", http.StatusInternalServerError)
+           // return
+			/* renoved for now .. our client can do that better
         reqPath := r.URL.Query().Get("path")
         if reqPath == "" {
             http.Error(w, "path required", http.StatusBadRequest)
@@ -31,6 +32,9 @@ func PdfRenderHandler(root string) http.HandlerFunc {
         }
         fi, err := os.Stat(target)
         if err != nil || fi.IsDir() {
+            if err != nil && os.IsNotExist(err) {
+                util.RecordMissingAccess()
+            }
             http.Error(w, "not a file", http.StatusBadRequest)
             return
         }
@@ -86,5 +90,6 @@ func PdfRenderHandler(root string) http.HandlerFunc {
         w.Header().Set("Content-Type", "image/png")
         w.Header().Set("Cache-Control", "public, max-age=3600")
         _, _ = w.Write(data)
+		*/
     }
 }
