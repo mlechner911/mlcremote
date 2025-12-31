@@ -78,7 +78,7 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
     resolveCwd(path).then((cwd) => {
         const token = localStorage.getItem('mlcremote_token')
         const q = token ? `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(cwd)}&token=${encodeURIComponent(token)}` : `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(cwd)}`
-        fetch(`/api/terminal/new${q}`).then(r => r.json()).then(j => {
+        import('../auth').then(a => a.authedFetch(`/api/terminal/new${q}`)).then(r => r.json()).then(j => {
         sessionId = j.id
         const token = localStorage.getItem('mlcremote_token')
         const q = token ? `?session=${encodeURIComponent(sessionId!)}&token=${encodeURIComponent(token)}` : `?session=${encodeURIComponent(sessionId!)}`
