@@ -1,0 +1,54 @@
+import Prism from 'prismjs'
+
+export function langForExt(ext: string) {
+  const L = Prism.languages as any
+  switch (ext) {
+    case 'jsx': return L.jsx
+    case 'tsx': return L.tsx
+    case 'java': return L.java
+    case 'ini': return L.ini
+    case 'js':   return L.javascript
+    case 'ts': return L.typescript
+    case 'go': return L.go
+    case 'php': return L.php
+    case 'json': return L.json
+    case 'yaml': case 'yml': return L.yaml
+    case 'toml': return L.toml || L.markup
+    case 'md': case 'markdown': return L.markdown
+    case 'c': return L.c
+    case 'cpp': return L.cpp
+    case 'py': return L.python
+    case 'sh': case 'bash': return L.bash
+    case 'xml': case 'xml-doc': return L['xml-doc']
+    case 'html': case 'htm': return L.markup
+    case 'css': case 'sass': case 'scss': return L.sass
+    case 'sql': return L.sql
+    default: return L.javascript
+  }
+}
+
+export function aliasForExt(ext: string) {
+  switch (ext) {
+    case 'js': case 'jsx': return 'javascript'
+    case 'ts': case 'tsx': return 'typescript'
+    case 'go': return 'go'
+    case 'php': return 'php'
+    case 'json': return 'json'
+    case 'yaml': case 'yml': return 'yaml'
+    case 'toml': return 'toml'
+    case 'ini': return 'ini'
+    case 'md': case 'markdown': return 'markdown'
+    case 'c': return 'c'
+    case 'cpp': case 'cxx': case 'c++': return 'cpp'
+    case 'py': return 'python'
+    case 'sh': case 'bash': case 'csh': return 'bash'
+    case 'xml': case 'xml-doc': return 'xml-doc'
+    case 'html': case 'htm': return 'markup'
+    case 'sass': case 'scss':  return 'sass'
+    case 'sql': return 'sql'
+    case 'less': case 'css': return 'css'
+    default: return 'text'
+  }
+}
+
+export default { langForExt, aliasForExt }

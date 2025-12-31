@@ -1,4 +1,5 @@
 import React from 'react'
+import { authedFetch } from '../auth'
 
 export default function PdfPreview({ path }: { path: string }) {
   const [pdfLib, setPdfLib] = React.useState<any | null>(null)
@@ -33,7 +34,8 @@ export default function PdfPreview({ path }: { path: string }) {
     ;(async () => {
       setLoading(true)
       try {
-        const r = await fetch(`/api/file?path=${encodeURIComponent(path)}`)
+        // use authedFetch to include token header when required
+        const r = await authedFetch(`/api/file?path=${encodeURIComponent(path)}`)
         if (!r.ok) throw new Error('fetch failed')
         const data = await r.arrayBuffer()
         const loadingTask = pdfLib.getDocument({ data })

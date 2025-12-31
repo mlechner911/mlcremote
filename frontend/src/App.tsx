@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Health } from './api'
-import { getHealth, statPath } from './api'
+import { getHealth, statPath, login, captureTokenFromURL, authCheck } from './api'
 import FileExplorer from './components/FileExplorer'
 import SettingsPopup from './components/SettingsPopup'
 import { Icon } from './generated/icons'
@@ -71,6 +71,7 @@ export default function App() {
   const [now, setNow] = React.useState<Date>(new Date())
   const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine)
   const [reloadTriggers, setReloadTriggers] = React.useState<Record<string, number>>({})
+  const [reloadSignal, setReloadSignal] = React.useState<number>(0)
   const [unsavedChanges, setUnsavedChanges] = React.useState<Record<string, boolean>>({})
   const [fileMetas, setFileMetas] = React.useState<Record<string, any>>({})
 
@@ -110,6 +111,14 @@ export default function App() {
         if (!mounted) return
         setHealth(h)
         setLastHealthAt(Date.now())
+        // verify token validity
+        const ok = await authCheck()
+        if (!ok) {
+          // clear token and prompt for auth based on health
+          localStorage.removeItem('mlcremote_token')
+          if (h.password_auth) setShowLogin(true)
+          else if (h.auth_required) setShowTokenPrompt(true)
+        }
       } catch {
         if (!mounted) return
         setHealth(null)
@@ -119,6 +128,35 @@ export default function App() {
     const id = setInterval(fetchHealth, 60 * 1000)
     return () => { mounted = false; clearInterval(id) }
   }, [isOnline])
+
+  // show login prompt when server requires password auth and we have no token
+  const [showLogin, setShowLogin] = React.useState(false)
+  React.useEffect(() => {
+    if (!health) return
+    const needs = !!health.password_auth
+    const token = localStorage.getItem('mlcremote_token')
+    if (needs && !token) setShowLogin(true)
+    else setShowLogin(false)
+  }, [health])
+
+  // capture token from URL on first mount (if present) so we don't prompt
+  React.useEffect(() => {
+    try {
+      const ok = captureTokenFromURL()
+      if (ok) setReloadSignal(Date.now())
+    } catch (_) {}
+  }, [])
+
+  // token prompt for cases where server requires supplying a token directly
+  const [showTokenPrompt, setShowTokenPrompt] = React.useState(false)
+  React.useEffect(() => {
+    if (!health) return
+    // when auth_required is true and password login isn't enabled, ask user for token
+    const needsToken = !!health.auth_required && !health.password_auth
+    const token = localStorage.getItem('mlcremote_token')
+    if (needsToken && !token) setShowTokenPrompt(true)
+    else setShowTokenPrompt(false)
+  }, [health])
 
   // fetch runtime settings once on mount
   React.useEffect(() => {
@@ -143,9 +181,15 @@ export default function App() {
     const handleOnline = () => {
       setIsOnline(true)
       // immediately fetch health when coming online
-      getHealth().then(h => {
+      getHealth().then(async h => {
         setHealth(h)
         setLastHealthAt(Date.now())
+        const ok = await authCheck()
+        if (!ok) {
+          localStorage.removeItem('mlcremote_token')
+          if (h.password_auth) setShowLogin(true)
+          else if (h.auth_required) setShowTokenPrompt(true)
+        }
       }).catch(() => {
         setHealth(null)
       })
@@ -292,7 +336,7 @@ export default function App() {
       </header>
       <div className="app-body" style={{ alignItems: 'stretch' }}>
         <aside className="sidebar" style={{ width: sidebarWidth }}>
-          <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} onSelect={(p, isDir) => {
+          <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} reloadSignal={reloadSignal} onSelect={(p, isDir) => {
             setSelectedPath(p)
             if (isDir) {
               // do not open a persistent tab for directories; just navigate
@@ -362,6 +406,52 @@ export default function App() {
         </div>
         <main className="main">
           <div className="main-content">
+          {showLogin && (
+            <div className="login-overlay">
+              <div className="login-box">
+                <h3>Sign in</h3>
+                <p>Please enter the server password to obtain an access token.</p>
+                <input id="mlc-login-pwd" type="password" placeholder="Password" />
+                <div style={{ marginTop: 8 }}>
+                  <button className="btn" onClick={async () => {
+                    const el = document.getElementById('mlc-login-pwd') as HTMLInputElement | null
+                    if (!el) return
+                    try {
+                      const t = await login(el.value)
+                      console.log('login token', t)
+                      setShowLogin(false)
+                      setReloadSignal(Date.now())
+                    } catch (e:any) {
+                      alert('Login failed: ' + (e?.message || e))
+                    }
+                  }}>Sign in</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showTokenPrompt && (
+            <div className="login-overlay">
+              <div className="login-box">
+                <h3>Enter Access Token</h3>
+                <p>The server requires an access token. Paste it here to continue.</p>
+                <input id="mlc-token-input" type="text" placeholder="token" />
+                <div style={{ marginTop: 8 }}>
+                  <button className="btn" onClick={async () => {
+                    const el = document.getElementById('mlc-token-input') as HTMLInputElement | null
+                    if (!el) return
+                    try {
+                      localStorage.setItem('mlcremote_token', el.value.trim())
+                      setShowTokenPrompt(false)
+                      setReloadSignal(Date.now())
+                    } catch (e:any) {
+                      alert('Failed to store token: ' + (e?.message || e))
+                    }
+                  }}>Use token</button>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Tab bar for multiple open files */}
           <div>
             {/* eslint-disable-next-line @typescript-eslint/no-var-requires */}
