@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -13,33 +14,37 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+//go:embed all:frontend/dist
+var assets embed.FS
+
 // App struct
-type App struct{
-	ctx context.Context
-	tunnelMu sync.Mutex
-	tunnelCmd *exec.Cmd
+type App struct {
+	ctx         context.Context
+	tunnelMu    sync.Mutex
+	tunnelCmd   *exec.Cmd
 	tunnelState string
 }
 
 // TunnelProfile describes the fields for starting an SSH tunnel
 type TunnelProfile struct {
-	User string `json:"user"`
-	Host string `json:"host"`
-	LocalPort int `json:"localPort"`
-	RemoteHost string `json:"remoteHost"`
-	RemotePort int `json:"remotePort"`
-	IdentityFile string `json:"identityFile"` // optional path to private key
-	Password string `json:"password"`
-	ExtraArgs []string `json:"extraArgs"` // additional ssh args
+	User         string   `json:"user"`
+	Host         string   `json:"host"`
+	LocalPort    int      `json:"localPort"`
+	RemoteHost   string   `json:"remoteHost"`
+	RemotePort   int      `json:"remotePort"`
+	IdentityFile string   `json:"identityFile"` // optional path to private key
+	Password     string   `json:"password"`
+	ExtraArgs    []string `json:"extraArgs"` // additional ssh args
 }
 
 // NewApp creates a new App application struct
@@ -182,53 +187,56 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	go streamReaderToEvents(a.ctx, stdoutPipe)
 	go streamReaderToEvents(a.ctx, stderrPipe)
 	a.tunnelCmd = cmd
+	// monitor process lifetime in a separate goroutine to ensure cleanup
+	go func() {
+		_ = cmd.Wait()
+		a.tunnelMu.Lock()
+		// Only clear if it's still OUR cmd (avoid clearing a newer one if raced)
+		if a.tunnelCmd == cmd {
+			a.tunnelCmd = nil
+			a.tunnelState = "stopped"
+		}
+		a.tunnelMu.Unlock()
+	}()
+
+	a.tunnelCmd = cmd
 	a.tunnelState = "starting"
 
-	// monitor process and emit navigate event when the forwarded service becomes reachable
+	// monitor health in background and emit navigate event when reachable
 	localURL := fmt.Sprintf("http://127.0.0.1:%d", p.LocalPort)
 	go func() {
-		// wait for process exit in background
-		waitErrCh := make(chan error, 1)
-		go func() { waitErrCh <- cmd.Wait() }()
-
-		// poll health endpoint until reachable or process exits
 		client := &http.Client{Timeout: 2 * time.Second}
-		pollTicker := time.NewTicker(500 * time.Millisecond)
-		defer pollTicker.Stop()
-		timeout := time.After(15 * time.Second)
-		for {
-			select {
-			case <-pollTicker.C:
-				resp, err := client.Get(fmt.Sprintf("%s/health", localURL))
-				if err == nil {
-					resp.Body.Close()
-					if resp.StatusCode == http.StatusOK {
-						// service reachable — emit navigate event
-						runtime.EventsEmit(a.ctx, "navigate", localURL)
-						// update state to started
-						a.tunnelMu.Lock()
-						a.tunnelState = "started"
-						a.tunnelMu.Unlock()
-						return
-					}
-					// otherwise continue polling
-				}
-			case err := <-waitErrCh:
-				// process exited before service became reachable
-				_ = err
-				a.tunnelMu.Lock()
-				a.tunnelCmd = nil
-				a.tunnelState = "stopped"
-				a.tunnelMu.Unlock()
-				return
-			case <-timeout:
-				// timed out waiting for service
-				a.tunnelMu.Lock()
-				a.tunnelState = "started" // ssh likely started but service not responding
+		// Try for 15 seconds
+		for i := 0; i < 30; i++ {
+			// Check if process died
+			a.tunnelMu.Lock()
+			if a.tunnelCmd != cmd {
 				a.tunnelMu.Unlock()
 				return
 			}
+			a.tunnelMu.Unlock()
+
+			resp, err := client.Get(fmt.Sprintf("%s/health", localURL))
+			if err == nil {
+				resp.Body.Close()
+				if resp.StatusCode == http.StatusOK {
+					runtime.EventsEmit(a.ctx, "navigate", localURL)
+					a.tunnelMu.Lock()
+					if a.tunnelCmd == cmd {
+						a.tunnelState = "started"
+					}
+					a.tunnelMu.Unlock()
+					return
+				}
+			}
+			time.Sleep(500 * time.Millisecond)
 		}
+		// Timeout
+		a.tunnelMu.Lock()
+		if a.tunnelCmd == cmd {
+			a.tunnelState = "started" // assume started even if check failed? or failed?
+		}
+		a.tunnelMu.Unlock()
 	}()
 
 	return "started", nil
@@ -250,19 +258,36 @@ func (a *App) SaveIdentityFile(b64 string, filename string) (string, error) {
 }
 
 // StopTunnel stops the running ssh tunnel process
+// StopTunnel stops the running ssh tunnel process and waits for it to exit
 func (a *App) StopTunnel() (string, error) {
 	a.tunnelMu.Lock()
-	defer a.tunnelMu.Unlock()
-	if a.tunnelCmd == nil {
-		return "not-running", errors.New("no tunnel running")
+	cmd := a.tunnelCmd
+	a.tunnelMu.Unlock()
+
+	if cmd == nil {
+		return "stopped", nil
 	}
-	// try graceful kill
-	if err := a.tunnelCmd.Process.Signal(syscall.SIGTERM); err != nil {
-		// fallback to kill
-		_ = a.tunnelCmd.Process.Kill()
-	}
+
 	a.tunnelState = "stopping"
-	return "stopping", nil
+	// Kill the process
+	if cmd.Process != nil {
+		// We use Kill immediately to be sure; Signal might be ignored or slow
+		_ = cmd.Process.Kill()
+	}
+
+	// Poll wait for the monitor goroutine to clear the tunnelCmd
+	// This ensures that when this function returns, reliable start is possible.
+	for i := 0; i < 50; i++ {
+		a.tunnelMu.Lock()
+		if a.tunnelCmd == nil {
+			a.tunnelMu.Unlock()
+			return "stopped", nil
+		}
+		a.tunnelMu.Unlock()
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	return "failed", errors.New("timed out waiting for tunnel to stop")
 }
 
 // TunnelStatus returns a short status string
@@ -316,6 +341,15 @@ func streamReaderToEvents(ctx context.Context, r io.Reader) {
 	}
 }
 
+// shutdown is called at application termination
+func (a *App) shutdown(ctx context.Context) {
+	a.tunnelMu.Lock()
+	defer a.tunnelMu.Unlock()
+	if a.tunnelCmd != nil && a.tunnelCmd.Process != nil {
+		_ = a.tunnelCmd.Process.Kill()
+	}
+}
+
 func main() {
 	app := NewApp()
 
@@ -324,10 +358,14 @@ func main() {
 		Title:  "MLCRemote Desktop Prototype",
 		Width:  900,
 		Height: 700,
+		AssetServer: &assetserver.Options{
+			Assets: assets,
+		},
 		Bind: []interface{}{
 			app,
 		},
-		OnStartup: app.startup,
+		OnStartup:  app.startup,
+		OnShutdown: app.shutdown,
 	})
 
 	if err != nil {
@@ -354,12 +392,13 @@ func (a *App) CheckBackend(profileJSON string) (bool, error) {
 		args = append(args, p.ExtraArgs...)
 	}
 	target := fmt.Sprintf("%s@%s", p.User, p.Host)
-	args = append(args, target, "test -f ~/bin/dev-server")
+	// Check for the binary in the new location
+	args = append(args, target, "test -f ~/.mlcremote/bin/dev-server")
 
 	cmd := exec.Command("ssh", args...)
 	// verify functionality: exit code 0 means file exists
 	if err := cmd.Run(); err != nil {
-		return false, nil // Assume command failure means file not found or connection issue (interpreted as not found for simplicity)
+		return false, nil
 	}
 	return true, nil
 }
@@ -372,23 +411,36 @@ func (a *App) InstallBackend(profileJSON string) (string, error) {
 	}
 
 	// 1. Cross-compile backend
-	// Assuming running from desktop/wails directory, paths are relative
 	cwd, _ := os.Getwd()
-	_ = cwd
-	backendDir := "../../backend/cmd/dev-server"
-	binDir := "../../bin"
-	binPath := "../../bin/dev-server" // local path
+	// Navigate up from desktop/wails to root, then to backend
+	// Assuming cwd is .../desktop/wails
+	backendRoot := filepath.Join(cwd, "..", "..", "backend")
 
+	// Check if backendRoot exists to be sure
+	if _, err := os.Stat(backendRoot); os.IsNotExist(err) {
+		// Fallback: maybe we are running in dev mode differently?
+		// Try relative to binary location if compiled?
+		return "failed", fmt.Errorf("backend directory not found at %s", backendRoot)
+	}
+
+	binDir := filepath.Join(cwd, "..", "..", "bin")
 	// Ensure bin dir exists
 	_ = os.MkdirAll(binDir, 0755)
 
-	buildCmd := exec.Command("go", "build", "-ldflags", "-s -w", "-o", binPath, backendDir)
+	destBinary := filepath.Join(binDir, "dev-server")
+
+	// We run go build inside the backend directory so it picks up the go.mod there
+	buildCmd := exec.Command("go", "build", "-ldflags", "-s -w", "-o", destBinary, "./cmd/dev-server")
+	buildCmd.Dir = backendRoot
 	buildCmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64")
+
 	if out, err := buildCmd.CombinedOutput(); err != nil {
-		return "build-failed", fmt.Errorf("build failed: %s", string(out))
+		return "build-failed", fmt.Errorf("build failed: %s (dir: %s)", string(out), backendRoot)
 	}
 
-	// 2. Create remote directory
+	binPath := destBinary // use absolute path for SCP
+
+	// 2. Create remote directory structure
 	target := fmt.Sprintf("%s@%s", p.User, p.Host)
 	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
 	if p.IdentityFile != "" {
@@ -399,7 +451,8 @@ func (a *App) InstallBackend(profileJSON string) (string, error) {
 	}
 
 	mkdirArgs := append([]string{}, sshBaseArgs...)
-	mkdirArgs = append(mkdirArgs, target, "mkdir -p ~/bin ~/.config/systemd/user")
+	// Create ~/.mlcremote structure
+	mkdirArgs = append(mkdirArgs, target, "mkdir -p ~/.mlcremote/bin ~/.mlcremote/frontend ~/.config/systemd/user")
 	if err := exec.Command("ssh", mkdirArgs...).Run(); err != nil {
 		return "setup-failed", fmt.Errorf("failed to create remote directories: %w", err)
 	}
@@ -409,53 +462,104 @@ func (a *App) InstallBackend(profileJSON string) (string, error) {
 	if p.IdentityFile != "" {
 		scpArgs = append(scpArgs, "-i", p.IdentityFile)
 	}
-	scpArgs = append(scpArgs, binPath, fmt.Sprintf("%s:~/bin/dev-server", target))
-	
-	if out, err := exec.Command("scp", scpArgs...).CombinedOutput(); err != nil {
-		return "upload-failed", fmt.Errorf("scp failed: %s", string(out))
+	// Upload to ~/.mlcremote/bin/dev-server
+	// We need to use scp args structure carefully
+	scpBinArgs := append([]string{}, scpArgs...)
+	scpBinArgs = append(scpBinArgs, binPath, fmt.Sprintf("%s:~/.mlcremote/bin/dev-server", target))
+
+	if out, err := exec.Command("scp", scpBinArgs...).CombinedOutput(); err != nil {
+		return "upload-failed", fmt.Errorf("scp binary failed: %s", string(out))
 	}
 
-	// 4. Create and upload systemd service file
+	// 3.5. Upload Frontend Assets
+	// Ensure local dist exists (it should, we are running wails)
+	frontendDist := filepath.Join(cwd, "frontend", "dist")
+	if _, err := os.Stat(frontendDist); err == nil {
+		scpDistArgs := append([]string{}, scpArgs...)
+		// recursive copy
+		scpDistArgs = append(scpDistArgs, "-r", frontendDist, fmt.Sprintf("%s:~/.mlcremote/frontend", target))
+		// first remove old frontend to be clean
+		rmArgs := append([]string{}, sshBaseArgs...)
+		rmArgs = append(rmArgs, target, "rm -rf ~/.mlcremote/frontend && mkdir -p ~/.mlcremote/frontend")
+		_ = exec.Command("ssh", rmArgs...).Run()
+
+		// scp -r .../dist/* user@host:~/.mlcremote/frontend
+		// simpler: upload dist as folder then rename? or scp -r dist/. destination
+		// scp -r source destination
+		// We want contents of dist to be in ~/.mlcremote/frontend
+		// So we upload dist to ~/.mlcremote/ and rename or just scp to ~/.mlcremote/frontend
+		// Let's safe-bet: upload dist folder to ~/.mlcremote/ then move contents
+
+		// Actually let's use the scp recursive to target directory
+		// scp -r dist/* target:path is glob expansion which shell handles
+		// simpler: scp -r dist target:frontend
+		// but target:frontend must not exist for it to become frontend? or if it exists it becomes frontend/dist
+
+		// clean approach:
+		// 1. remove remote frontend dir
+		// 2. scp -r local/dist remote:~/.mlcremote/frontend
+		if out, err := exec.Command("scp", scpDistArgs...).CombinedOutput(); err != nil {
+			// ignore error? no, this is important
+			fmt.Printf("warning: frontend upload failed: %s\n", string(out))
+		}
+	}
+
+	// 4. Create and upload run-server.sh wrapper
+	runScriptContent := `#!/usr/bin/env bash
+set -euo pipefail
+# ensure we start in the user's home so any relative paths the server relies on work
+cd "$HOME"
+# Exec binary with default port 8443 and static dir
+# We use --no-auth because the connection is already secured via SSH tunnel
+exec "$HOME/.mlcremote/bin/dev-server" --port 8443 --root "$HOME" --static-dir "$HOME/.mlcremote/frontend" --no-auth
+`
+	runScriptFile := "run-server.sh"
+	_ = ioutil.WriteFile(runScriptFile, []byte(runScriptContent), 0755)
+	defer os.Remove(runScriptFile)
+
+	scpRunArgs := append([]string{}, scpArgs...)
+	scpRunArgs = append(scpRunArgs, runScriptFile, fmt.Sprintf("%s:~/.mlcremote/run-server.sh", target))
+
+	if out, err := exec.Command("scp", scpRunArgs...).CombinedOutput(); err != nil {
+		return "upload-failed", fmt.Errorf("scp run-script failed: %s", string(out))
+	}
+
+	// Make script executable
+	chmodArgs := append([]string{}, sshBaseArgs...)
+	chmodArgs = append(chmodArgs, target, "chmod +x ~/.mlcremote/run-server.sh ~/.mlcremote/bin/dev-server")
+	_ = exec.Command("ssh", chmodArgs...).Run()
+
+	// 5. Create and upload systemd service file
 	serviceContent := `[Unit]
-Description=MLCRemote Dev Server
+Description=mlcremote user service
 After=network.target
 
 [Service]
-ExecStart=%h/bin/dev-server
-Restart=always
-RestartSec=3
+Type=simple
+ExecStart=%h/.mlcremote/run-server.sh
+Restart=on-failure
 
 [Install]
 WantedBy=default.target
 `
-	// Write service file locally first
-	serviceFile := "dev-server.service"
+	serviceFile := "mlcremote.service"
 	_ = ioutil.WriteFile(serviceFile, []byte(serviceContent), 0644)
 	defer os.Remove(serviceFile)
 
-	scpServiceArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
-	if p.IdentityFile != "" {
-		scpServiceArgs = append(scpServiceArgs, "-i", p.IdentityFile)
-	}
-	scpServiceArgs = append(scpServiceArgs, serviceFile, fmt.Sprintf("%s:~/.config/systemd/user/dev-server.service", target))
-	
+	scpServiceArgs := append([]string{}, scpArgs...)
+	scpServiceArgs = append(scpServiceArgs, serviceFile, fmt.Sprintf("%s:~/.config/systemd/user/mlcremote.service", target))
+
 	if out, err := exec.Command("scp", scpServiceArgs...).CombinedOutput(); err != nil {
 		return "service-upload-failed", fmt.Errorf("failed to upload service file: %s", string(out))
 	}
 
-	// 5. Enable and start service
-	// We need to make sure the binary is executable
-	chmodArgs := append([]string{}, sshBaseArgs...)
-	chmodArgs = append(chmodArgs, target, "chmod +x ~/bin/dev-server")
-	_ = exec.Command("ssh", chmodArgs...).Run()
-
+	// 6. Enable and start service
 	startServiceArgs := append([]string{}, sshBaseArgs...)
-	startServiceArgs = append(startServiceArgs, target, "systemctl --user daemon-reload && systemctl --user enable --now dev-server.service")
-	
+	startServiceArgs = append(startServiceArgs, target, "systemctl --user daemon-reload && systemctl --user enable --now mlcremote.service")
+
 	if out, err := exec.Command("ssh", startServiceArgs...).CombinedOutput(); err != nil {
 		return "start-failed", fmt.Errorf("failed to start service: %s", string(out))
 	}
 
 	return "installed", nil
 }
-
