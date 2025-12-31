@@ -11,9 +11,11 @@ type Props = {
   titles?: Record<string,string>
   fullPaths?: Record<string,string>
   types?: Record<string, 'file'|'dir'|'shell'>
+  evictedTabs?: string[]
+  onRestoreEvicted?: (path: string) => void
 }
 
-export default function TabBar({ openFiles, active, onActivate, onClose, onCloseOthers, onCloseLeft, titles, fullPaths, types }: Props) {
+export default function TabBar({ openFiles, active, onActivate, onClose, onCloseOthers, onCloseLeft, titles, fullPaths, types, evictedTabs = [], onRestoreEvicted }: Props) {
   const [openIdx, setOpenIdx] = React.useState<number | null>(null)
   const containerRef = React.useRef<HTMLDivElement | null>(null)
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
@@ -61,6 +63,14 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
 
   return (
     <div className="tabbar" ref={containerRef}>
+      {evictedTabs && evictedTabs.length > 0 ? (
+        <div className="tab-evicted-dropdown" style={{ display: 'flex', alignItems: 'center', marginRight: 8 }}>
+          <select onChange={(e) => { const v = e.target.value; if (!v) return; onRestoreEvicted && onRestoreEvicted(v); e.currentTarget.selectedIndex = 0 }} defaultValue="">
+            <option value="">⋯</option>
+            {evictedTabs.map(t => <option key={t} value={t}>{t.split('/').pop()}</option>)}
+          </select>
+        </div>
+      ) : null}
       {showLeft && <button className="tab-scroll tab-scroll-left" aria-label="scroll left" onClick={() => scrollBy(-200)}>◀</button>}
       <div className="tab-scroll-area" ref={scrollRef} onScroll={updateScrollButtons}>
         {openFiles.map((p, idx) => (
