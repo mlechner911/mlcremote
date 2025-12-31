@@ -14,5 +14,12 @@ export async function authedFetch(input: RequestInfo, init?: RequestInit): Promi
   const headers = new Headers(init?.headers as HeadersInit)
   if (token) headers.set('X-Auth-Token', token)
   const merged: RequestInit = { ...(init || {}), headers }
-  return fetch(input, merged)
+  const res = await fetch(input, merged)
+  if (res.status === 401) {
+    try { localStorage.removeItem('mlcremote_token') } catch (_) {}
+    try {
+      window.dispatchEvent(new CustomEvent('mlcremote:auth-failed', { detail: { url: typeof input === 'string' ? input : (input as Request).url } }))
+    } catch (_) {}
+  }
+  return res
 }

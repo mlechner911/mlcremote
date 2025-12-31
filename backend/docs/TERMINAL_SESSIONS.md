@@ -7,7 +7,7 @@ This document explains how terminal sessions (server-side PTYs) are created, att
 - The frontend prefers persistent sessions. When a `TerminalTab` mounts it issues a request to:
 
 ```
-GET /api/terminal/new?shell=<shell>&cwd=<cwd>
+GET /api/terminal/new?shell=<shell>&cwd=<cwd>&token=<auth_token>
 ```
 
 The server responds with JSON `{ "id": "s..." }` where the `id` is a session identifier.
@@ -15,20 +15,20 @@ The server responds with JSON `{ "id": "s..." }` where the `id` is a session ide
 The frontend then opens a WebSocket attaching to that session:
 
 ```
-ws://<host>/ws/terminal?session=<id>
+ws://<host>/ws/terminal?session=<id>&token=<auth_token>
 ```
 
 If creating a persistent session fails, the frontend falls back to creating an ephemeral PTY by connecting directly to the WebSocket with query parameters:
 
 ```
-ws://<host>/ws/terminal?shell=<shell>&cwd=<cwd>
+ws://<host>/ws/terminal?shell=<shell>&cwd=<cwd>&token=<auth_token>
 ```
 
 Ephemeral sessions are created and owned by the single WS connection and are closed when the connection closes.
 
 ## Attaching to an existing session
 
-Any client that has a valid `session` id can attach to an existing persistent session by opening a WebSocket with `?session=<id>`. Multiple clients can attach concurrently and will share the same PTY output.
+Any client that has a valid `session` id can attach to an existing persistent session by opening a WebSocket with `?session=<id>&token=<auth_token>`. Multiple clients can attach concurrently and will share the same PTY output.
 
 On the server the session is tracked in an in-memory map and keeps a set of attached WebSocket connections. While at least one connection is attached, the session remains active and the PTY child process runs.
 

@@ -87,6 +87,7 @@ EOF
 
 echo "Connecting to ${TARGET} and running remote checks..."
 
-ssh "${SSH_OPTS[@]}" "$TARGET" "bash -lc $(printf '%q' "$REMOTE_CMD")"
+# Export LINES and PORT into the remote shell so the remote here-doc can use them
+ssh "${SSH_OPTS[@]}" "$TARGET" "LINES=${LINES} PORT=${PORT} bash -lc $(printf '%q' "$REMOTE_CMD")"
 
 echo "Done."

@@ -195,3 +195,9 @@ icons:
     file: raw/sun.svg
     mime: application/x-ui
     extensions: ["sun"]
+
+  - id: trash
+    name: Trash
+    file: raw/trash.svg
+    mime: application/x-ui
+    extensions: ["trash"]

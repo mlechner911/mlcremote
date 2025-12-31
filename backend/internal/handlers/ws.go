@@ -14,10 +14,20 @@ import (
 	"github.com/gorilla/websocket"
 
 	"lightdev/internal/util"
+	termutil "lightdev/internal/util/terminal"
 )
 
 // WsTerminalHandler upgrades the HTTP connection to a WebSocket and bridges
 // data between the websocket and either an ephemeral PTY or an existing session.
+// @Summary Connect to terminal WebSocket
+// @Description Upgrade to WebSocket for terminal I/O.
+// @ID connectTerminalWS
+// @Tags terminal
+// @Security TokenAuth
+// @Param id query string false "Session ID"
+// @Param token query string false "Auth token"
+// @Success 101
+// @Router /ws/terminal [get]
 func WsTerminalHandler(root string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		up := websocket.Upgrader{
@@ -42,7 +52,7 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 			}
 			// validate requested shell from query and use helper with fallbacks
 			reqShell := r.URL.Query().Get("shell")
-			if rs := resolveRequestedShell(reqShell); rs != "" {
+			if rs := termutil.ResolveRequestedShell(reqShell); rs != "" {
 				shell = rs
 			}
 			cwd := r.URL.Query().Get("cwd")
@@ -86,6 +96,7 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 			}()
 
 			// WS -> PTY (write into session's PTY). Support resize JSON messages.
+			// this needs clean up for too small screen size..
 			for {
 				mt, data, err := conn.ReadMessage()
 				if err != nil {

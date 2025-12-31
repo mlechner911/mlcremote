@@ -5,6 +5,7 @@ import FileExplorer from './components/FileExplorer'
 import SettingsPopup from './components/SettingsPopup'
 import { Icon } from './generated/icons'
 import { getIconForShell, getIconForDir, getIcon } from './generated/icon-helpers'
+import TrashView from './components/TrashView'
 import Editor from './components/Editor'
 const TerminalTab = React.lazy(() => import('./components/TerminalTab'))
 // const TabBarComponent = React.lazy(() => import('./components/TabBar'))
@@ -129,15 +130,30 @@ export default function App() {
     return () => { mounted = false; clearInterval(id) }
   }, [isOnline])
 
-  // show login prompt when server requires password auth and we have no token
+  // legacy per-flow login flag (kept for the actual input flows)
   const [showLogin, setShowLogin] = React.useState(false)
+  const [showLoginInput, setShowLoginInput] = React.useState(false)
+
+  // Unified 'Not Authenticated' chooser. When server requires auth and
+  // we have no token this chooser gives the user the option to login
+  // with a password or to provide an access key.
+  const [showAuthChooser, setShowAuthChooser] = React.useState(false)
   React.useEffect(() => {
-    if (!health) return
-    const needs = !!health.password_auth
+    if (!health) { setShowAuthChooser(false); return }
+    const needsPassword = !!health.password_auth
+    const needsTokenOnly = !!health.auth_required && !health.password_auth
     const token = localStorage.getItem('mlcremote_token')
-    if (needs && !token) setShowLogin(true)
-    else setShowLogin(false)
+    if ((needsPassword || needsTokenOnly) && !token) setShowAuthChooser(true)
+    else setShowAuthChooser(false)
   }, [health])
+
+  // global handler: when authedFetch observes a 401 it dispatches
+  // `mlcremote:auth-failed`. Show unified chooser so user can pick the method.
+  React.useEffect(() => {
+    const h = (_ev: Event) => setShowAuthChooser(true)
+    window.addEventListener('mlcremote:auth-failed', h as EventListener)
+    return () => window.removeEventListener('mlcremote:auth-failed', h as EventListener)
+  }, [])
 
   // capture token from URL on first mount (if present) so we don't prompt
   React.useEffect(() => {
@@ -317,6 +333,13 @@ export default function App() {
               }
             }}><Icon name={getIcon('screenshot')} title="Screenshot" size={16} /></button>
             <button className="link icon-btn" aria-label="Open settings" title="Settings" onClick={() => setSettingsOpen(s => !s)}><Icon name={getIcon('settings')} title="Settings" size={16} /></button>
+            <button className="link icon-btn" title="Trash" aria-label="Trash" onClick={() => {
+              // open a single trash tab
+              if (!openFiles.includes('trash')) {
+                openFile('trash')
+              }
+              setActiveFile('trash')
+            }}><Icon name="icon-trash" title="Trash" size={16} /></button>
         </div>
           {settingsOpen && (
             <SettingsPopup
@@ -406,7 +429,22 @@ export default function App() {
         </div>
         <main className="main">
           <div className="main-content">
-          {showLogin && (
+          {/* Unified authentication chooser/modal */}
+          {showAuthChooser && (
+            <div className="login-overlay">
+              <div className="login-box">
+                <h3>Not Authenticated</h3>
+                <p>You need to sign in or provide an access key to continue.</p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button className="btn" onClick={() => { setShowAuthChooser(false); setShowLoginInput(true) }}>Sign in (password)</button>
+                  <button className="btn" onClick={() => { setShowAuthChooser(false); setShowTokenPrompt(true) }}>I have an access key</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Password input modal (shown when user chooses to sign in) */}
+          {showLoginInput && (
             <div className="login-overlay">
               <div className="login-box">
                 <h3>Sign in</h3>
@@ -419,7 +457,7 @@ export default function App() {
                     try {
                       const t = await login(el.value)
                       console.log('login token', t)
-                      setShowLogin(false)
+                      setShowLoginInput(false)
                       setReloadSignal(Date.now())
                     } catch (e:any) {
                       alert('Login failed: ' + (e?.message || e))
@@ -430,6 +468,7 @@ export default function App() {
             </div>
           )}
 
+          {/* Token input modal (shown when user chooses to provide an access key) */}
           {showTokenPrompt && (
             <div className="login-overlay">
               <div className="login-box">
@@ -540,6 +579,8 @@ export default function App() {
                     setShellCwds(s => { const ns = { ...s }; delete ns[f]; return ns })
                   }} />
                 </React.Suspense>
+              ) : f === 'trash' ? (
+                <TrashView />
               ) : (
                 <Editor path={f} settings={settings || undefined} onSaved={() => { /* no-op for now */ }} reloadTrigger={reloadTriggers[f] || 0} onUnsavedChange={handleUnsavedChange} onMeta={(m:any) => {
                   if (m && m.path) setFileMetas(fm => ({ ...fm, [f]: m }))

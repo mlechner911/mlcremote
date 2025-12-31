@@ -1,6 +1,6 @@
 #!/usr/bin/env bash -x
 echo "Running probe-remote.sh with args: $*"
-set -euo pipefail
+# set -euo pipefail
 
 # probe-remote.sh
 # Probe a remote host via SSH and report OS, distro, arch, init system, and utilities.
@@ -98,26 +98,31 @@ run_ssh() {
 # Run ssh and capture stdout/stderr into variables
 run_ssh_capture() {
   local opts="$1"
-  local out
-  local err
-  out=$(mktemp)
-  err=$(mktemp)
-  ssh $opts "$REMOTE" "bash -s" <<< "$RSCRIPT" >"$out" 2>"$err"
-  local rc=$?
-  cat "$out"
-  if [ $rc -ne 0 ] || $DEBUG; then
+  local outf errf rc
+  outf=$(mktemp)
+  errf=$(mktemp)
+  # ssh may return non-zero for many expected reasons (host key, auth);
+  # temporarily disable errexit so we can capture stdout/stderr and handle rc.
+  set +e
+  ssh $opts "$REMOTE" "bash -s" <<< "$RSCRIPT" >"$outf" 2>"$errf"
+  rc=$?
+  set -e
+  # print stdout (the remote JSON) so callers can capture it if desired
+  cat "$outf"
+  # print ssh stderr for diagnostics when there was an error or when DEBUG is true
+  if [ $rc -ne 0 ] || [ "${DEBUG:-false}" = true ]; then
     echo "--- SSH STDERR ---" >&2
-    sed -n '1,200p' "$err" >&2
+    sed -n '1,200p' "$errf" >&2
   fi
-  rm -f "$out" "$err"
+  rm -f "$outf" "$errf"
   return $rc
 }
 
 if $JSON; then
-  # Try non-interactive first
-  # Try non-interactive first, capture output to detect failure
-  if run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" >/dev/null 2>&1; then
-    run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10"
+  # Try non-interactive first and capture the output so we can reuse it.
+  if out=$(run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10"); then
+    # successful non-interactive probe -> print JSON
+    echo "$out"
   else
     # fall back: run a plain SSH command without feeding the probe script to
     # allow the user to accept the host key or enter a password interactively.
@@ -125,7 +130,12 @@ if $JSON; then
     echo "If prompted, accept the host key (yes) and/or enter your password. After login, the probe will run." >&2
     if ssh -o ConnectTimeout=30 "$REMOTE" 'echo SSH_OK' ; then
       # after interactive login/acceptance, run the probe non-interactively
-      run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10"
+      if out2=$(run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10"); then
+        echo "$out2"
+      else
+        echo "Probe failed after interactive login. See SSH stderr above." >&2
+        exit 1
+      fi
     else
       echo "Interactive SSH attempt failed; aborting probe." >&2
       exit 1
@@ -133,15 +143,24 @@ if $JSON; then
   fi
 else
   echo "Probing $REMOTE..."
-  # Try non-interactive first
-  if run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" | jq 2>/dev/null; then
-    run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" | jq
+  # Try non-interactive first and capture output so we can pipe it into jq
+  if out=$(run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10"); then
+    if echo "$out" | jq 2>/dev/null; then
+      echo "$out" | jq
+    else
+      # output wasn't valid JSON for jq; print raw output
+      echo "$out"
+    fi
   else
     echo "Non-interactive SSH failed; opening an interactive SSH so you can accept host key / enter password" >&2
     echo "If prompted, accept the host key (yes) and/or enter your password. After login, the probe will run." >&2
     if ssh -o ConnectTimeout=30 "$REMOTE" 'echo SSH_OK' ; then
-      if run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" | jq; then
-        run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10" | jq
+      if out2=$(run_ssh_capture "-o BatchMode=yes -o ConnectTimeout=10"); then
+        if echo "$out2" | jq 2>/dev/null; then
+          echo "$out2" | jq
+        else
+          echo "$out2"
+        fi
       else
         echo "Probe failed after interactive login. See SSH stderr above." >&2
         exit 1

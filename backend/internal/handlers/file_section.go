@@ -10,8 +10,23 @@ import (
 
 // FileSectionHandler serves a section of a file specified by offset and length.
 // Query params: path, offset (int64), length (int64). Length is capped to prevent abuse.
+// @Summary Read file section
+// @Description Reads a chunk of a file.
+// @ID getFileSection
+// @Tags file
+// @Security TokenAuth
+// @Param path query string true "File path"
+// @Param offset query int false "Start offset"
+// @Param length query int false "Length to read"
+// @Produce application/octet-stream
+// @Success 200
+// @Router /api/file/section [get]
 func FileSectionHandler(root string) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+        if util.IsBlocked() {
+            http.Error(w, "service temporarily unavailable", http.StatusServiceUnavailable)
+            return
+        }
         reqPath := r.URL.Query().Get("path")
         target, err := util.SanitizePath(root, reqPath)
         if err != nil {
@@ -20,6 +35,9 @@ func FileSectionHandler(root string) http.HandlerFunc {
         }
         f, err := os.Open(target)
         if err != nil {
+            if os.IsNotExist(err) {
+                util.RecordMissingAccess()
+            }
             http.Error(w, "cannot open file", http.StatusInternalServerError)
             return
         }
