@@ -7,6 +7,7 @@ import { Icon } from './generated/icons'
 import { getIconForShell, getIconForDir, getIcon } from './generated/icon-helpers'
 import TrashView from './components/TrashView'
 import Editor from './components/Editor'
+import BinaryView from './components/BinaryView'
 const TerminalTab = React.lazy(() => import('./components/TerminalTab'))
 // const TabBarComponent = React.lazy(() => import('./components/TabBar'))
 
@@ -33,6 +34,7 @@ export default function App() {
   const [openFiles, setOpenFiles] = React.useState<string[]>([])
   const [evictedTabs, setEvictedTabs] = React.useState<string[]>([])
   const [activeFile, setActiveFile] = React.useState<string>('')
+  const [binaryPath, setBinaryPath] = React.useState<string | null>(null)
   const [autoOpen, setAutoOpenState] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('autoOpen', boolSerializer, true))
   const setAutoOpen = (v: boolean) => { setAutoOpenState(v); defaultStore.set('autoOpen', v, boolSerializer) }
   const maxTabs = 8
@@ -242,18 +244,20 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <img src="/logo.png" alt="MLCRemote logo" style={{ height: 28, display: 'block' }} onLoad={() => setLogoVisible(true)} onError={() => setLogoVisible(false)} />
           {!logoVisible && <h1 style={{ margin: 0 }}>MLCRemote</h1>}
-        </div>
-        <div className="status">
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
             <span style={{ width: 10, height: 10, borderRadius: 6, background: health && health.host ? '#10b981' : (isOnline ? '#f59e0b' : '#ef4444'), display: 'inline-block' }} />
+            {!hideServerName && (
+              <button className="link icon-btn" style={{ marginLeft: 0, fontSize: 12, padding: 0 }} onClick={() => setAboutOpen(true)}>{health && health.host ? health.host : (isOnline ? 'connecting...' : 'browser offline')}</button>
+            )}
+          </div>
+        </div>
+          <div className="status">
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             { !isOnline && (<span className={(health ? 'badge badge-ok' : (isOnline ? 'badge badge-error' : 'badge badge-error'))}>
               {isOnline ? '' /*'online'*/ : 'offline'}
                         </span>
             )}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              {!hideServerName && (
-                <button className="link icon-btn" style={{ marginLeft: 8, fontSize: 12, padding: 0 }} onClick={() => setAboutOpen(true)}>{health && health.host ? health.host : (isOnline ? 'connecting...' : 'browser offline')}</button>
-              )}
               {health && health.server_time && (
                 null
               )}
@@ -379,12 +383,26 @@ export default function App() {
               return
             }
             // file: open editor tab (respect autoOpen)
-            if (autoOpen) {
-              openFile(p)
-            } else {
-              // autoOpen disabled: selecting will mark but not open a persistent tab
-              setActiveFile(p)
-            }
+            // file: decide if it should open as a shared binary view or normal editor
+            (async () => {
+              try {
+                const st = await statPath(p)
+                // heuristic: if not text and not a directory, treat as binary
+                if (!st.isDir && st.mime && !st.mime.startsWith('text/') && !st.mime.startsWith('image/') && st.mime !== 'application/pdf') {
+                  // open a single shared binary tab
+                  if (!openFiles.includes('binary')) openFile('binary')
+                  setBinaryPath(p)
+                  setActiveFile('binary')
+                  return
+                }
+              } catch (_) {}
+              // otherwise open as normal file tab
+              if (autoOpen) {
+                openFile(p)
+              } else {
+                setActiveFile(p)
+              }
+            })()
             // check health status since backend interaction succeeded
             checkHealthStatus()
           }} onView={(p) => {
@@ -548,17 +566,18 @@ export default function App() {
                     }
 
                     return (
-                      <TabBarComponent openFiles={openFiles} active={activeFile} titles={titles} fullPaths={fullPaths} types={types} evictedTabs={evictedTabs} onRestoreEvicted={(p) => {
-                        // restore the evicted tab by prepending it to openFiles (may evict another)
+                      <TabBarComponent openFiles={openFiles} active={activeFile} titles={titles} fullPaths={fullPaths} types={types} onRestoreEvicted={(p) => {
+                        // Restore an overflowed tab: ensure it's in openFiles,
+                        // set it active, and request focus in the explorer.
                         setOpenFiles(of => {
                           if (of.includes(p)) return of
+                          // prepend to keep recent items visible
                           const next = [p, ...of]
-                          if (next.length <= maxTabs) return next
-                          const ev = next[0]
-                          // ensure we record evicted tab
-                          setEvictedTabs(prev => prev.filter(x => x !== p).concat(ev))
-                          return next.slice(1)
+                          return next.slice(0, maxTabs)
                         })
+                        setActiveFile(p)
+                        setSelectedPath(p)
+                        setFocusRequest(Date.now())
                       } }
                       onActivate={(p) => {
                         // ensure explorer shows this file's directory
@@ -605,6 +624,11 @@ export default function App() {
                 </React.Suspense>
               ) : f === 'trash' ? (
                 <TrashView />
+              ) : f === 'binary' ? (
+                <React.Suspense fallback={<div className="muted">Loading…</div>}>
+                  {/* BinaryView shows metadata for a single shared binary tab */}
+                  <BinaryView path={binaryPath || undefined} />
+                </React.Suspense>
               ) : (
                 <Editor path={f} settings={settings || undefined} onSaved={() => { /* no-op for now */ }} reloadTrigger={reloadTriggers[f] || 0} onUnsavedChange={handleUnsavedChange} onMeta={(m:any) => {
                   if (m && m.path) setFileMetas(fm => ({ ...fm, [f]: m }))
