@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { StartTunnelWithProfile, CheckBackend, InstallBackend, StopTunnel } from '../../wailsjs/go/main/App'
+import { StartTunnelWithProfile, CheckBackend, InstallBackend, StopTunnel } from '../../wailsjs/go/app/App'
 
 import { Profile } from '../App'
 
@@ -93,13 +93,20 @@ export default function ConnectDialog({ initialProfile, onClose, onConnected }: 
   }
 
   const handleInstall = async () => {
+    if (!user || !host) {
+      setStatus('User and Host are required')
+      return
+    }
+    const pObj = getProfileObj()
+    const pJSON = JSON.stringify(pObj)
+
     setStatus('Installing backend... (this may take a minute)')
     try {
-      const res = await InstallBackend(profileStr)
+      const res = await InstallBackend(pJSON)
       if (res === 'installed') {
         setStatus('Installation complete. Connecting...')
         setShowInstall(false)
-        startTunnel(profileStr, getProfileObj())
+        startTunnel(pJSON, pObj)
       } else {
         setStatus('Installation failed: ' + res)
       }
@@ -148,7 +155,15 @@ export default function ConnectDialog({ initialProfile, onClose, onConnected }: 
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
+          {!showInstall && (
+            <button
+              onClick={() => { setShowInstall(true); setStatus('Ready to update backend.'); }}
+              style={{ marginRight: 'auto', background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.85rem' }}
+            >
+              Force Update
+            </button>
+          )}
           <button onClick={onClose} style={{ padding: '8px 16px', cursor: 'pointer' }}>Cancel</button>
           {!showInstall && <button onClick={handleConnect} style={{ padding: '8px 16px', background: '#007bff', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Connect</button>}
           {showInstall && <button onClick={handleInstall} style={{ padding: '8px 16px', background: '#28a745', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Install Backend</button>}
