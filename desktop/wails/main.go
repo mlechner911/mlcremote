@@ -334,3 +334,128 @@ func main() {
 		println("Error:", err.Error())
 	}
 }
+
+// CheckBackend checks if the dev-server binary exists on the remote host
+func (a *App) CheckBackend(profileJSON string) (bool, error) {
+	var p TunnelProfile
+	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
+		return false, fmt.Errorf("invalid profile JSON: %w", err)
+	}
+	if p.Host == "" || p.User == "" {
+		return false, errors.New("missing user or host")
+	}
+
+	// Construct SSH command to check file existence
+	args := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
+	if p.IdentityFile != "" {
+		args = append(args, "-i", p.IdentityFile)
+	}
+	if len(p.ExtraArgs) > 0 {
+		args = append(args, p.ExtraArgs...)
+	}
+	target := fmt.Sprintf("%s@%s", p.User, p.Host)
+	args = append(args, target, "test -f ~/bin/dev-server")
+
+	cmd := exec.Command("ssh", args...)
+	// verify functionality: exit code 0 means file exists
+	if err := cmd.Run(); err != nil {
+		return false, nil // Assume command failure means file not found or connection issue (interpreted as not found for simplicity)
+	}
+	return true, nil
+}
+
+// InstallBackend builds the backend locally and deploys it to the remote server
+func (a *App) InstallBackend(profileJSON string) (string, error) {
+	var p TunnelProfile
+	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
+		return "failed", fmt.Errorf("invalid profile JSON: %w", err)
+	}
+
+	// 1. Cross-compile backend
+	// Assuming running from desktop/wails directory, paths are relative
+	cwd, _ := os.Getwd()
+	_ = cwd
+	backendDir := "../../backend/cmd/dev-server"
+	binDir := "../../bin"
+	binPath := "../../bin/dev-server" // local path
+
+	// Ensure bin dir exists
+	_ = os.MkdirAll(binDir, 0755)
+
+	buildCmd := exec.Command("go", "build", "-ldflags", "-s -w", "-o", binPath, backendDir)
+	buildCmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64")
+	if out, err := buildCmd.CombinedOutput(); err != nil {
+		return "build-failed", fmt.Errorf("build failed: %s", string(out))
+	}
+
+	// 2. Create remote directory
+	target := fmt.Sprintf("%s@%s", p.User, p.Host)
+	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
+	if p.IdentityFile != "" {
+		sshBaseArgs = append(sshBaseArgs, "-i", p.IdentityFile)
+	}
+	if len(p.ExtraArgs) > 0 {
+		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
+	}
+
+	mkdirArgs := append([]string{}, sshBaseArgs...)
+	mkdirArgs = append(mkdirArgs, target, "mkdir -p ~/bin ~/.config/systemd/user")
+	if err := exec.Command("ssh", mkdirArgs...).Run(); err != nil {
+		return "setup-failed", fmt.Errorf("failed to create remote directories: %w", err)
+	}
+
+	// 3. Upload binary using SCP
+	scpArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
+	if p.IdentityFile != "" {
+		scpArgs = append(scpArgs, "-i", p.IdentityFile)
+	}
+	scpArgs = append(scpArgs, binPath, fmt.Sprintf("%s:~/bin/dev-server", target))
+	
+	if out, err := exec.Command("scp", scpArgs...).CombinedOutput(); err != nil {
+		return "upload-failed", fmt.Errorf("scp failed: %s", string(out))
+	}
+
+	// 4. Create and upload systemd service file
+	serviceContent := `[Unit]
+Description=MLCRemote Dev Server
+After=network.target
+
+[Service]
+ExecStart=%h/bin/dev-server
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+`
+	// Write service file locally first
+	serviceFile := "dev-server.service"
+	_ = ioutil.WriteFile(serviceFile, []byte(serviceContent), 0644)
+	defer os.Remove(serviceFile)
+
+	scpServiceArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
+	if p.IdentityFile != "" {
+		scpServiceArgs = append(scpServiceArgs, "-i", p.IdentityFile)
+	}
+	scpServiceArgs = append(scpServiceArgs, serviceFile, fmt.Sprintf("%s:~/.config/systemd/user/dev-server.service", target))
+	
+	if out, err := exec.Command("scp", scpServiceArgs...).CombinedOutput(); err != nil {
+		return "service-upload-failed", fmt.Errorf("failed to upload service file: %s", string(out))
+	}
+
+	// 5. Enable and start service
+	// We need to make sure the binary is executable
+	chmodArgs := append([]string{}, sshBaseArgs...)
+	chmodArgs = append(chmodArgs, target, "chmod +x ~/bin/dev-server")
+	_ = exec.Command("ssh", chmodArgs...).Run()
+
+	startServiceArgs := append([]string{}, sshBaseArgs...)
+	startServiceArgs = append(startServiceArgs, target, "systemctl --user daemon-reload && systemctl --user enable --now dev-server.service")
+	
+	if out, err := exec.Command("ssh", startServiceArgs...).CombinedOutput(); err != nil {
+		return "start-failed", fmt.Errorf("failed to start service: %s", string(out))
+	}
+
+	return "installed", nil
+}
+
