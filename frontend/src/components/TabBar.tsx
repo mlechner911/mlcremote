@@ -11,7 +11,6 @@ type Props = {
   titles?: Record<string,string>
   fullPaths?: Record<string,string>
   types?: Record<string, 'file'|'dir'|'shell'>
-  evictedTabs?: string[]
   onRestoreEvicted?: (path: string) => void
 }
 
@@ -21,6 +20,8 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
   const [showLeft, setShowLeft] = React.useState(false)
   const [showRight, setShowRight] = React.useState(false)
+  const [evictedOpen, setEvictedOpen] = React.useState(false)
+  const [visibleCount, setVisibleCount] = React.useState<number | null>(null)
 
   const updateScrollButtons = () => {
     const el = scrollRef.current
@@ -58,19 +59,52 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
     updateScrollButtons()
     function onResize() { updateScrollButtons() }
     window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    // recompute visible count when resizing
+    function recompute() {
+      const el = scrollRef.current
+      const approx = 140
+      if (!el) { setVisibleCount(null); return }
+      const avail = el.clientWidth
+      const cnt = Math.max(1, Math.floor(avail / approx))
+      setVisibleCount(cnt)
+    }
+    window.addEventListener('resize', recompute)
+    recompute()
+    return () => {
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('resize', recompute)
+    }
   }, [openFiles])
 
   return (
     <div className="tabbar" ref={containerRef}>
-      {evictedTabs && evictedTabs.length > 0 ? (
-        <div className="tab-evicted-dropdown" style={{ display: 'flex', alignItems: 'center', marginRight: 8 }}>
-          <select onChange={(e) => { const v = e.target.value; if (!v) return; onRestoreEvicted && onRestoreEvicted(v); e.currentTarget.selectedIndex = 0 }} defaultValue="">
-            <option value="">⋯</option>
-            {evictedTabs.map(t => <option key={t} value={t}>{t.split('/').pop()}</option>)}
-          </select>
-        </div>
-      ) : null}
+      {/* Evicted/overflow dropdown: compute overflow based on available width */}
+      {(() => {
+        const approx = 140
+        const avail = scrollRef.current ? scrollRef.current.clientWidth : 600
+        const cnt = visibleCount ?? Math.max(1, Math.floor(avail / approx))
+        const overflow = openFiles.length > cnt ? openFiles.slice(0, openFiles.length - cnt) : []
+        if (overflow.length === 0) return null
+        return (
+          <div className="tab-evicted-dropdown" style={{ display: 'flex', alignItems: 'center', marginRight: 8, position: 'relative' }}>
+            <button className="btn" onClick={() => setEvictedOpen(o => !o)}>⋯</button>
+            {evictedOpen && (
+              <div style={{ position: 'absolute', left: 0, top: '100%', background: 'var(--bg)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', padding: 8, zIndex: 50 }}>
+                {overflow.map(t => (
+                  <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px' }}>
+                    <button className="link" onClick={() => { onRestoreEvicted && onRestoreEvicted(t); setEvictedOpen(false) }} style={{ flex: 1, textAlign: 'left' }}>{(titles && titles[t]) || t.split('/').pop()}</button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn btn-small" title="Restore" onClick={() => { onRestoreEvicted && onRestoreEvicted(t); setEvictedOpen(false) }}>↺</button>
+                      <button className="btn btn-small" title="Close" onClick={() => { onClose && onClose(t); setEvictedOpen(false) }}>✕</button>
+                      <button className="btn btn-small" title="Close Others" onClick={() => { overflow.filter(x => x !== t).forEach(x => onClose && onClose(x)); setEvictedOpen(false) }}>⋯</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
       {showLeft && <button className="tab-scroll tab-scroll-left" aria-label="scroll left" onClick={() => scrollBy(-200)}>◀</button>}
       <div className="tab-scroll-area" ref={scrollRef} onScroll={updateScrollButtons}>
         {openFiles.map((p, idx) => (
