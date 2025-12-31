@@ -109,7 +109,11 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
       <div className="tab-scroll-area" ref={scrollRef} onScroll={updateScrollButtons}>
         {openFiles.map((p, idx) => (
           <div key={p} className="tab-item" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px' }}>
-          <button className={p === active ? 'btn' : 'link'} onClick={() => onActivate(p)} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            className={p === active ? 'btn' : 'link'}
+            onClick={() => onActivate(p)}
+            onContextMenu={(e) => { e.preventDefault(); setOpenIdx(idx); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span key={`${types?.[p] || 'file'}-${p}`} className="tab-icon">
                 {(() => {
                   // Prefer using the generated `iconForExtension` mapping for all
@@ -126,11 +130,14 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
                   return <Icon name={mapped!} />
                 })()}
               </span>
-              <span title={fullPaths?.[p] || p} className={(titles && titles[p] && titles[p].startsWith('*')) ? 'tab-title tab-unsaved' : 'tab-title'}>{(titles && titles[p]) || p.split('/').pop()}</span>
+              {(() => {
+                const full = (titles && titles[p]) || p.split('/').pop() || p
+                const display = full.length > 10 ? full.slice(0, 10) + '…' : full
+                const cls = (titles && titles[p] && titles[p].startsWith('*')) ? 'tab-title tab-unsaved' : 'tab-title'
+                return <span title={fullPaths?.[p] || full} className={cls} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 120 }}>{display}</span>
+              })()}
           </button>
-          <div style={{ position: 'relative' }}>
-            <button aria-haspopup="true" aria-expanded={openIdx === idx} className="btn btn-small" onClick={() => setOpenIdx(openIdx === idx ? null : idx)}>⋮</button>
-          </div>
+          {/* removed small menu button; right-click the tab to open menu */}
         </div>
         ))}
       </div>

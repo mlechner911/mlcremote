@@ -115,7 +115,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     setSectionLoading(true)
     try {
       const q = `?path=${encodeURIComponent(path)}&offset=${offset}&length=${length}`
-      const r = await fetch(`/api/file/section${q}`)
+      const r = await (await import('../auth')).authedFetch(`/api/file/section${q}`)
       if (!r.ok) throw new Error('section fetch failed')
       const txt = await r.text()
       setContent(txt)
