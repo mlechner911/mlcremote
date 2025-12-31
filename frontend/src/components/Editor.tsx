@@ -3,7 +3,7 @@ import { readFile, saveFile, deleteFile, listTree, statPath } from '../api'
 const PdfPreview = React.lazy(() => import('./PdfPreview'))
 import { formatBytes } from '../bytes'
 import { isEditable, isProbablyText, extFromPath, probeFileType } from '../filetypes'
-import { getToken } from '../auth'
+import { getToken, authedFetch } from '../auth'
 import TextView from './TextView'
 import ImageView from './ImageView'
 import PdfView from './PdfView'
@@ -115,7 +115,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     setSectionLoading(true)
     try {
       const q = `?path=${encodeURIComponent(path)}&offset=${offset}&length=${length}`
-      const r = await (await import('../auth')).authedFetch(`/api/file/section${q}`)
+      const r = await authedFetch(`/api/file/section${q}`)
       if (!r.ok) throw new Error('section fetch failed')
       const txt = await r.text()
       setContent(txt)
