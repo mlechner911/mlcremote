@@ -34,3 +34,4 @@ cmd/icon-gen/bin/
 # Go build artifacts and other executables
 *.out
 *.test
+bin/
