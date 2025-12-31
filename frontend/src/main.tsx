@@ -2,6 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import 'prismjs/themes/prism-tomorrow.css'
+import '@xterm/xterm/css/xterm.css'
 import './styles.css'
 
 // Inject generated SVG sprite into the DOM so <use href="#icon-..."> works.
