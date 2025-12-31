@@ -31,6 +31,7 @@ export default function App() {
   const [focusRequest, setFocusRequest] = React.useState<number>(0)
   const [logoVisible, setLogoVisible] = React.useState<boolean>(true)
   const [openFiles, setOpenFiles] = React.useState<string[]>([])
+  const [evictedTabs, setEvictedTabs] = React.useState<string[]>([])
   const [activeFile, setActiveFile] = React.useState<string>('')
   const [autoOpen, setAutoOpenState] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('autoOpen', boolSerializer, true))
   const setAutoOpen = (v: boolean) => { setAutoOpenState(v); defaultStore.set('autoOpen', v, boolSerializer) }
@@ -45,7 +46,12 @@ export default function App() {
       if (of.includes(path)) return of
       const next = [...of, path]
       if (next.length <= maxTabs) return next
-      // close the oldest opened (first) tab
+      // close the oldest opened (first) tab and record it in evictedTabs
+      const evicted = next[0]
+      try { setEvictedTabs(prev => {
+        if (prev.includes(evicted)) return prev
+        return [...prev, evicted]
+      }) } catch (_) {}
       return next.slice(1)
     })
     setActiveFile(path)
@@ -542,7 +548,19 @@ export default function App() {
                     }
 
                     return (
-                      <TabBarComponent openFiles={openFiles} active={activeFile} titles={titles} fullPaths={fullPaths} types={types} onActivate={(p) => {
+                      <TabBarComponent openFiles={openFiles} active={activeFile} titles={titles} fullPaths={fullPaths} types={types} evictedTabs={evictedTabs} onRestoreEvicted={(p) => {
+                        // restore the evicted tab by prepending it to openFiles (may evict another)
+                        setOpenFiles(of => {
+                          if (of.includes(p)) return of
+                          const next = [p, ...of]
+                          if (next.length <= maxTabs) return next
+                          const ev = next[0]
+                          // ensure we record evicted tab
+                          setEvictedTabs(prev => prev.filter(x => x !== p).concat(ev))
+                          return next.slice(1)
+                        })
+                      } }
+                      onActivate={(p) => {
                         // ensure explorer shows this file's directory
                         if (p && !p.startsWith('shell-')) {
                           const parts = p.split('/').filter(Boolean)
