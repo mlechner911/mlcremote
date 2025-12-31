@@ -72,7 +72,9 @@ export default function App() {
   const [now, setNow] = React.useState<Date>(new Date())
   const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine)
   const [reloadTriggers, setReloadTriggers] = React.useState<Record<string, number>>({})
-  const [reloadSignal, setReloadSignal] = React.useState<number>(0)
+  const [reloadSignal, setReloadSignal] = React.useState<number>(() => {
+    try { return captureTokenFromURL() ? Date.now() : 0 } catch { return 0 }
+  })
   const [unsavedChanges, setUnsavedChanges] = React.useState<Record<string, boolean>>({})
   const [fileMetas, setFileMetas] = React.useState<Record<string, any>>({})
 
@@ -155,13 +157,17 @@ export default function App() {
     return () => window.removeEventListener('mlcremote:auth-failed', h as EventListener)
   }, [])
 
-  // capture token from URL on first mount (if present) so we don't prompt
+  // If a token was provided and we triggered a reloadSignal, hide auth prompts
   React.useEffect(() => {
     try {
-      const ok = captureTokenFromURL()
-      if (ok) setReloadSignal(Date.now())
+      const t = localStorage.getItem('mlcremote_token')
+      if (t) {
+        setShowAuthChooser(false)
+        setShowLoginInput(false)
+        setShowTokenPrompt(false)
+      }
     } catch (_) {}
-  }, [])
+  }, [reloadSignal])
 
   // token prompt for cases where server requires supplying a token directly
   const [showTokenPrompt, setShowTokenPrompt] = React.useState(false)

@@ -1,7 +1,7 @@
 import React from 'react'
 import { getToken } from '../auth'
 
-export default function ImageView({ path }: { path: string }) {
+export default function ImageView({ path, onDimensions }: { path: string; onDimensions?: (w: number, h: number) => void }) {
   const token = getToken()
   const src = `/api/file?path=${encodeURIComponent(path)}${token ? `&token=${encodeURIComponent(token)}` : ''}`
   const [natural, setNatural] = React.useState<{ w: number; h: number } | null>(null)
@@ -13,7 +13,10 @@ export default function ImageView({ path }: { path: string }) {
         <img ref={imgRef} src={src} alt={path.split('/').pop()} style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }} onLoad={() => {
           try {
             const i = imgRef.current
-            if (i && i.naturalWidth && i.naturalHeight) setNatural({ w: i.naturalWidth, h: i.naturalHeight })
+            if (i && i.naturalWidth && i.naturalHeight) {
+              setNatural({ w: i.naturalWidth, h: i.naturalHeight })
+              try { onDimensions && onDimensions(i.naturalWidth, i.naturalHeight) } catch (_) {}
+            }
           } catch (_) {}
         }} />
       </div>

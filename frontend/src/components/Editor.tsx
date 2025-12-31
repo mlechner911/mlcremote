@@ -37,6 +37,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
   const [meta, setMeta] = React.useState<any>(null)
   const [sectionLoading, setSectionLoading] = React.useState<boolean>(false)
   const [probe, setProbe] = React.useState<{ mime: string; isText: boolean; ext: string } | null>(null)
+  const [imageDims, setImageDims] = React.useState<{ w: number; h: number } | null>(null)
   const [lastLoadTime, setLastLoadTime] = React.useState<number | null>(null)
   const [lastModTime, setLastModTime] = React.useState<string | null>(null)
   const [loadFailed, setLoadFailed] = React.useState<boolean>(false)
@@ -315,6 +316,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span className="muted">{(meta && meta.absPath) ? meta.absPath : (path || 'Select a file')}</span>
           {meta && (
+            <>
             <span className="muted" style={{ fontSize: 11 }}>
               {
                 // friendly display: directory, image, pdf, text, or fallback to mime
@@ -328,6 +330,10 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
               }
               · {meta.mode} · {new Date(meta.modTime).toLocaleString()} {meta.size ? `· ${formatBytes(meta.size)}` : ''}
             </span>
+            {probe && probe.mime && probe.mime.startsWith('image/') && imageDims ? (
+              <span style={{ fontSize: 11, marginLeft: 8 }} className="muted">{imageDims.w} × {imageDims.h}</span>
+            ) : null}
+            </>
           )}
         </div>
           <div className="actions">
@@ -378,7 +384,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
             ) : probe && probe.mime && probe.mime === 'application/pdf' ? (
               <PdfView path={path} />
             ) : probe && probe.mime && probe.mime.startsWith('image/') ? (
-              <ImageView path={path} />
+              <ImageView path={path} onDimensions={(w,h) => setImageDims({ w,h })} />
             ) : path ? (
               <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
                 <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
