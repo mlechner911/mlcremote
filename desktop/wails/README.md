@@ -1,26 +1,73 @@
-Wails prototype for MLCRemote
+# MLCRemote Desktop App
 
-This folder contains a minimal scaffold for a Wails-based desktop prototype.
+## Overview
 
-It is intentionally small and meant as a starting point:
+This Wails application serves as a desktop client for the MLCRemote backend. It manages the connection to a remote server, ensures the backend is installed, orchestrates an SSH tunnel, and displays the remote interface.
 
-- `main.go` — Wails app bootstrap and an `App` binding with `HealthCheck`.
-- `frontend/` — minimal React app (Vite) with a Connect dialog and Settings dialog.
+## Remote Connection Flow
 
-To develop locally you should install the Wails toolchain and follow Wails docs:
-https://wails.io
+The application implements a multi-stage connection process:
 
-Notes:
-- This scaffold does not include a full Wails build pipeline. Use `wails init` in this folder
-  or copy these files into a Wails project to complete integration.
+### 1. Connection Input
+- **UI**: Displays a "Connect to Remote" screen.
+- **Input**: 
+  - Connection string: `user@host` (default port 22).
+  - **SSH Key**: Optional file path to private key (e.g., `~/.ssh/id_rsa`).
+- **Action**: User clicks "Connect".
+- **Storage**: Last connected server and key path are saved.
 
-Tunnel usage (prototype):
+### 2. SSH Verification & Connection
+- The app establishes an SSH connection to the specified host.
+- **Authentication**: 
+  - If Key provided: Use that key.
+  - Else: Try SSH Agent.
+  - Else: Try default `~/.ssh/id_rsa`.
+- **Status**: "Connecting to {host}..."
 
-- `StartTunnel(profile)` — starts an SSH tunnel using the provided profile string. The prototype
-  expects a short command-like profile, for example: `-L8443:localhost:8443 user@remotehost`.
-- `StopTunnel()` — requests the running tunnel process to stop.
-- `TunnelStatus()` — returns a short string: `starting`, `started`, `stopping`, or `stopped`.
+### 3. Backend Detection
+- Once connected, the app checks for the existence of the backend binary on the remote server.
+- **Check Command**: `test -f ~/bin/dev-server` (executed via SSH shell).
+- **Scenario A (Found)**: Proceed to **Step 5 (Tunnel)**.
+- **Scenario B (Not Found)**: Proceed to **Step 4 (Installation)**.
 
-The frontend Connect dialog demonstrates starting a tunnel and re-checking the backend health.
-This is a prototype: for production, validate inputs, use key files or SSH agents securely,
-and implement robust process supervision and platform-specific behavior.
+### 4. Backend Installation (If missing)
+- **UI**: Prompts the user: "Remote backend not found. Install now?"
+- **Action**:
+  1.  **Build**: Cross-compile the backend locally for Linux (amd64).
+      - Source: `../../backend/cmd/dev-server` (Path relative to `desktop/wails`)
+      - Command: `GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../../bin/dev-server ../../backend/cmd/dev-server`
+  2.  **Upload**: Transfer the binary to `remote:~/bin/dev-server`.
+      - Uses SFTP or SCP logic.
+  3.  **Setup Service**: Create and start the SystemD user service.
+      - Configure `~/.config/systemd/user/dev-server.service`.
+      - Run `systemctl --user daemon-reload`, `enable`, and `start`.
+- **Status**: "Building...", "Uploading...", "Starting service..."
+
+### 5. Tunnel Establishment
+- Establish an SSH tunnel forwarding a local port to `remote:localhost:8443`.
+- **Local Port**: Random free port or fixed 8443 (handling conflicts).
+- **Remote Port**: 8443 (default).
+- **Status**: "Setting up secure tunnel..."
+
+### 6. Health Check & Validation
+- Check the health of the remote backend through the tunnel.
+- **Request**: `GET http://localhost:{local_port}/health`
+- **Retry**: Poll with backoff for up to 30 seconds.
+
+### 7. App Ready
+- **UI**: Switch the main view to display the remote web app.
+- **URL**: `http://localhost:{local_port}/`
+- **Behavior**: The Wails window now acts as a browser for the remote backend.
+
+## Architecture
+
+- **Frontend (Wails/React)**:
+  - `Connect` Component: Text input for host.
+  - `Status` Component: Visual connection steps (stepper or logs).
+  - `App` Component: Logic to switch between "Connect" view and "Remote App" iframe/webview.
+- **Backend (Wails/Go)**:
+  - `App.Connect(host string)`: Trigger connection.
+  - `App.CheckBackend()`: Returns installed status.
+  - `App.InstallBackend()`: Triggers build & deploy.
+  - `App.StartTunnel()`: Starts the tunnel.
+  - `App.GetUrl()`: Returns the local URL.

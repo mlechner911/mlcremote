@@ -25,3 +25,11 @@ export function StopTunnel() {
 export function TunnelStatus() {
   return window['go']['main']['App']['TunnelStatus']();
 }
+
+export function CheckBackend(arg1) {
+  return window['go']['main']['App']['CheckBackend'](arg1);
+}
+
+export function InstallBackend(arg1) {
+  return window['go']['main']['App']['InstallBackend'](arg1);
+}
