@@ -3,7 +3,7 @@ import ConnectDialog from './components/ConnectDialog'
 import SettingsDialog from './components/SettingsDialog'
 import Welcome from './components/Welcome'
 import RemoteView from './components/RemoteView'
-import { StopTunnel } from '../wailsjs/go/main/App'
+import { StopTunnel } from '../wailsjs/go/app/App'
 
 // Common type shareable via export
 export interface Profile {
@@ -120,7 +120,6 @@ export default function App() {
 
       {showConnectDialog && (
         <ConnectDialog
-          isOpen={showConnectDialog}
           onClose={() => setShowConnectDialog(false)}
           initialProfile={selectedProfile}
           onConnected={handleConnected}
