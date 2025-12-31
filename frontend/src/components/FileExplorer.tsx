@@ -1,5 +1,6 @@
 import React from 'react'
 import { DirEntry, listTree } from '../api'
+import { authedFetch } from '../auth'
 import { Icon, iconForMimeOrFilename, iconForExtension } from '../generated/icons'
 import { getIcon } from '../generated/icon-helpers'
 
@@ -110,8 +111,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
       const form = new FormData()
       for (let i = 0; i < files.length; i++) form.append('file', files[i], files[i].name)
       const q = `?path=${encodeURIComponent(targetDir)}`
-      const auth = await import('../auth')
-      const res = await auth.authedFetch(`/api/upload${q}`, { method: 'POST', body: form })
+      const res = await authedFetch(`/api/upload${q}`, { method: 'POST', body: form })
       if (!res.ok) throw new Error('upload failed')
       // reload directory after upload
       await load(targetDir)
