@@ -1,5 +1,7 @@
 import React from 'react'
 import { DirEntry, listTree } from '../api'
+import { Icon, iconForMimeOrFilename, iconForExtension } from '../generated/icons'
+import { getIcon } from '../generated/icon-helpers'
 
 type Props = {
   onSelect: (path: string, isDir: boolean) => void
@@ -8,6 +10,13 @@ type Props = {
   autoOpen?: boolean
   onView?: (path: string) => void
   onBackendActive?: () => void
+  onChangeRoot?: (newRoot: string) => void
+  canChangeRoot?: boolean
+  selectedPath?: string
+  activeDir?: string
+  onDirChange?: (dir: string) => void
+  focusRequest?: number
+  reloadSignal?: number
 }
 
 /**
@@ -15,7 +24,7 @@ type Props = {
  * and supports navigation, drag-and-drop upload, and lightweight actions
  * such as Download and (when `autoOpen` is false) a View button.
  */
-export default function FileExplorer({ onSelect, showHidden, onToggleHidden, autoOpen = true, onView, onBackendActive }: Props): JSX.Element {
+export default function FileExplorer({ onSelect, showHidden, onToggleHidden, autoOpen = true, onView, onBackendActive, onChangeRoot, canChangeRoot, selectedPath, activeDir, onDirChange, focusRequest, reloadSignal }: Props): React.ReactElement {
   const [path, setPath] = React.useState<string>('')
   const [entries, setEntries] = React.useState<DirEntry[]>([])
   const [loading, setLoading] = React.useState<boolean>(false)
@@ -30,16 +39,60 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
       const list = await listTree(p, { showHidden })
       setEntries(list)
       setPath(p)
+      // notify parent which directory is currently displayed, but only when it actually changes
+      try {
+        // use a ref to avoid calling onDirChange repeatedly
+        if (currentPathRef.current !== p) {
+          onDirChange?.(p)
+          currentPathRef.current = p
+        }
+      } catch (e) { /* ignore */ }
       // notify that backend is active
       onBackendActive?.()
+      // after DOM updates, try to focus the selected item if it exists in this directory
+      try {
+        const sel = selectedPathRef.current
+        if (sel) {
+          requestAnimationFrame(() => {
+            const ul = listRef.current
+            if (!ul) return
+            try {
+              const btn = ul.querySelector(`[data-path="${CSS.escape(sel)}"]`) as HTMLElement | null
+              if (btn) {
+                btn.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+                btn.focus()
+              }
+            } catch (e) {
+              // ignore selector errors
+            }
+          })
+        }
+      } catch (e) {
+        // ignore
+      }
     } catch (e: any) {
       setError(e.message || 'failed to list')
     } finally {
       setLoading(false)
     }
-  }, [showHidden, onBackendActive])
+  }, [showHidden, onBackendActive, onDirChange])
+
+  const currentPathRef = React.useRef<string>('')
+
+  // if parent asks us to show a specific directory, load it
+  React.useEffect(() => {
+    if (typeof activeDir === 'undefined') return
+    // only load if different from current path
+    if (activeDir === path) return
+    load(activeDir)
+  }, [activeDir, path, load])
 
   React.useEffect(() => { load('') }, [load])
+
+  // reload when parent signals a change (explicit refresh requests from parent)
+  React.useEffect(() => {
+    load(path || '')
+  }, [path, load, reloadSignal])
 
   const up = (): void => {
     if (!path || path === '/') { load(''); return }
@@ -84,15 +137,68 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
     setDragOver(null)
   }
 
+  const listRef = React.useRef<HTMLUListElement | null>(null)
+  const selectedPathRef = React.useRef<string>('')
+
+  React.useEffect(() => { selectedPathRef.current = selectedPath || '' }, [selectedPath])
+
+  // Scroll selected item into view when selectedPath or current directory changes
+  React.useEffect(() => {
+    if (!selectedPath) return
+    // find the DOM node for the selected item
+    try {
+      const ul = listRef.current
+      if (!ul) return
+      const item = ul.querySelector(`li[key="${CSS.escape(selectedPath)}"]`)
+      // fallback: search by data-path attribute on buttons
+      const item2 = ul.querySelector(`[data-path="${selectedPath}"]`)
+      const el = (item as HTMLElement) || (item2 as HTMLElement)
+      if (el) {
+        el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+        const btn = el.querySelector('button.entry') as HTMLElement | null
+        if (btn) btn.focus()
+      }
+    } catch (e) {
+      // ignore DOM errors
+    }
+  }, [selectedPath, path])
+
+  // If parent requests focus explicitly (even if selectedPath didn't change), honor it
+  React.useEffect(() => {
+    if (!focusRequest) return
+    try {
+      const sel = selectedPath || ''
+      if (!sel) return
+      const ul = listRef.current
+      if (!ul) return
+      const esc = CSS.escape(sel)
+      const btn = ul.querySelector(`[data-path="${esc}"]`) as HTMLElement | null
+      if (btn) {
+        btn.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+        btn.focus()
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [focusRequest])
+
   return (
     <div className="explorer">
       <div className="explorer-header">
-        <strong>Files</strong>
+      <strong className='hidden'><Icon name={getIcon('dir')} /></strong>
         <div className="explorer-controls">
-          <label className="muted" style={{ fontSize: '0.9rem' }}>
-            <input type="checkbox" checked={showHidden} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onToggleHidden?.(e.target.checked)} />{' '}
-            Show hidden
-          </label>
+          {/* Settings moved to global settings popup; kept here for accessibility if needed */}
+          {canChangeRoot && typeof onChangeRoot === 'function' && (
+            <button className="link icon-btn" aria-label="Change root" title="Change root" onClick={async () => {
+              // ask parent app to change root (parent may open a picker)
+              try {
+                const res = await Promise.resolve(onChangeRoot(''))
+                // parent handles selection flow; nothing more to do here
+              } catch (e) {
+                // ignore
+              }
+            }}><Icon name={getIcon('dir')} /></button>
+          )}
         </div>
         <div className="breadcrumbs">
           <button type="button" className="link" onClick={() => load('')}>root</button>
@@ -111,7 +217,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
         {error && <div className="error">{error}</div>}
         {uploading && <div className="muted">Uploading...</div>}
         {!loading && !error && (
-          <ul className="entry-list">
+          <ul className="entry-list" ref={listRef}>
             {path && path !== '/' && (
               <li key="up">
                 <button type="button" className="entry" onClick={up}>..</button>
@@ -120,13 +226,13 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
             {entries.map(e => (
               <li key={e.path}>
                   {e.isDir ? (
-                  <button type="button" className="entry" onClick={() => { load(e.path); onSelect(e.path, true) }} onDrop={(ev) => onDrop(ev, e.path)} onDragOver={(ev) => onDragOver(ev, e.path)} onDragLeave={onDragLeave}>
-                    <span className="icon">📁</span> {e.name}
+                    <button data-path={e.path} type="button" className={"entry" + (selectedPath === e.path ? ' selected' : '')} onClick={() => { load(e.path); onSelect(e.path, true) }} onDrop={(ev) => onDrop(ev, e.path)} onDragOver={(ev) => onDragOver(ev, e.path)} onDragLeave={onDragLeave}>
+                    <span className="icon"><Icon name={iconForExtension('dir') || getIcon('dir')} /></span> {e.name}
                     {dragOver === e.path ? <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>Drop to upload</span> : null}
                   </button>
                 ) : (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button type="button" className="entry" style={{ flex: 1, textAlign: 'left' }} onClick={() => {
+                  <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                      <button data-path={e.path} type="button" className="entry" style={{ flex: 1, textAlign: 'left' }} onClick={() => {
                       if (autoOpen === false) {
                         // just select (do not open persistent tab)
                         onSelect(e.path, false)
@@ -134,12 +240,12 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
                       }
                       onSelect(e.path, false)
                     }}>
-                      <span className="icon">{iconForEntry(e)}</span> {e.name}
+                      <span className="icon"><Icon name={iconForMimeOrFilename(undefined, e.name) || iconForExtension(e.name.split('.').pop()||'') || getIcon('view') || 'icon-text'} /></span> {e.name}
                     </button>
                     {!autoOpen ? (
-                      <button className="btn" onClick={() => onView ? onView(e.path) : onSelect(e.path, false)} title="View file">👁️</button>
+                      <button className="btn" onClick={() => onView ? onView(e.path) : onSelect(e.path, false)} title="View file"><Icon name={getIcon('view')} /></button>
                     ) : null}
-                    <a className="btn" href={`/api/file?path=${encodeURIComponent(e.path)}`} download={e.name} style={{ whiteSpace: 'nowrap' }}>Download</a>
+                    <a className="btn" href={`/api/file?path=${encodeURIComponent(e.path)}`} download={e.name} style={{ whiteSpace: 'nowrap' }} title="Download" aria-label={`Download ${e.name}`}><Icon name={getIcon('download')} /></a>
                   </div>
                 )}
               </li>
@@ -150,14 +256,15 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
     </div>
   )
 }
-
+/* moved
 function iconForEntry(e: { name: string; path: string; isDir: boolean }) {
   const ext = e.name.split('.').pop()?.toLowerCase() || ''
   if (ext === 'json') return '🟦'
   if (ext === 'yml' || ext === 'yaml') return '🟪'
   if (ext === 'md' || ext === 'markdown') return '📘'
   if (ext === 'go') return '🐹'
-  if (ext === 'sh' || ext === 'bash') return '🐚'
+  if (ext === 'sh' || ext === 'bash') return 'terminal'
   if (ext === 'txt') return '📄'
   return '📄'
 }
+*/

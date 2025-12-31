@@ -1,96 +1,31 @@
 import React from 'react'
-import { readFile, saveFile, deleteFile } from '../api'
+import { readFile, saveFile, deleteFile, listTree, statPath } from '../api'
+const PdfPreview = React.lazy(() => import('./PdfPreview'))
 import { formatBytes } from '../bytes'
 import { isEditable, isProbablyText, extFromPath, probeFileType } from '../filetypes'
-import Prism from 'prismjs'
-// @ts-ignore: allow side-effect CSS import without type declarations
-import 'prismjs/themes/prism-tomorrow.css'
-import 'prismjs/components/prism-javascript'
-import 'prismjs/components/prism-typescript'
-import 'prismjs/components/prism-go'
-import 'prismjs/components/prism-markup'
-import 'prismjs/components/prism-markup-templating'
-import 'prismjs/components/prism-php'
-import 'prismjs/components/prism-markdown'
-import 'prismjs/components/prism-json'
-import 'prismjs/components/prism-yaml'
-import 'prismjs/components/prism-toml'
-import 'prismjs/components/prism-c'
-import 'prismjs/components/prism-cpp'
-import 'prismjs/components/prism-bash'
-import 'prismjs/components/prism-python'
-import 'prismjs/components/prism-xml-doc'
-import 'prismjs/components/prism-sass'
-import 'prismjs/components/prism-css'
+import { getToken } from '../auth'
+import TextView from './TextView'
+import ImageView from './ImageView'
+import PdfView from './PdfView'
+import { Icon } from '../generated/icons'
+import { iconForMimeOrFilename as getIcon, iconForExtension } from '../generated/icons'
+const ShellView = React.lazy(() => import('./ShellView'))
 
-// @ts-ignore: allow side-effect CSS import without type declarations
-import '../editor.css'
 
-function escapeHtml(unsafe: string) {
-  return unsafe.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
 
-function langForExt(ext: string) {
-  const L = Prism.languages as any
-  switch (ext) {
-  case 'js': case 'jsx': return L.javascript
-  case 'ts': case 'tsx': return L.typescript
-  case 'go': return L.go
-  case 'php': return L.php
-  case 'json': return L.json
-  case 'yaml': case 'yml': return L.yaml
-  case 'toml': return L.toml || L.markup
-  case 'md': case 'markdown': return L.markdown
-  case 'c': return L.c
-  case 'cpp': return L.cpp
-  case 'py': return L.python
-  case 'sh': case 'bash': return L.bash
- case 'xml': case 'xml-doc': return L['xml-doc']
- case 'html': case 'htm': return L.markup
- case 'sass': case 'scss': return L.sass
-  default: return L.javascript
-  }
-}
 
-function aliasForExt(ext: string) {
-  switch (ext) {
-  case 'js': case 'jsx': return 'javascript'
-  case 'ts': case 'tsx': return 'typescript'
-  case 'go': return 'go'
-  case 'php': return 'php'
-  case 'json': return 'json'
-  case 'yaml': case 'yml': return 'yaml'
-  case 'toml': return 'toml'
-  case 'md': case 'markdown': return 'markdown'
-  case 'c': return 'c'
-  case 'cpp': return 'cpp'
-  case 'py': return 'python'
-  case 'sh': case 'bash': return 'bash'
-    case 'xml': case 'xml-doc': return 'xml-doc'
-    case 'html': case 'htm': return 'markup'
-    case 'sass': case 'scss': return 'sass'
-  default: return 'text'
-  }
-}
+// Editor no longer computes a Prism alias here — TextView handles highlighting.
 
-function safeHighlight(text: string, ext: string) {
-  try {
-    const lang = langForExt(ext)
-    const alias = aliasForExt(ext)
-    if (!lang) return escapeHtml(text)
-    return Prism.highlight(text, lang, alias)
-  } catch (e) {
-    console.warn('Prism highlight failed', e)
-    return escapeHtml(text)
-  }
-}
 
 type Props = {
   path: string
   onSaved?: () => void
   settings?: { allowDelete?: boolean }
   reloadTrigger?: number
-  onUnsavedChange?: (hasUnsaved: boolean) => void
+  // onUnsavedChange receives the editor `path` and whether it has
+  // unsaved changes. Parents should pass a stable callback so this
+  // component does not need to create per-render closures.
+  onUnsavedChange?: (path: string, hasUnsaved: boolean) => void
   onMeta?: (m: any) => void
 }
 
@@ -102,6 +37,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
   const [meta, setMeta] = React.useState<any>(null)
   const [sectionLoading, setSectionLoading] = React.useState<boolean>(false)
   const [probe, setProbe] = React.useState<{ mime: string; isText: boolean; ext: string } | null>(null)
+  const [imageDims, setImageDims] = React.useState<{ w: number; h: number } | null>(null)
   const [lastLoadTime, setLastLoadTime] = React.useState<number | null>(null)
   const [lastModTime, setLastModTime] = React.useState<string | null>(null)
   const [loadFailed, setLoadFailed] = React.useState<boolean>(false)
@@ -115,7 +51,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     setStatus('')
     try {
       // fetch metadata
-      const m = await import('../api').then(api => api.statPath(path))
+      const m = await statPath(path)
       setMeta(m)
       if (typeof onMeta === 'function') onMeta(m)
 
@@ -133,13 +69,26 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       const pt = await probeFileType(path)
       setProbe(pt)
 
+      // If backend reports an image MIME, treat it as an image preview regardless
+      // of `isText` probe. This fixes cases where images were mis-classified as text.
+      if (pt.mime && pt.mime.startsWith('image/')) {
+        setContent('')
+        setStatus('')
+        setLoading(false)
+        return
+      }
+      // pdf preview also special case
+        if (pt.mime && pt.mime === 'application/pdf') {
+            setContent('')
+            setStatus('')
+              setLoading(false)
+        return
+        }
+
+      // If backend says it's not text (and not an image), show binary message
       if (!pt.isText) {
         setContent('')
-        if (!pt.mime || !pt.mime.startsWith('image/')) {
-          setStatus('Binary or unsupported file type — use Download')
-        } else {
-          setStatus('')
-        }
+        setStatus('no preview available — unsupported file type, use Download')
         setLoading(false)
         return
       }
@@ -182,8 +131,8 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
   // prefer the probed extension from the backend probe if available
   const detectedExt = probe && probe.ext ? probe.ext : extFromPath(path)
   const ext = detectedExt
-  const alias = aliasForExt(ext)
-  const grammar = alias || (probe && probe.ext ? probe.ext : 'text')
+  const alias = undefined
+  const grammar = (probe && probe.ext) ? probe.ext : 'text'
   // sanitize id (unique per full path) to avoid duplicate ids and ensure uniqueness
   const sanitizeId = (p: string) => {
     if (!p) return 'editor'
@@ -194,6 +143,24 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
   React.useEffect(() => {
     loadFile()
   }, [loadFile])
+
+  // If selected path is a directory, fetch listing for display
+  React.useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      if (!meta || !meta.isDir || !path) return
+      try {
+        const entries = await listTree(path)
+        if (!mounted) return
+        setContent('')
+        // store entries as a simple newline-separated preview for now
+        setOrigContent(entries.map((e: any) => e.name).join('\n'))
+      } catch (e) {
+        // ignore
+      }
+    })()
+    return () => { mounted = false }
+  }, [meta, path])
 
   React.useEffect(() => {
     if (reloadTrigger && reloadTrigger > 0) {
@@ -251,13 +218,13 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     const hasUnsaved = content !== origContent
     if (prevUnsavedRef.current === null || prevUnsavedRef.current !== hasUnsaved) {
       try {
-        onUnsavedChange(hasUnsaved)
+        onUnsavedChange(path, hasUnsaved)
       } catch (e) {
         console.warn('onUnsavedChange threw', e)
       }
       prevUnsavedRef.current = hasUnsaved
     }
-  }, [content, origContent, onUnsavedChange])
+  }, [content, origContent, onUnsavedChange, path])
 // save action saves the file
   const onSave = async () => {
     if (!path) return
@@ -269,7 +236,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       onSaved && onSaved()
       try {
         // re-stat the file so parent can update size/metadata
-        const m = await import('../api').then(api => api.statPath(path))
+        const m = await statPath(path)
         setMeta(m)
         if (typeof onMeta === 'function') onMeta(m)
       } catch (e) {
@@ -279,22 +246,26 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       setStatus('Save failed')
     }
   }
-
+/*
+  import('../format').catch(() => {}) // ensure type info available to bundler
+  // NOTE: `formatByExt` is imported statically to avoid Vite chunking warnings.
+  // The actual formatting implementation is lightweight now (passthrough), so
+  // the static import cost is acceptable.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { formatByExt } = require('../format') as typeof import('../format')
   const onFormat = async () => {
     if (!path) return
     const ext = extFromPath(path)
     setStatus('Formatting...')
     try {
-      // dynamic import to keep bundle small
-      const mod = await import('../format')
-      const formatted = mod.formatByExt(ext, content)
+      const formatted = formatByExt(ext, content)
       setContent(formatted)
       setStatus('Formatted')
     } catch (e) {
       setStatus('Format failed')
     }
   }
-
+*/
   const onDelete = async () => {
     if (!path) return
     // confirm with user
@@ -323,7 +294,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       if (!pt.isText) {
         setContent('')
         if (!pt.mime || !pt.mime.startsWith('image/')) {
-          setStatus('Binary or unsupported file type — use Download')
+          setStatus('?Binary or unsupported file type — use Download'+pt.mime)
         } else {
           setStatus('')
         }
@@ -343,12 +314,26 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       <div className="editor-header">
         <strong>Editor</strong>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span className="muted">{path || 'Select a file'}</span>
+          <span className="muted">{(meta && meta.absPath) ? meta.absPath : (path || 'Select a file')}</span>
           {meta && (
+            <>
             <span className="muted" style={{ fontSize: 11 }}>
-              {((meta.mime && meta.mime !== 'text/plain') ? meta.mime : (probe && probe.mime ? probe.mime : meta.mime)) || (meta.isDir ? 'directory' : '')}
-              {((probe && probe.ext) || (meta && meta.ext)) ? ` (${aliasForExt((probe && probe.ext) || meta.ext)})` : ''} · {meta.mode} · {new Date(meta.modTime).toLocaleString()} {meta.size ? `· ${formatBytes(meta.size)}` : ''}
+              {
+                // friendly display: directory, image, pdf, text, or fallback to mime
+                meta.isDir ? 'directory'
+                : (probe && probe.mime && probe.mime.startsWith('image/')) ? 'image'
+                : (probe && probe.mime === 'application/pdf') ? 'pdf'
+                : (probe && probe.isText) ? 'text'
+                : (meta.mime && meta.mime !== 'text/plain') ? meta.mime
+                : (probe && probe.mime) ? probe.mime
+                : meta.mime || 'file'
+              }
+              · {meta.mode} · {new Date(meta.modTime).toLocaleString()} {meta.size ? `· ${formatBytes(meta.size)}` : ''}
             </span>
+            {probe && probe.mime && probe.mime.startsWith('image/') && imageDims ? (
+              <span style={{ fontSize: 11, marginLeft: 8 }} className="muted">{imageDims.w} × {imageDims.h}</span>
+            ) : null}
+            </>
           )}
         </div>
           <div className="actions">
@@ -378,67 +363,34 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
         {status && <div className="muted">{status}</div>}
       </div>
       <div className="editor-body">
+        {/* Trash is a global view accessible from the app toolbar */}
         {loading ? (
           <div className="muted">Loading...</div>
+        ) : meta && meta.isDir ? (
+          <div style={{ padding: 12 }}>
+            <div style={{ fontWeight: 600 }}>Directory: {path}</div>
+            <div className="muted" style={{ marginTop: 6 }}>{origContent ? origContent.split('\n').length : '0'} entries</div>
+            <pre style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', padding: 8, background: 'var(--panel)' }}>{origContent}</pre>
+          </div>
+        ) : ((probe?.isText ?? isProbablyText(path)) || isEditable(path)) ? (
+          <TextView content={content} setContent={setContent} origContent={origContent} ext={ext} alias={alias} textareaId={textareaId} />
         ) : (
-          ((probe?.isText ?? isProbablyText(path)) || isEditable(path) ? (
-            <div className="editor-edit-area">
-              {
-                (() => {
-                  return (
-                    <pre aria-hidden className={`highlight-wrap language-${alias}`} data-grammar={grammar} ref={el => { preRef.current = el }}>
-                      <code className={`language-${alias}`} dangerouslySetInnerHTML={{ __html: safeHighlight(content || '', ext) }} />
-                    </pre>
-                  )
-                })()
-              }
-              <textarea
-                ref={textareaRef}
-                className="textarea"
-                wrap="off"
-                value={content}
-                name={path || 'editor'}
-                id={textareaId}
-                data-grammar={grammar}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
-                onScroll={() => {
-                  if (textareaRef.current && preRef.current) {
-                    preRef.current.scrollTop = textareaRef.current.scrollTop
-                    preRef.current.scrollLeft = textareaRef.current.scrollLeft
-                  }
-                }}
-                placeholder="Open or create a file to edit"
-                spellCheck={false}
-                autoCorrect="off"
-                autoCapitalize="off"
-                autoComplete="off"
-              />
-            </div>
-          ) : (
-            <div>
-              <div className="muted">{status || 'Binary or unsupported file type'}</div>
-              {probe && probe.mime && probe.mime.startsWith('image/') ? (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                    <img
-                      src={`/api/file?path=${encodeURIComponent(path)}`}
-                      alt={path.split('/').pop()}
-                      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}
-                    />
-                  </div>
-                  <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                    <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
-                  </div>
-                </div>
-              ) : (
-                path && (
-                  <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                    <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
-                  </div>
-                )
-              )}
-            </div>
-          ))
+          <div>
+            {/* special shell view: path may be 'shell-<ts>' for terminal tabs */}
+            {path && path.startsWith('shell-') ? (
+              <React.Suspense fallback={<div className="muted">Loading shell…</div>}>
+                <ShellView path={path} />
+              </React.Suspense>
+            ) : probe && probe.mime && probe.mime === 'application/pdf' ? (
+              <PdfView path={path} />
+            ) : probe && probe.mime && probe.mime.startsWith('image/') ? (
+              <ImageView path={path} onDimensions={(w,h) => setImageDims({ w,h })} />
+            ) : path ? (
+              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
+              </div>
+            ) : null}
+          </div>
         )}
       </div>
     </div>

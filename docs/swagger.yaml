@@ -1,0 +1,442 @@
+definitions:
+  handlers.RestoreRequest:
+    properties:
+      trashPath:
+        type: string
+    type: object
+  handlers.SaveRequest:
+    properties:
+      content:
+        type: string
+      path:
+        type: string
+    type: object
+  handlers.TrashEntry:
+    properties:
+      deletedAt:
+        type: string
+      originalPath:
+        type: string
+      trashPath:
+        type: string
+    type: object
+  handlers.dirEntry:
+    properties:
+      isDir:
+        type: boolean
+      modTime:
+        type: string
+      name:
+        type: string
+      path:
+        type: string
+      size:
+        type: integer
+    type: object
+  handlers.fileTypeResp:
+    properties:
+      ext:
+        type: string
+      isText:
+        type: boolean
+      mime:
+        type: string
+    type: object
+  handlers.healthInfo:
+    properties:
+      auth_required:
+        type: boolean
+      cpu_percent:
+        type: number
+      go_alloc_bytes:
+        type: integer
+      go_num_gc:
+        type: integer
+      go_sys_bytes:
+        type: integer
+      host:
+        type: string
+      password_auth:
+        type: boolean
+      pid:
+        type: integer
+      proc_rss_bytes:
+        type: integer
+      server_time:
+        type: string
+      status:
+        type: string
+      sys_mem_free_bytes:
+        type: integer
+      sys_mem_total_bytes:
+        type: integer
+      timezone:
+        type: string
+      version:
+        type: string
+    type: object
+  server.loginRequest:
+    properties:
+      password:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/auth/check:
+    get:
+      description: Verifies if the provided authentication token is valid.
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+      security:
+      - TokenAuth: []
+      summary: Check auth token validity
+      tags:
+      - auth
+  /api/file:
+    delete:
+      description: Moves a file to trash.
+      parameters:
+      - description: File path
+        in: query
+        name: path
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Deletion disabled
+      security:
+      - TokenAuth: []
+      summary: Delete file
+      tags:
+      - file
+    get:
+      description: Streams file content.
+      parameters:
+      - description: File path
+        in: query
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+      security:
+      - TokenAuth: []
+      summary: Download file
+      tags:
+      - file
+    post:
+      consumes:
+      - application/json
+      description: Creates or overwrites a text file.
+      parameters:
+      - description: File content
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.SaveRequest'
+      responses:
+        "204":
+          description: No Content
+      security:
+      - TokenAuth: []
+      summary: Save file
+      tags:
+      - file
+  /api/file/section:
+    get:
+      description: Reads a chunk of a file.
+      parameters:
+      - description: File path
+        in: query
+        name: path
+        required: true
+        type: string
+      - description: Start offset
+        in: query
+        name: offset
+        type: integer
+      - description: Length to read
+        in: query
+        name: length
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+      security:
+      - TokenAuth: []
+      summary: Read file section
+      tags:
+      - file
+  /api/filetype:
+    get:
+      description: Returns MIME type and text/binary classification.
+      parameters:
+      - description: File path
+        in: query
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.fileTypeResp'
+      security:
+      - TokenAuth: []
+      summary: Detect file type
+      tags:
+      - file
+  /api/login:
+    post:
+      consumes:
+      - application/json
+      description: Exchange password for auth token.
+      parameters:
+      - description: Password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/server.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+      summary: Login
+      tags:
+      - auth
+  /api/settings:
+    get:
+      description: Returns runtime-configurable settings.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get frontend settings
+      tags:
+      - system
+  /api/stat:
+    get:
+      description: Returns file size, mode, time, etc.
+      parameters:
+      - description: File path
+        in: query
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - TokenAuth: []
+      summary: Get file metadata
+      tags:
+      - file
+  /api/terminal/new:
+    post:
+      description: Creates a new PTY session.
+      parameters:
+      - description: Shell to use (bash, zsh)
+        in: query
+        name: shell
+        type: string
+      - description: Working directory
+        in: query
+        name: cwd
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - TokenAuth: []
+      summary: Create terminal session
+      tags:
+      - terminal
+  /api/trash:
+    delete:
+      description: Permanently delete all files in trash.
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Deletion disabled
+      security:
+      - TokenAuth: []
+      summary: Empty trash
+      tags:
+      - trash
+  /api/trash/recent:
+    get:
+      description: Returns a list of files deleted during the current session.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.TrashEntry'
+            type: array
+      security:
+      - TokenAuth: []
+      summary: Get recently deleted files
+      tags:
+      - trash
+  /api/trash/restore:
+    post:
+      consumes:
+      - application/json
+      description: Restores a file from trash history.
+      parameters:
+      - description: Trash path to restore
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RestoreRequest'
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not found
+        "409":
+          description: Destination exists
+      security:
+      - TokenAuth: []
+      summary: Restore file from trash
+      tags:
+      - trash
+  /api/tree:
+    get:
+      description: Lists files and directories.
+      parameters:
+      - description: Relative path
+        in: query
+        name: path
+        type: string
+      - description: Show hidden files
+        in: query
+        name: showHidden
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.dirEntry'
+            type: array
+      security:
+      - TokenAuth: []
+      summary: List directory
+      tags:
+      - file
+  /api/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload one or more files via multipart/form-data.
+      parameters:
+      - description: Target directory
+        in: query
+        name: path
+        type: string
+      - description: Files to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      responses:
+        "204":
+          description: No Content
+      security:
+      - TokenAuth: []
+      summary: Upload files
+      tags:
+      - file
+  /api/version:
+    get:
+      description: Returns backend version and frontend compatibility info.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get version info
+      tags:
+      - system
+  /health:
+    get:
+      description: Returns the status of the server and basic system metrics.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.healthInfo'
+      summary: Get system health
+      tags:
+      - system
+  /ws/terminal:
+    get:
+      description: Upgrade to WebSocket for terminal I/O.
+      parameters:
+      - description: Session ID
+        in: query
+        name: id
+        type: string
+      - description: Auth token
+        in: query
+        name: token
+        type: string
+      responses:
+        "101":
+          description: Switching Protocols
+      security:
+      - TokenAuth: []
+      summary: Connect to terminal WebSocket
+      tags:
+      - terminal
+swagger: "2.0"

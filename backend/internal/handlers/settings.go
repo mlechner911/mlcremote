@@ -11,10 +11,17 @@ import (
 
 // SettingsHandler returns runtime-configurable settings for the frontend.
 // Default values: allowDelete=false, defaultShell="bash".
-func SettingsHandler() http.HandlerFunc {
+// @Summary Get frontend settings
+// @Description Returns runtime-configurable settings.
+// @ID getSettings
+// @Tags system
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /api/settings [get]
+func SettingsHandler(allowDelete bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]interface{}{
-			"allowDelete":  false,
+			"allowDelete":  allowDelete,
 			"defaultShell": "bash",
 		}
 		w.Header().Set("Content-Type", "application/json")

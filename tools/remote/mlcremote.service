@@ -1,0 +1,11 @@
+[Unit]
+Description=mlcremote user service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.mlcremote/run-server.sh
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

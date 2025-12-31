@@ -13,12 +13,13 @@ ROOT ?= $(HOME)
 SERVER ?=
 DOCS_SPEC := $(PWD)/docs/openapi.yaml
 
-.PHONY: help backend frontend run docs install connect clean desktop-dev desktop-build desktop-dist desktop-dist-zip
+.PHONY: help backend frontend run docs install connect clean desktop-dev desktop-build desktop-dist desktop-dist-zip dist
 
 help:
 	@echo "Targets:"
 	@echo "  backend       - Build Go backend to bin/dev-server"
 	@echo "  frontend      - Install deps and build frontend to frontend/dist"
+	@echo "  dist          - Generate icons, build backend and frontend, package into build/dist"
 	@echo "  run           - Start backend serving frontend/dist (port $(PORT))"
 	@echo "  docs          - Start backend with OpenAPI served at /openapi.yaml and Swagger UI at /docs"
 	@echo "  install       - Deploy backend as SystemD user service to $$SERVER"
@@ -33,10 +34,17 @@ backend:
 	cd $(BACKEND_DIR) && go build -ldflags "-s -w" -o ../$(BIN_DIR)/dev-server ./cmd/dev-server
 	@echo "Built $(BIN_DIR)/dev-server"
 
-frontend:
+frontend: icons
 	cd $(FRONTEND_DIR) && npm install
 	cd $(FRONTEND_DIR) && npm run build
 	@echo "Built $(STATIC_DIR)"
+
+.PHONY: icons-gen
+icons-gen:
+	@mkdir -p $(BIN_DIR)
+	cd cmd/icon-gen && go build -o ../../$(BIN_DIR)/icon-gen .
+	@echo "Built $(BIN_DIR)/icon-gen"
+	@./$(BIN_DIR)/icon-gen --manifest icons/icons.yml --raw icons/raw --out frontend/src/generated
 
 run: backend
 	@echo "Starting backend on 127.0.0.1:$(PORT) serving $(STATIC_DIR)"
@@ -45,6 +53,13 @@ run: backend
 docs:
 	@echo "Starting backend on 127.0.0.1:$(PORT) with API docs"
 	./$(BIN_DIR)/dev-server --port $(PORT) --root $(ROOT) --openapi "$(DOCS_SPEC)"
+
+.PHONY: swagger-gen
+swagger-gen:
+	@echo "Generating OpenAPI docs with swag"
+	@command -v swag >/dev/null 2>&1 || (echo "swag not found, installing..." && cd $(BACKEND_DIR) && go install github.com/swaggo/swag/cmd/swag@latest)
+	cd $(BACKEND_DIR) && swag init --parseDependency -g ./cmd/dev-server/main.go -o ../docs
+	@echo "Wrote $(DOCS_SPEC)"
 
 install:
 	@if [ -z "$(SERVER)" ]; then echo "Usage: make install SERVER=user@remote"; exit 1; fi
@@ -97,4 +112,21 @@ desktop-dist-zip: desktop-dist
 clean:
 	@rm -f $(BIN_DIR)/dev-server
 	@rm -rf $(STATIC_DIR)
+	@rm -rf build/dist
 	@echo "Cleaned build artifacts"
+
+.PHONY: dist
+dist: icons-gen backend frontend
+	@echo "Packaging distribution into build/dist"
+	@rm -rf build/dist
+	@mkdir -p build/dist/bin
+	@mkdir -p build/dist/frontend
+	@cp -r $(BIN_DIR)/dev-server build/dist/bin/ || true
+	@cp -r $(BIN_DIR)/icon-gen build/dist/bin/ || true
+	@# Copy frontend static output
+	@if [ -d "$(FRONTEND_DIR)/dist" ]; then cp -r $(FRONTEND_DIR)/dist/* build/dist/frontend/; else echo "No frontend dist found; run make frontend"; exit 1; fi
+	@echo "Packaged distribution to build/dist"
+
+.PHONY: icons
+icons:
+	@./scripts/generate-icons.sh
