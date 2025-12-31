@@ -110,7 +110,8 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
       const form = new FormData()
       for (let i = 0; i < files.length; i++) form.append('file', files[i], files[i].name)
       const q = `?path=${encodeURIComponent(targetDir)}`
-      const res = await fetch(`/api/upload${q}`, { method: 'POST', body: form })
+      const auth = await import('../auth')
+      const res = await auth.authedFetch(`/api/upload${q}`, { method: 'POST', body: form })
       if (!res.ok) throw new Error('upload failed')
       // reload directory after upload
       await load(targetDir)
@@ -245,7 +246,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
                     {!autoOpen ? (
                       <button className="btn" onClick={() => onView ? onView(e.path) : onSelect(e.path, false)} title="View file"><Icon name={getIcon('view')} /></button>
                     ) : null}
-                    <a className="btn" href={`/api/file?path=${encodeURIComponent(e.path)}`} download={e.name} style={{ whiteSpace: 'nowrap' }} title="Download" aria-label={`Download ${e.name}`}><Icon name={getIcon('download')} /></a>
+                    <a className="btn" href={`/api/file?path=${encodeURIComponent(e.path)}${localStorage.getItem('mlcremote_token') ? `&token=${encodeURIComponent(localStorage.getItem('mlcremote_token') || '')}` : ''}`} download={e.name} style={{ whiteSpace: 'nowrap' }} title="Download" aria-label={`Download ${e.name}`}><Icon name={getIcon('download')} /></a>
                   </div>
                 )}
               </li>
