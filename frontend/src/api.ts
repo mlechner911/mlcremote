@@ -1,5 +1,5 @@
-import { info, warn } from './logger'
-import { getToken, setToken, authedFetch } from './auth'
+import { info, warn } from './utils/logger'
+import { getToken, setToken, authedFetch } from './utils/auth'
 
 export async function login(password: string): Promise<string> {
     info('POST /api/login')

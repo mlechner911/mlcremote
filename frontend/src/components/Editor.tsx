@@ -1,10 +1,10 @@
 import React from 'react'
 import { readFile, saveFile, deleteFile, listTree, statPath } from '../api'
 const PdfPreview = React.lazy(() => import('./PdfPreview'))
-import { formatBytes } from '../bytes'
+import { formatBytes } from '../utils/bytes'
 import { isEditable, isProbablyText, extFromPath, probeFileType } from '../filetypes'
 import { effectiveExtFromFilename } from '../languageForFilename'
-import { getToken, authedFetch } from '../auth'
+import { authedFetch } from '../utils/auth'
 import TextView from './TextView'
 import ImageView from './ImageView'
 import PdfView from './PdfView'
@@ -80,12 +80,12 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
         return
       }
       // pdf preview also special case
-        if (pt.mime && pt.mime === 'application/pdf') {
-            setContent('')
-            setStatus('')
-              setLoading(false)
+      if (pt.mime && pt.mime === 'application/pdf') {
+        setContent('')
+        setStatus('')
+        setLoading(false)
         return
-        }
+      }
 
       // If backend says it's not text (and not an image), show binary message
       if (!pt.isText) {
@@ -150,18 +150,18 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
   // If selected path is a directory, fetch listing for display
   React.useEffect(() => {
     let mounted = true
-    ;(async () => {
-      if (!meta || !meta.isDir || !path) return
-      try {
-        const entries = await listTree(path)
-        if (!mounted) return
-        setContent('')
-        // store entries as a simple newline-separated preview for now
-        setOrigContent(entries.map((e: any) => e.name).join('\n'))
-      } catch (e) {
-        // ignore
-      }
-    })()
+      ; (async () => {
+        if (!meta || !meta.isDir || !path) return
+        try {
+          const entries = await listTree(path)
+          if (!mounted) return
+          setContent('')
+          // store entries as a simple newline-separated preview for now
+          setOrigContent(entries.map((e: any) => e.name).join('\n'))
+        } catch (e) {
+          // ignore
+        }
+      })()
     return () => { mounted = false }
   }, [meta, path])
 
@@ -228,47 +228,41 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       prevUnsavedRef.current = hasUnsaved
     }
   }, [content, origContent, onUnsavedChange, path])
-// save action saves the file
+  // save action saves the file
   const onSave = async () => {
     if (!path) return
     setStatus('Saving...')
     try {
       await saveFile(path, content)
       setStatus('Saved')
-      setOrigContent(content)
+      setTimeout(() => setStatus(s => s === 'Saved' ? '' : s), 1500)
+      // Reload the file to ensure we display exactly what is on disk and update all metadata
+      await loadFile(true)
       onSaved && onSaved()
-      try {
-        // re-stat the file so parent can update size/metadata
-        const m = await statPath(path)
-        setMeta(m)
-        if (typeof onMeta === 'function') onMeta(m)
-      } catch (e) {
-        // ignore stat errors; save still succeeded
-      }
     } catch {
       setStatus('Save failed')
     }
   }
-/*
-  import('../format').catch(() => {}) // ensure type info available to bundler
-  // NOTE: `formatByExt` is imported statically to avoid Vite chunking warnings.
-  // The actual formatting implementation is lightweight now (passthrough), so
-  // the static import cost is acceptable.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { formatByExt } = require('../format') as typeof import('../format')
-  const onFormat = async () => {
-    if (!path) return
-    const ext = extFromPath(path)
-    setStatus('Formatting...')
-    try {
-      const formatted = formatByExt(ext, content)
-      setContent(formatted)
-      setStatus('Formatted')
-    } catch (e) {
-      setStatus('Format failed')
+  /*
+    import('../format').catch(() => {}) // ensure type info available to bundler
+    // NOTE: `formatByExt` is imported statically to avoid Vite chunking warnings.
+    // The actual formatting implementation is lightweight now (passthrough), so
+    // the static import cost is acceptable.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { formatByExt } = require('../format') as typeof import('../format')
+    const onFormat = async () => {
+      if (!path) return
+      const ext = extFromPath(path)
+      setStatus('Formatting...')
+      try {
+        const formatted = formatByExt(ext, content)
+        setContent(formatted)
+        setStatus('Formatted')
+      } catch (e) {
+        setStatus('Format failed')
+      }
     }
-  }
-*/
+  */
   const onDelete = async () => {
     if (!path) return
     // confirm with user
@@ -297,7 +291,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       if (!pt.isText) {
         setContent('')
         if (!pt.mime || !pt.mime.startsWith('image/')) {
-          setStatus('?Binary or unsupported file type — use Download'+pt.mime)
+          setStatus('?Binary or unsupported file type — use Download' + pt.mime)
         } else {
           setStatus('')
         }
@@ -307,10 +301,22 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       setContent(text)
       setOrigContent(text)
       setStatus('Reloaded')
+      setTimeout(() => setStatus(s => s === 'Reloaded' ? '' : s), 1500)
     } catch (e) {
       setStatus('Reload failed')
     }
   }
+
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        onSave()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onSave])
 
   return (
     <div className="editor">
@@ -320,46 +326,44 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
           <span className="muted">{(meta && meta.absPath) ? meta.absPath : (path || 'Select a file')}</span>
           {meta && (
             <>
-            <span className="muted" style={{ fontSize: 11 }}>
-              {
-                // friendly display: directory, image, pdf, text, or fallback to mime
-                meta.isDir ? 'directory'
-                : (probe && probe.mime && probe.mime.startsWith('image/')) ? 'image'
-                : (probe && probe.mime === 'application/pdf') ? 'pdf'
-                : (probe && probe.isText) ? 'text'
-                : (meta.mime && meta.mime !== 'text/plain') ? meta.mime
-                : (probe && probe.mime) ? probe.mime
-                : meta.mime || 'file'
-              }
-              · {meta.mode} · {new Date(meta.modTime).toLocaleString()} {meta.size ? `· ${formatBytes(meta.size)}` : ''}
-            </span>
-            {probe && probe.mime && probe.mime.startsWith('image/') && imageDims ? (
-              <span style={{ fontSize: 11, marginLeft: 8 }} className="muted">{imageDims.w} × {imageDims.h}</span>
-            ) : null}
+              <span className="muted" style={{ fontSize: 11 }}>
+                {
+                  // friendly display: directory, image, pdf, text, or fallback to mime
+                  meta.isDir ? 'directory'
+                    : (probe && probe.mime && probe.mime.startsWith('image/')) ? 'image'
+                      : (probe && probe.mime === 'application/pdf') ? 'pdf'
+                        : (probe && probe.isText) ? 'text'
+                          : (meta.mime && meta.mime !== 'text/plain') ? meta.mime
+                            : (probe && probe.mime) ? probe.mime
+                              : meta.mime || 'file'
+                }
+                · {meta.mode} · {new Date(meta.modTime).toLocaleString()} {meta.size ? `· ${formatBytes(meta.size)}` : ''}
+              </span>
+              {probe && probe.mime && probe.mime.startsWith('image/') && imageDims ? (
+                <span style={{ fontSize: 11, marginLeft: 8 }} className="muted">{imageDims.w} × {imageDims.h}</span>
+              ) : null}
             </>
           )}
         </div>
-          <div className="actions">
-          {/* Format removed until implemented */}
+        <div className="actions">
           <button className="link icon-btn" title="Reload" aria-label="Reload" onClick={onReload} disabled={!path}>
             <Icon name={iconForExtension('refresh') || 'icon-refresh'} title="Reload" size={16} />
           </button>
-          <button className="link icon-btn" title="Save" aria-label="Save" onClick={onSave} disabled={!path || content === origContent}>
-            <Icon name={iconForExtension('upload') || 'icon-upload'} title="Save" size={16} />
-          </button>
-          {settings && settings.allowDelete ? (
-            <button className="btn btn-danger" onClick={onDelete} disabled={!path}>Delete</button>
-          ) : null}
+          {content !== origContent && (
+            <button className="link icon-btn" title="Save" aria-label="Save" onClick={onSave} disabled={!path}>
+              <Icon name={iconForExtension('upload') || 'icon-upload'} title="Save" size={16} />
+            </button>
+          )}
         </div>
         {meta && meta.size && meta.size > editableThreshold ? (
           <div style={{ marginLeft: 12 }}>
             <div className="muted" style={{ fontSize: 12 }}>File is large ({formatBytes(meta.size)}). Full edit disabled.</div>
             <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
-              <button className="btn" onClick={() => loadSection(0, 64*1024)}>View head</button>
-              <button className="btn" onClick={() => loadSection(Math.max(0, (meta.size || 0) - 64*1024), 64*1024)}>View tail</button>
+              <button className="btn" onClick={() => loadSection(0, 64 * 1024)}>View head</button>
+              <button className="btn" onClick={() => loadSection(Math.max(0, (meta.size || 0) - 64 * 1024), 64 * 1024)}>View tail</button>
               <button className="btn" onClick={() => {
                 const off = Math.max(0, Math.floor((meta.size || 0) / 2))
-                loadSection(off, 64*1024)
+                loadSection(off, 64 * 1024)
               }}>View middle</button>
             </div>
             {sectionLoading && <div className="muted">Loading section...</div>}
@@ -391,7 +395,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
             case EditorView.PDF:
               return <PdfView path={path} />
             case EditorView.IMAGE:
-              return <ImageView path={path} onDimensions={(w,h) => setImageDims({ w,h })} />
+              return <ImageView path={path} onDimensions={(w, h) => setImageDims({ w, h })} />
             case EditorView.DIRECTORY:
               return (
                 <div style={{ padding: 12 }}>

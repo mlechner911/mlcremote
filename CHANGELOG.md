@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 
 
+## [0.4.0] - 2026-01-01
+
+### Added
+- **Status Bar**: dedicated component at bottom of screen for health, connection status, and memory usage.
+- **Context Menu**: Right-click actions in File Explorer (Open, Download, Copy Full/Relative Path, Delete).
+- **Editor**: Added Ctrl+S shortcut, conditional Save button (only shows when unsaved), and auto-reload on save.
+- **Icons**: New SVG icons for Copy and Link actions.
+- **File Explorer**: Added Refresh button to header.
+
+### Changed
+- **UI Layout**: Moved status indicators from header to Status Bar for a cleaner look.
+- **File Explorer**: Removed inline "Download" button (moved to Context Menu) to reduce clutter.
+- **Editor**: "Reloaded" and "Saved" status messages now auto-clear after 1.5s.
+
 ## [0.3.0] - 2026-01-01
 
 ### Added

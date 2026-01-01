@@ -1,6 +1,6 @@
 import React from 'react'
 import { statPath } from '../api'
-import { authedFetch } from '../auth'
+import { getToken, authedFetch } from '../utils/auth'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
@@ -49,15 +49,15 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
         try {
           const dims = { type: 'resize', cols: (term as any).cols || 80, rows: (term as any).rows || 24 }
           if (ws) ws.send(JSON.stringify(dims))
-        } catch (_) {}
+        } catch (_) { }
       }
       ws.onmessage = (ev) => {
         const data = typeof ev.data === 'string' ? ev.data : new TextDecoder().decode(ev.data as ArrayBuffer)
         term.write(data)
       }
       ws.onclose = () => {
-        try { if (wsRef.current) wsRef.current = null } catch (_) {}
-        if (onExit) try { onExit() } catch (_) {}
+        try { if (wsRef.current) wsRef.current = null } catch (_) { }
+        if (onExit) try { onExit() } catch (_) { }
       }
       term.onData(d => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(d) })
     }
@@ -77,9 +77,9 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
     }
 
     resolveCwd(path).then((cwd) => {
-        const token = localStorage.getItem('mlcremote_token')
-        const q = token ? `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(cwd)}&token=${encodeURIComponent(token)}` : `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(cwd)}`
-        authedFetch(`/api/terminal/new${q}`).then(r => r.json()).then(j => {
+      const token = localStorage.getItem('mlcremote_token')
+      const q = token ? `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(cwd)}&token=${encodeURIComponent(token)}` : `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(cwd)}`
+      authedFetch(`/api/terminal/new${q}`).then(r => r.json()).then(j => {
         sessionId = j.id
         const token = localStorage.getItem('mlcremote_token')
         const q = token ? `?session=${encodeURIComponent(sessionId!)}&token=${encodeURIComponent(token)}` : `?session=${encodeURIComponent(sessionId!)}`
@@ -106,16 +106,16 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
           rows: (term as any).rows || 24,
         }
         ws.send(JSON.stringify(dims))
-      } catch (_) {}
+      } catch (_) { }
     }
     const onResize = sendResize
     window.addEventListener('resize', onResize)
 
     return () => {
       window.removeEventListener('resize', onResize)
-      try { if (ws) ws.close() } catch (_) {}
+      try { if (ws) ws.close() } catch (_) { }
       wsRef.current = null
-      try { term.dispose() } catch (_) {}
+      try { term.dispose() } catch (_) { }
     }
   }, [shell, path])
 

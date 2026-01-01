@@ -1,6 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import { AuthProvider } from './context/AuthContext'
 import 'prismjs/themes/prism-tomorrow.css'
 import '@xterm/xterm/css/xterm.css'
 import './styles.css'
@@ -27,4 +28,6 @@ import './styles.css'
 })()
 
 // Application entrypoint — go for it
-createRoot(document.getElementById('root')!).render(<App />)
+createRoot(document.getElementById('root')!).render(<AuthProvider>
+	<App />
+</AuthProvider>)

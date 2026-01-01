@@ -1,5 +1,5 @@
 import React from 'react'
-import { getLogs, subscribe, clear } from '../logger'
+import { getLogs, subscribe, clear } from '../utils/logger'
 
 type Props = { visible?: boolean; onClose?: () => void }
 
@@ -40,7 +40,7 @@ export default function LogOverlay({ visible = true, onClose }: Props) {
       </div>
       <div>
         {logs.map((l, i) => (
-          <div key={i} className={`log-entry log-level-${(l.level || '').toLowerCase()}`}>
+          <div key={i} className={`log - entry log - level - ${(l.level || '').toLowerCase()} `}>
             <div className="log-meta">{l.ts} <span className="log-level">{l.level}</span></div>
             <div className="log-message">{renderMessage(l.msg)}</div>
           </div>

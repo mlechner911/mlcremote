@@ -201,3 +201,15 @@ icons:
     file: raw/trash.svg
     mime: application/x-ui
     extensions: ["trash"]
+
+  - id: copy
+    name: Copy
+    file: raw/copy.svg
+    mime: application/x-ui
+    extensions: ["copy"]
+
+  - id: link
+    name: Link
+    file: raw/link.svg
+    mime: application/x-ui
+    extensions: ["link"]

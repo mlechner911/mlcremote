@@ -1,5 +1,5 @@
 import React from 'react'
-import { getToken } from '../auth'
+import { getToken } from '../utils/auth'
 
 export default function ImageView({ path, onDimensions }: { path: string; onDimensions?: (w: number, h: number) => void }) {
   const token = getToken()
@@ -15,9 +15,9 @@ export default function ImageView({ path, onDimensions }: { path: string; onDime
             const i = imgRef.current
             if (i && i.naturalWidth && i.naturalHeight) {
               setNatural({ w: i.naturalWidth, h: i.naturalHeight })
-              try { onDimensions && onDimensions(i.naturalWidth, i.naturalHeight) } catch (_) {}
+              try { onDimensions && onDimensions(i.naturalWidth, i.naturalHeight) } catch (_) { }
             }
-          } catch (_) {}
+          } catch (_) { }
         }} />
       </div>
       <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>

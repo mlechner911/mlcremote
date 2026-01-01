@@ -3,15 +3,15 @@
  * Keep this list conservative — unknown extensions default to text.
  */
 const textExtensions = new Set([
-  'txt','md','markdown','yaml','yml','json','js','ts','jsx','tsx','html','css','env','ini','cfg','conf','csh','gitignore','dockerfile'
-  ,'sql'
+  'txt', 'md', 'markdown', 'yaml', 'yml', 'json', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'env', 'ini', 'cfg', 'conf', 'csh', 'gitignore', 'dockerfile'
+  , 'sql'
 ])
 /**
  * Known binary file extensions. These are treated as non-text/binary and will
  * typically be offered for download or an image preview instead of an editor.
  */
 const binaryExtensions = new Set([
-  'zip','gz','tar','rar','exe','dll','so','bin','jpg','jpeg','png','gif','webp','pdf'
+  'zip', 'gz', 'tar', 'rar', 'exe', 'dll', 'so', 'bin', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'
 ])
 
 /**
@@ -75,7 +75,7 @@ export function isJson(path: string): boolean {
  */
 export type ProbeResult = { mime: string; isText: boolean; ext: string }
 
-import { authedFetch } from './auth'
+import { authedFetch } from './utils/auth'
 
 /**
  * Probe the file type by contacting the backend `/api/filetype` endpoint.

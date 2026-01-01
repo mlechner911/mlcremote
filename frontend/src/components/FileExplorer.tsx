@@ -1,8 +1,9 @@
 import React from 'react'
-import { DirEntry, listTree } from '../api'
-import { authedFetch } from '../auth'
+import { DirEntry, listTree, deleteFile } from '../api'
+import { authedFetch } from '../utils/auth'
 import { Icon, iconForMimeOrFilename, iconForExtension } from '../generated/icons'
 import { getIcon } from '../generated/icon-helpers'
+import ContextMenu, { ContextMenuItem } from './ContextMenu'
 
 type Props = {
   onSelect: (path: string, isDir: boolean) => void
@@ -32,6 +33,9 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
   const [error, setError] = React.useState<string>('')
   const [dragOver, setDragOver] = React.useState<string | null>(null)
   const [uploading, setUploading] = React.useState<boolean>(false)
+
+  // Context Menu State
+  const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number; item: DirEntry } | null>(null)
 
   const load = React.useCallback(async (p: string) => {
     setLoading(true)
@@ -183,11 +187,35 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
     }
   }, [focusRequest])
 
+  const handleDelete = async (p: string) => {
+    // eslint-disable-next-line no-restricted-globals
+    if (!confirm(`Are you sure you want to delete ${p}?`)) return
+    try {
+      await deleteFile(p)
+      load(path)
+    } catch (e: any) {
+      alert('Delete failed: ' + e.message)
+    }
+  }
+
+  const handleContextMenu = (e: React.MouseEvent, item: DirEntry) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, item })
+  }
+
   return (
     <div className="explorer">
       <div className="explorer-header">
         <strong className='hidden'><Icon name={getIcon('dir')} /></strong>
         <div className="explorer-controls">
+          <button className="link icon-btn" title="Refresh" onClick={() => load(path || '')}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+          </button>
           {/* Settings moved to global settings popup; kept here for accessibility if needed */}
           {canChangeRoot && typeof onChangeRoot === 'function' && (
             <button className="link icon-btn" aria-label="Change root" title="Change root" onClick={async () => {
@@ -225,7 +253,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
               </li>
             )}
             {entries.map(e => (
-              <li key={e.path}>
+              <li key={e.path} onContextMenu={(ev) => handleContextMenu(ev, e)}>
                 {e.isDir ? (
                   <button data-path={e.path} type="button" className={"entry" + (selectedPath === e.path ? ' selected' : '')} onClick={() => { load(e.path); onSelect(e.path, true) }} onDrop={(ev) => onDrop(ev, e.path)} onDragOver={(ev) => onDragOver(ev, e.path)} onDragLeave={onDragLeave}>
                     <span className="icon"><Icon name={iconForExtension('dir') || getIcon('dir')} /></span> {e.name}
@@ -254,7 +282,6 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
                     {!autoOpen ? (
                       <button className="btn" onClick={() => onView ? onView(e.path) : onSelect(e.path, false)} title="View file"><Icon name={getIcon('view')} /></button>
                     ) : null}
-                    <a className="btn" href={`/api/file?path=${encodeURIComponent(e.path)}${localStorage.getItem('mlcremote_token') ? `&token=${encodeURIComponent(localStorage.getItem('mlcremote_token') || '')}` : ''}`} download={e.name} style={{ whiteSpace: 'nowrap' }} title="Download" aria-label={`Download ${e.name}`}><Icon name={getIcon('download')} /></a>
                   </div>
                 )}
               </li>
@@ -262,6 +289,90 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
           </ul>
         )}
       </div>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          items={[
+            {
+              label: 'Open',
+              icon: <Icon name={getIcon('view')} />,
+              action: () => {
+                if (contextMenu.item.isDir) {
+                  load(contextMenu.item.path)
+                  onSelect(contextMenu.item.path, true)
+                } else {
+                  if (autoOpen) {
+                    onSelect(contextMenu.item.path, false)
+                  } else {
+                    if (onView) onView(contextMenu.item.path)
+                    else onSelect(contextMenu.item.path, false)
+                  }
+                }
+              }
+            },
+            {
+              label: 'Download',
+              icon: <Icon name={getIcon('download')} />,
+              action: () => {
+                const link = document.createElement('a')
+                link.href = `/api/file?path=${encodeURIComponent(contextMenu.item.path)}${localStorage.getItem('mlcremote_token') ? `&token=${encodeURIComponent(localStorage.getItem('mlcremote_token') || '')}` : ''}`
+                link.download = contextMenu.item.name
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+              },
+              separator: true
+            },
+            {
+              label: 'Copy Full Path',
+              icon: <Icon name={getIcon('copy')} />,
+              action: async () => {
+                try {
+                  await navigator.clipboard.writeText(contextMenu.item.path)
+                } catch (e) {
+                  console.error('Failed to copy', e)
+                }
+              }
+            },
+            {
+              label: 'Copy Relative Path',
+              icon: <Icon name={getIcon('link')} />,
+              action: async () => {
+                try {
+                  // Remove leading slash to make it relative to root
+                  const rel = contextMenu.item.path.startsWith('/') ? contextMenu.item.path.slice(1) : contextMenu.item.path
+                  await navigator.clipboard.writeText(rel)
+                } catch (e) {
+                  console.error('Failed to copy', e)
+                }
+              }
+            },
+            {
+              label: 'Copy Name',
+              icon: <Icon name={getIcon('text')} />,
+              action: async () => {
+                try {
+                  await navigator.clipboard.writeText(contextMenu.item.name)
+                } catch (e) { console.error(e) }
+              },
+              separator: true
+            },
+            {
+              label: 'Delete',
+              icon: <Icon name={getIcon('trash')} />,
+              danger: true,
+              action: () => handleDelete(contextMenu.item.path)
+            }
+          ].filter(i => {
+            // Filter out Download for directories
+            if (i.label === 'Download' && contextMenu.item.isDir) return false
+            return true
+          })}
+        />
+      )}
     </div>
   )
 }

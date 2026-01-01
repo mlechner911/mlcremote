@@ -1,7 +1,7 @@
 import React from 'react'
 import { Icon, iconForMimeOrFilename, iconForExtension } from '../generated/icons'
-import { formatBytes } from '../bytes'
-import { authedFetch, getToken } from '../auth'
+import { formatBytes } from '../utils/bytes'
+import { authedFetch, getToken } from '../utils/auth'
 
 type TrashEntry = { originalPath: string; trashPath: string; deletedAt: string }
 
@@ -53,7 +53,7 @@ export default function TrashView() {
         <button className="btn" disabled>Undo (coming)</button>
         {(() => {
           const token = getToken()
-          const url = `/api/file?path=${encodeURIComponent(entry.trashPath)}` + (token ? `&token=${encodeURIComponent(token)}` : '')
+          const url = `/ api / file ? path = ${encodeURIComponent(entry.trashPath)} ` + (token ? ` & token=${encodeURIComponent(token)} ` : '')
           return <a className="btn" style={{ marginLeft: 8 }} href={url} download={name}>Download</a>
         })()}
       </div>

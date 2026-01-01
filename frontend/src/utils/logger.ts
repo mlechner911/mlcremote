@@ -3,7 +3,7 @@
  * This intentionally keeps a small circular buffer and supports subscriptions
  * so UI components can reactively update when new messages arrive.
  */
-type LogEntry = { ts: string; level: 'info'|'warn'|'error'; msg: string }
+export type LogEntry = { ts: string; level: 'info' | 'warn' | 'error'; msg: string }
 
 const BUFFER = 200
 const logs: LogEntry[] = []
@@ -39,9 +39,11 @@ export function getLogs() { return logs.slice().reverse() }
 /**
  * Subscribe to log updates. Returns an unsubscribe function.
  */
-export function subscribe(cb: () => void) { subs.push(cb); return () => {
-  const i = subs.indexOf(cb); if (i >= 0) subs.splice(i,1)
-} }
+export function subscribe(cb: () => void) {
+  subs.push(cb); return () => {
+    const i = subs.indexOf(cb); if (i >= 0) subs.splice(i, 1)
+  }
+}
 
 /**
  * Clear the log buffer and notify subscribers.

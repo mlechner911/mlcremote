@@ -1,6 +1,6 @@
 import React from 'react'
 import { statPath } from '../api'
-import { formatBytes } from '../bytes'
+import { formatBytes } from '../utils/bytes'
 
 export default function BinaryView({ path }: { path?: string }) {
   const [meta, setMeta] = React.useState<any>(null)
@@ -8,19 +8,19 @@ export default function BinaryView({ path }: { path?: string }) {
 
   React.useEffect(() => {
     let mounted = true
-    ;(async () => {
-      if (!path) { setMeta(null); return }
-      try {
-        const m = await statPath(path)
-        if (!mounted) return
-        setMeta(m)
-        setError(null)
-      } catch (e:any) {
-        if (!mounted) return
-        setError(e?.message || 'failed to fetch metadata')
-        setMeta(null)
-      }
-    })()
+      ; (async () => {
+        if (!path) { setMeta(null); return }
+        try {
+          const m = await statPath(path)
+          if (!mounted) return
+          setMeta(m)
+          setError(null)
+        } catch (e: any) {
+          if (!mounted) return
+          setError(e?.message || 'failed to fetch metadata')
+          setMeta(null)
+        }
+      })()
     return () => { mounted = false }
   }, [path])
 
