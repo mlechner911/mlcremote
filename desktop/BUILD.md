@@ -60,5 +60,3 @@ Other troubleshooting
 - If you see WebView2 errors at runtime, install the WebView2 runtime
   from Microsoft: https://developer.microsoft.com/microsoft-edge/webview2/
 
-If you'd like, I can apply the `wails.json` fix for you (set `author` to
-an object with empty `name`/`email`) so `wails build` works immediately.
