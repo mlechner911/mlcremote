@@ -1,7 +1,9 @@
 
 frontend/node_modules/
 bin/*
-dist/
+dist/*
+!dist/README.md
+!dist/*.zip
 frontend/dist/
 public/js
 *.exe
