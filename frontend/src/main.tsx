@@ -20,10 +20,11 @@ import './styles.css'
 			container.innerHTML = sprite
 			document.body.insertBefore(container, document.body.firstChild)
 		}
-	} catch (e) {
-		// sprite not available — continue without throwing
+	} catch (e: any) {
+		// sprite not available — continue without throwing ??
+		alert('Failed to load icon sprite: ' + (e?.message || e))
 	}
 })()
 
-// Application entrypoint — mount the React app into the page.
+// Application entrypoint — go for it
 createRoot(document.getElementById('root')!).render(<App />)
