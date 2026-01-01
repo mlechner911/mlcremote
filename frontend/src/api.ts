@@ -51,6 +51,8 @@ export type DirEntry = {
     path: string // leading '/'
     isDir: boolean
     isSymlink?: boolean
+    isBroken?: boolean
+    isExternal?: boolean
     size: number
     modTime: string
 }

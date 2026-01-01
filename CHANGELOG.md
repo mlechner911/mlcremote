@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **Docker Support**: Full development workflow with `make docker-dev` including hot reload (Air) and isolated data volume.
-- **Symlink Support**: Backend now detects symbolic links, and Frontend displays them with a 🔗 icon.
+- **Symlink Support**: Backend now detects symbolic links, and Frontend displays them with a 🔗 icon. Includes validation for broken (❌) and external (↗️) links.
 - **Documentation**: Added `DOCKER.md` with setup and usage instructions.
 
 ### Changed
