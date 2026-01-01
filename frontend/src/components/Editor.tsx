@@ -3,10 +3,12 @@ import { readFile, saveFile, deleteFile, listTree, statPath } from '../api'
 const PdfPreview = React.lazy(() => import('./PdfPreview'))
 import { formatBytes } from '../bytes'
 import { isEditable, isProbablyText, extFromPath, probeFileType } from '../filetypes'
+import { effectiveExtFromFilename } from '../languageForFilename'
 import { getToken, authedFetch } from '../auth'
 import TextView from './TextView'
 import ImageView from './ImageView'
 import PdfView from './PdfView'
+import { decideEditorToUse, EditorView } from './decideEditorToUse'
 import { Icon } from '../generated/icons'
 import { iconForMimeOrFilename as getIcon, iconForExtension } from '../generated/icons'
 const ShellView = React.lazy(() => import('./ShellView'))
@@ -130,7 +132,8 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
   // compute grammar/alias for the current path to set on elements
   // prefer the probed extension from the backend probe if available
   const detectedExt = probe && probe.ext ? probe.ext : extFromPath(path)
-  const ext = detectedExt
+  const extFromName = effectiveExtFromFilename(path)
+  const ext = extFromName || (probe && probe.ext) || extFromPath(path)
   const alias = undefined
   const grammar = (probe && probe.ext) ? probe.ext : 'text'
   // sanitize id (unique per full path) to avoid duplicate ids and ensure uniqueness
@@ -374,26 +377,39 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
             <div className="muted" style={{ marginTop: 6 }}>{origContent ? origContent.split('\n').length : '0'} entries</div>
             <pre style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', padding: 8, background: 'var(--panel)' }}>{origContent}</pre>
           </div>
-        ) : ((probe?.isText ?? isProbablyText(path)) || isEditable(path)) ? (
-          <TextView content={content} setContent={setContent} origContent={origContent} ext={ext} alias={alias} textareaId={textareaId} />
-        ) : (
-          <div>
-            {/* special shell view: path may be 'shell-<ts>' for terminal tabs */}
-            {path && path.startsWith('shell-') ? (
-              <React.Suspense fallback={<div className="muted">Loading shell…</div>}>
-                <ShellView path={path} />
-              </React.Suspense>
-            ) : probe && probe.mime && probe.mime === 'application/pdf' ? (
-              <PdfView path={path} />
-            ) : probe && probe.mime && probe.mime.startsWith('image/') ? (
-              <ImageView path={path} onDimensions={(w,h) => setImageDims({ w,h })} />
-            ) : path ? (
-              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
-              </div>
-            ) : null}
-          </div>
-        )}
+        ) : (() => {
+          const view = decideEditorToUse({ path, meta, probe })
+          switch (view) {
+            case EditorView.TEXT:
+              return <TextView content={content} setContent={setContent} origContent={origContent} ext={ext} alias={alias} textareaId={textareaId} />
+            case EditorView.SHELL:
+              return (
+                <React.Suspense fallback={<div className="muted">Loading shell…</div>}>
+                  <ShellView path={path} />
+                </React.Suspense>
+              )
+            case EditorView.PDF:
+              return <PdfView path={path} />
+            case EditorView.IMAGE:
+              return <ImageView path={path} onDimensions={(w,h) => setImageDims({ w,h })} />
+            case EditorView.DIRECTORY:
+              return (
+                <div style={{ padding: 12 }}>
+                  <div style={{ fontWeight: 600 }}>Directory: {path}</div>
+                  <div className="muted" style={{ marginTop: 6 }}>{origContent ? origContent.split('\n').length : '0'} entries</div>
+                  <pre style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', padding: 8, background: 'var(--panel)' }}>{origContent}</pre>
+                </div>
+              )
+            case EditorView.BINARY:
+            case EditorView.UNSUPPORTED:
+            default:
+              return path ? (
+                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                  <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
+                </div>
+              ) : null
+          }
+        })()}
       </div>
     </div>
   )
