@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -36,7 +35,7 @@ func (a *App) CheckBackend(profileJSON string) (bool, error) {
 	// Check for the binary in the new location
 	args = append(args, target, fmt.Sprintf("test -f ~/%s/%s", RemoteBinDir, RemoteBinaryName))
 
-	cmd := exec.Command("ssh", args...)
+	cmd := createSilentCmd("ssh", args...)
 	// verify functionality: exit code 0 means file exists
 	if err := cmd.Run(); err != nil {
 		return false, nil
@@ -123,7 +122,7 @@ func (a *App) InstallBackend(profileJSON string) (string, error) {
 	// We only support x86_64 (amd64) for now because we cross-compile for it
 	archArgs := append([]string{}, sshBaseArgs...)
 	archArgs = append(archArgs, target, "uname -m")
-	if out, err := exec.Command("ssh", archArgs...).Output(); err == nil {
+	if out, err := createSilentCmd("ssh", archArgs...).Output(); err == nil {
 		arch := strings.TrimSpace(string(out))
 		if arch != "x86_64" {
 			return "setup-failed", fmt.Errorf("remote architecture '%s' is not supported (x86_64 required)", arch)
@@ -137,7 +136,7 @@ func (a *App) InstallBackend(profileJSON string) (string, error) {
 	// 2. Create remote directory structure
 	mkdirArgs := append([]string{}, sshBaseArgs...)
 	mkdirArgs = append(mkdirArgs, target, fmt.Sprintf("mkdir -p ~/%s ~/%s ~/%s", RemoteBinDir, RemoteFrontendDir, SystemdUserDir))
-	if err := exec.Command("ssh", mkdirArgs...).Run(); err != nil {
+	if err := createSilentCmd("ssh", mkdirArgs...).Run(); err != nil {
 		return "setup-failed", fmt.Errorf("failed to create remote directories: %w", err)
 	}
 
@@ -146,7 +145,7 @@ func (a *App) InstallBackend(profileJSON string) (string, error) {
 	// Try systemctl stop first, then pkill to be sure (ignore errors if not running)
 	stopCmd := fmt.Sprintf("systemctl --user stop %s; pkill -f %s || true", ServiceName, RemoteBinaryName)
 	stopArgs = append(stopArgs, target, stopCmd)
-	_ = exec.Command("ssh", stopArgs...).Run()
+	_ = createSilentCmd("ssh", stopArgs...).Run()
 
 	// Wait a moment for ports to free
 	time.Sleep(1 * time.Second)
@@ -160,7 +159,7 @@ func (a *App) InstallBackend(profileJSON string) (string, error) {
 	scpBinArgs := append([]string{}, scpArgs...)
 	scpBinArgs = append(scpBinArgs, binPath, fmt.Sprintf("%s:~/%s/%s", target, RemoteBinDir, RemoteBinaryName))
 
-	if out, err := exec.Command("scp", scpBinArgs...).CombinedOutput(); err != nil {
+	if out, err := createSilentCmd("scp", scpBinArgs...).CombinedOutput(); err != nil {
 		return "upload-failed", fmt.Errorf("scp binary failed: %s", string(out))
 	}
 
@@ -172,14 +171,14 @@ func (a *App) InstallBackend(profileJSON string) (string, error) {
 	// 1. Remove temp dir if exists
 	cleanArgs := append([]string{}, sshBaseArgs...)
 	cleanArgs = append(cleanArgs, target, fmt.Sprintf("rm -rf ~/%s", remoteNewDir))
-	_ = exec.Command("ssh", cleanArgs...).Run()
+	_ = createSilentCmd("ssh", cleanArgs...).Run()
 
 	// 2. Upload to new dir (since it lacks trailing slash and dir doesn't exist, it creates it)
 	// scp -r local/frontend user@host:~/.mlcremote/frontend_new
 	scpDistArgs := append([]string{}, scpArgs...)
 	scpDistArgs = append(scpDistArgs, "-r", frontendTmpDir, fmt.Sprintf("%s:~/%s", target, remoteNewDir))
 
-	if out, err := exec.Command("scp", scpDistArgs...).CombinedOutput(); err != nil {
+	if out, err := createSilentCmd("scp", scpDistArgs...).CombinedOutput(); err != nil {
 		return "upload-failed", fmt.Errorf("scp frontend failed: %s", string(out))
 	}
 
@@ -187,7 +186,7 @@ func (a *App) InstallBackend(profileJSON string) (string, error) {
 	swapCmd := fmt.Sprintf("rm -rf ~/%s && mv ~/%s ~/%s", RemoteFrontendDir, remoteNewDir, RemoteFrontendDir)
 	swapArgs := append([]string{}, sshBaseArgs...)
 	swapArgs = append(swapArgs, target, swapCmd)
-	if out, err := exec.Command("ssh", swapArgs...).CombinedOutput(); err != nil {
+	if out, err := createSilentCmd("ssh", swapArgs...).CombinedOutput(); err != nil {
 		return "upload-failed", fmt.Errorf("swap frontend failed: %s", string(out))
 	}
 
@@ -207,14 +206,14 @@ exec "$HOME/%s/%s" --port 8443 --root "$HOME" --static-dir "$HOME/%s" --no-auth
 	scpRunArgs := append([]string{}, scpArgs...)
 	scpRunArgs = append(scpRunArgs, runScriptFile, fmt.Sprintf("%s:~/%s/%s", target, RemoteBaseDir, RunScript))
 
-	if out, err := exec.Command("scp", scpRunArgs...).CombinedOutput(); err != nil {
+	if out, err := createSilentCmd("scp", scpRunArgs...).CombinedOutput(); err != nil {
 		return "upload-failed", fmt.Errorf("scp run-script failed: %s", string(out))
 	}
 
 	// Make script executable
 	chmodArgs := append([]string{}, sshBaseArgs...)
 	chmodArgs = append(chmodArgs, target, fmt.Sprintf("chmod +x ~/%s/%s ~/%s/%s", RemoteBaseDir, RunScript, RemoteBinDir, RemoteBinaryName))
-	_ = exec.Command("ssh", chmodArgs...).Run()
+	_ = createSilentCmd("ssh", chmodArgs...).Run()
 
 	// 5. Create and upload systemd service file
 	serviceContent := fmt.Sprintf(`[Unit]
@@ -236,7 +235,7 @@ WantedBy=default.target
 	scpServiceArgs := append([]string{}, scpArgs...)
 	scpServiceArgs = append(scpServiceArgs, serviceFile, fmt.Sprintf("%s:~/%s/%s", target, SystemdUserDir, serviceFileName))
 
-	if out, err := exec.Command("scp", scpServiceArgs...).CombinedOutput(); err != nil {
+	if out, err := createSilentCmd("scp", scpServiceArgs...).CombinedOutput(); err != nil {
 		return "service-upload-failed", fmt.Errorf("failed to upload service file: %s", string(out))
 	}
 
@@ -244,7 +243,7 @@ WantedBy=default.target
 	startServiceArgs := append([]string{}, sshBaseArgs...)
 	startServiceArgs = append(startServiceArgs, target, fmt.Sprintf("systemctl --user daemon-reload && systemctl --user enable %s && systemctl --user restart %s", ServiceName, ServiceName))
 
-	if out, err := exec.Command("ssh", startServiceArgs...).CombinedOutput(); err != nil {
+	if out, err := createSilentCmd("ssh", startServiceArgs...).CombinedOutput(); err != nil {
 		return "start-failed", fmt.Errorf("failed to start service: %s", string(out))
 	}
 
@@ -287,7 +286,7 @@ func (a *App) GetRemoteFileTree(profileJSON string) (string, error) {
 	// find .mlcremote
 	cmdArgs = append(cmdArgs, target, fmt.Sprintf("find %s -maxdepth 4", RemoteBaseDir))
 
-	out, err := exec.Command("ssh", cmdArgs...).CombinedOutput()
+	out, err := createSilentCmd("ssh", cmdArgs...).CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to list remote files: %s", string(out))
 	}
@@ -314,7 +313,7 @@ func (a *App) TailRemoteLogs(profileJSON string) (string, error) {
 	// journalctl --user -u mlcremote -n 50 --no-pager
 	cmdArgs = append(cmdArgs, target, fmt.Sprintf("journalctl --user -u %s -n 50 --no-pager", "mlcremote"))
 
-	out, err := exec.Command("ssh", cmdArgs...).CombinedOutput()
+	out, err := createSilentCmd("ssh", cmdArgs...).CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch logs: %s", string(out))
 	}

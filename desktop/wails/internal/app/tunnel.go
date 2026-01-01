@@ -49,7 +49,7 @@ func (a *App) StartTunnel(profile string) (string, error) {
 	}
 	args = append(args, toks...)
 
-	cmd := exec.Command("ssh", args...)
+	cmd := createSilentCmd("ssh", args...)
 	stdoutPipe, _ := cmd.StdoutPipe()
 	stderrPipe, _ := cmd.StderrPipe()
 	// start process
@@ -185,7 +185,7 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		args = append(args, p.ExtraArgs...)
 	}
 
-	cmd := exec.Command("ssh", args...)
+	cmd := createSilentCmd("ssh", args...)
 	stdoutPipe, _ := cmd.StdoutPipe()
 	stderrPipe, _ := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
@@ -295,7 +295,7 @@ func (a *App) TunnelStatus() string {
 func (a *App) KillPort(port int) error {
 	// 1. Find the PID using netstat
 	// netstat -ano | findstr :<port>
-	cmd := exec.Command("netstat", "-ano")
+	cmd := createSilentCmd("netstat", "-ano")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return err
@@ -320,7 +320,7 @@ func (a *App) KillPort(port int) error {
 
 	// 2. Kill the process
 	// taskkill /F /PID <pid>
-	killCmd := exec.Command("taskkill", "/F", "/PID", pid)
+	killCmd := createSilentCmd("taskkill", "/F", "/PID", pid)
 	return killCmd.Run()
 }
 
