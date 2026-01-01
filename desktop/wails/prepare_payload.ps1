@@ -17,16 +17,8 @@ if (!(Test-Path $payloadDir)) {
 
 # 0. Generate Icons (Local)
 Write-Host "Generating Icons..."
-Set-Location "$rootDir\cmd\icon-gen"
-$env:GOOS = "windows"
-$env:GOARCH = "amd64"
-go build -o "icon-gen.exe" .
-if ($LASTEXITCODE -ne 0) { Write-Error "Icon Gen build failed"; exit 1 }
-
-# Run tool
-./icon-gen.exe --manifest "$rootDir\icons\icons.yml" --raw "$rootDir\icons\raw" --out "$frontendDir\src\generated" --prefix icon
+& "$rootDir\scripts\generate-icons.ps1"
 if ($LASTEXITCODE -ne 0) { Write-Error "Icon generation failed"; exit 1 }
-Write-Host "Icons generated."
 
 # 1. Build Linux Backend
 Write-Host "Building Linux Backend..."

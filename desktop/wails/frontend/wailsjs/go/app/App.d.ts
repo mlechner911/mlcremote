@@ -9,6 +9,8 @@ export function HealthCheck(arg1:string,arg2:number):Promise<string>;
 
 export function InstallBackend(arg1:string):Promise<string>;
 
+export function KillPort(arg1:number):Promise<void>;
+
 export function SaveIdentityFile(arg1:string,arg2:string):Promise<string>;
 
 export function StartTunnel(arg1:string):Promise<string>;

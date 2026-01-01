@@ -164,26 +164,32 @@ func (a *App) InstallBackend(profileJSON string) (string, error) {
 		return "upload-failed", fmt.Errorf("scp binary failed: %s", string(out))
 	}
 
-	// 3b. Upload Icon Gen Binary
-	scpIconArgs := append([]string{}, scpArgs...)
-	scpIconArgs = append(scpIconArgs, iconGenPath, fmt.Sprintf("%s:~/%s/icon-gen", target, RemoteBinDir))
-
-	if out, err := exec.Command("scp", scpIconArgs...).CombinedOutput(); err != nil {
-		return "upload-failed", fmt.Errorf("scp icon-gen failed: %s", string(out))
-	}
-
 	// 3.5. Upload Frontend Assets
 	// Recursive copy of the temp frontend dir to the remote location
-	scpDistArgs := append([]string{}, scpArgs...)
-	scpDistArgs = append(scpDistArgs, "-r", frontendTmpDir, fmt.Sprintf("%s:~/%s", target, RemoteFrontendDir))
-
 	// Strategy: Upload to temporary remote dir, then atomic swap to ensure clean state
-	remoteTempFrontend := fmt.Sprintf("%s/%s_new", RemoteBaseDir, filepath.Base(RemoteFrontendDir)) // .mlcremote/frontend_new
+	remoteNewDir := fmt.Sprintf("%s/%s_new", RemoteBaseDir, filepath.Base(RemoteFrontendDir)) // .mlcremote/frontend_new
 
-	// 1. Remove temp dir if exists from failed previous run
+	// 1. Remove temp dir if exists
 	cleanArgs := append([]string{}, sshBaseArgs...)
-	cleanArgs = append(cleanArgs, target, fmt.Sprintf("rm -rf ~/%s", remoteTempFrontend))
+	cleanArgs = append(cleanArgs, target, fmt.Sprintf("rm -rf ~/%s", remoteNewDir))
 	_ = exec.Command("ssh", cleanArgs...).Run()
+
+	// 2. Upload to new dir (since it lacks trailing slash and dir doesn't exist, it creates it)
+	// scp -r local/frontend user@host:~/.mlcremote/frontend_new
+	scpDistArgs := append([]string{}, scpArgs...)
+	scpDistArgs = append(scpDistArgs, "-r", frontendTmpDir, fmt.Sprintf("%s:~/%s", target, remoteNewDir))
+
+	if out, err := exec.Command("scp", scpDistArgs...).CombinedOutput(); err != nil {
+		return "upload-failed", fmt.Errorf("scp frontend failed: %s", string(out))
+	}
+
+	// 3. Swap: rm old, mv new -> old
+	swapCmd := fmt.Sprintf("rm -rf ~/%s && mv ~/%s ~/%s", RemoteFrontendDir, remoteNewDir, RemoteFrontendDir)
+	swapArgs := append([]string{}, sshBaseArgs...)
+	swapArgs = append(swapArgs, target, swapCmd)
+	if out, err := exec.Command("ssh", swapArgs...).CombinedOutput(); err != nil {
+		return "upload-failed", fmt.Errorf("swap frontend failed: %s", string(out))
+	}
 
 	// 4. Create and upload run-server.sh wrapper
 	runScriptContent := fmt.Sprintf(`#!/usr/bin/env bash
