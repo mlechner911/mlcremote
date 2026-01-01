@@ -20,7 +20,14 @@ Copy-Item "$wailsDir\build\bin\MLCRemote.exe" $distDir
 Copy-Item "$scriptDir\install.ps1" $distDir
 
 # 4. Zip
-$zipPath = "$wailsDir\MLCRemote-Installer.zip"
+$projectRootDistStr = "$wailsDir\..\..\dist"
+$projectRootDist = [System.IO.Path]::GetFullPath($projectRootDistStr)
+
+if (-not (Test-Path $projectRootDist)) {
+    New-Item -ItemType Directory -Path $projectRootDist -Force | Out-Null
+}
+
+$zipPath = "$projectRootDist\MLCRemote-Installer.zip"
 if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
 Compress-Archive -Path "$distDir\*" -DestinationPath $zipPath
 
