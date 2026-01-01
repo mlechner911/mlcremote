@@ -34,4 +34,7 @@ cmd/icon-gen/bin/
 # Go build artifacts and other executables
 *.out
 *.test
+
+# Wails Payload Artifacts
+desktop/wails/assets/payload/
 bin/
