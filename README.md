@@ -35,9 +35,9 @@ documentation from the source code.
 
 The client for remote edit/view etc  works for my needs - but there are a lot of possible improvemenets.
 
-The planned native app for remote managemenent caused more work than expected. For now
-I added some bash scripts to ease the installation of the server on a remote host (using ssh).
-Next steps will include a nice gui for all this - but for me it does not have high prioritry now.
+The native desktop app is now fully functional. With help from AI I was finally able to create the Windows executable ;)
+
+Thanks "Gemini" for that.
 
 
 
