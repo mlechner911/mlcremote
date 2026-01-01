@@ -108,7 +108,7 @@ export default function Welcome({ onConnect, onOpenSettings }: WelcomeProps) {
                                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1e293b'}
                                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}
                                 >
-                                    <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{p.host}</span>
+                                    <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{p.host}{p.localPort && p.localPort !== 8443 ? `:${p.localPort}` : ''}</span>
                                     <span style={{ color: '#64748b', fontSize: '0.875rem' }}>{p.user}</span>
                                 </button>
                             ))}
@@ -120,7 +120,7 @@ export default function Welcome({ onConnect, onOpenSettings }: WelcomeProps) {
             {/* Footer / Settings Link */}
             <div style={{ padding: 10, textAlign: 'right', backgroundColor: '#0f172a' }}>
                 <button onClick={onOpenSettings} style={{ background: 'transparent', border: 'none', color: '#475569', cursor: 'pointer', fontSize: '0.875rem' }}>
-                    Settings
+                    About
                 </button>
             </div>
         </div>

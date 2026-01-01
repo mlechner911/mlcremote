@@ -34,18 +34,19 @@ The application implements a multi-stage connection process:
 - **UI**: Prompts the user: "Remote backend not found. Install now?"
 - **Action**:
   1.  **Build**: Cross-compile the backend locally for Linux (amd64).
-      - Source: `../../backend/cmd/dev-server` (Path relative to `desktop/wails`)
-      - Command: `GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../../bin/dev-server ../../backend/cmd/dev-server`
-  2.  **Upload**: Transfer the binary to `remote:~/bin/dev-server`.
-      - Uses SFTP or SCP logic.
+      - Source: `../../backend/cmd/dev-server`
+      - **Assets**: Includes generated icons using `scripts/generate-icons.ps1`.
+  2.  **Upload**: Transfer binary and frontend assets (atomic swap).
+      - Uses `scp` to upload to a temp dir then swaps.
   3.  **Setup Service**: Create and start the SystemD user service.
-      - Configure `~/.config/systemd/user/dev-server.service`.
+      - Configure `~/.config/systemd/user/mlcremote.service`.
       - Run `systemctl --user daemon-reload`, `enable`, and `start`.
 - **Status**: "Building...", "Uploading...", "Starting service..."
 
 ### 5. Tunnel Establishment
 - Establish an SSH tunnel forwarding a local port to `remote:localhost:8443`.
-- **Local Port**: Random free port or fixed 8443 (handling conflicts).
+- **Local Port**: User configurable in settings (default 8443).
+- **Conflict Handling**: Uses `KillPort` logic to clear zombie processes on the local port.
 - **Remote Port**: 8443 (default).
 - **Status**: "Setting up secure tunnel..."
 
