@@ -198,12 +198,14 @@ func EmptyTrashHandler(trashDir string, allowDelete bool) http.HandlerFunc {
 }
 
 type dirEntry struct {
-	Name      string    `json:"name"`
-	Path      string    `json:"path"`
-	IsDir     bool      `json:"isDir"`
-	IsSymlink bool      `json:"isSymlink"`
-	Size      int64     `json:"size"`
-	ModTime   time.Time `json:"modTime"`
+	Name       string    `json:"name"`
+	Path       string    `json:"path"`
+	IsDir      bool      `json:"isDir"`
+	IsSymlink  bool      `json:"isSymlink"`
+	IsBroken   bool      `json:"isBroken"`
+	IsExternal bool      `json:"isExternal"`
+	Size       int64     `json:"size"`
+	ModTime    time.Time `json:"modTime"`
 }
 
 // TreeHandler lists directory entries under the given path.
@@ -270,13 +272,33 @@ func TreeHandler(root string) http.HandlerFunc {
 			abs, _ := filepath.Abs(p)
 			rel, _ := filepath.Rel(rootAbs, abs)
 			isSymlink := e.Mode()&os.ModeSymlink != 0
+			isBroken := false
+			isExternal := false
+			if isSymlink {
+				if _, err := os.Stat(p); err != nil {
+					isBroken = true
+				} else {
+					// Check if external
+					if realPath, err := filepath.EvalSymlinks(p); err == nil {
+						if relToRoot, err := filepath.Rel(rootAbs, realPath); err == nil {
+							// If relative path starts with "..", it's outside the root
+							if len(relToRoot) >= 2 && relToRoot[:2] == ".." {
+								isExternal = true
+							}
+						}
+					}
+				}
+			}
+
 			entries = append(entries, dirEntry{
-				Name:      e.Name(),
-				Path:      "/" + rel,
-				IsDir:     e.IsDir(),
-				IsSymlink: isSymlink,
-				Size:      e.Size(),
-				ModTime:   e.ModTime(),
+				Name:       e.Name(),
+				Path:       "/" + rel,
+				IsDir:      e.IsDir(),
+				IsSymlink:  isSymlink,
+				IsBroken:   isBroken,
+				IsExternal: isExternal,
+				Size:       e.Size(),
+				ModTime:    e.ModTime(),
 			})
 		}
 		w.Header().Set("Content-Type", "application/json")
