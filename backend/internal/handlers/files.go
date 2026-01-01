@@ -24,7 +24,7 @@ type TrashEntry struct {
 }
 
 var (
-	trashMu      sync.Mutex
+	trashMu       sync.Mutex
 	recentTrashed []TrashEntry
 )
 
@@ -198,11 +198,12 @@ func EmptyTrashHandler(trashDir string, allowDelete bool) http.HandlerFunc {
 }
 
 type dirEntry struct {
-	Name    string    `json:"name"`
-	Path    string    `json:"path"`
-	IsDir   bool      `json:"isDir"`
-	Size    int64     `json:"size"`
-	ModTime time.Time `json:"modTime"`
+	Name      string    `json:"name"`
+	Path      string    `json:"path"`
+	IsDir     bool      `json:"isDir"`
+	IsSymlink bool      `json:"isSymlink"`
+	Size      int64     `json:"size"`
+	ModTime   time.Time `json:"modTime"`
 }
 
 // TreeHandler lists directory entries under the given path.
@@ -232,7 +233,7 @@ func TreeHandler(root string) http.HandlerFunc {
 		if err != nil {
 			// if the file does not exist, record and block
 			if os.IsNotExist(err) {
-				util.RecordMissingAccess()
+				util.RecordMissingAccess(target)
 			}
 			http.Error(w, "not found", http.StatusNotFound)
 			return
@@ -268,12 +269,14 @@ func TreeHandler(root string) http.HandlerFunc {
 			p := filepath.Join(target, e.Name())
 			abs, _ := filepath.Abs(p)
 			rel, _ := filepath.Rel(rootAbs, abs)
+			isSymlink := e.Mode()&os.ModeSymlink != 0
 			entries = append(entries, dirEntry{
-				Name:    e.Name(),
-				Path:    "/" + rel,
-				IsDir:   e.IsDir(),
-				Size:    e.Size(),
-				ModTime: e.ModTime(),
+				Name:      e.Name(),
+				Path:      "/" + rel,
+				IsDir:     e.IsDir(),
+				IsSymlink: isSymlink,
+				Size:      e.Size(),
+				ModTime:   e.ModTime(),
 			})
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -306,7 +309,7 @@ func GetFileHandler(root string) http.HandlerFunc {
 		fi, err := os.Stat(target)
 		if err != nil || fi.IsDir() {
 			if err != nil && os.IsNotExist(err) {
-				util.RecordMissingAccess()
+				util.RecordMissingAccess(target)
 			}
 			http.Error(w, "not a file", http.StatusBadRequest)
 			return
@@ -461,7 +464,7 @@ func StatHandler(root string) http.HandlerFunc {
 		fi, err := os.Stat(target)
 		if err != nil {
 			if os.IsNotExist(err) {
-				util.RecordMissingAccess()
+				util.RecordMissingAccess(target)
 			}
 			http.Error(w, "not found", http.StatusNotFound)
 			return

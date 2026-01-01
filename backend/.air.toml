@@ -1,0 +1,23 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/main ./cmd/dev-server"
+full_bin = "./tmp/main --host 0.0.0.0 --port 8443 --root /data --static-dir /app/frontend/dist"
+delay = 1000
+exclude_dir = ["assets", "tmp", "vendor", "docs"]
+include_ext = ["go", "tpl", "tmpl", "html"]
+exclude_regex = ["_test.go"]
+stop_on_error = true
+
+[log]
+time = true
+
+[color]
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
+
+[misc]
+clean_on_exit = true

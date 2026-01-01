@@ -53,6 +53,7 @@ func main() {
 
 	// 2. Setup flags with defaults from config
 	port := flag.Int("port", cfg.Port, "port to listen on")
+	host := flag.String("host", "127.0.0.1", "host interface to listen on")
 
 	defaultRoot := cfg.Root
 	if defaultRoot == "" {
@@ -63,7 +64,6 @@ func main() {
 	staticDir := flag.String("static-dir", cfg.StaticDir, "directory for static files (dev mode)")
 	openapiPath := flag.String("openapi", cfg.OpenAPIPath, "path to openapi.yaml (optional)")
 	noAuth := flag.Bool("no-auth", cfg.NoAuth, "disable authentication (DANGEROUS)")
-
 	flag.Parse()
 
 	if *root == "" {
@@ -81,21 +81,30 @@ func main() {
 		trashDir = filepath.Join(home, ".trash")
 	}
 
-	srv := server.New(*root, *staticDir, *openapiPath, token, cfg.Password, cfg.AllowDelete, trashDir)
+	srv := server.New(*host, *root, *staticDir, *openapiPath, token, cfg.Password, cfg.AllowDelete, trashDir)
 	srv.Routes()
 
 	// startup banner
 	log.Printf("MLCRemote v0.2.1 starting")
 	log.Printf("Server root: %s", *root)
 
-	addr := fmt.Sprintf("127.0.0.1:%d", *port)
+	if *host != "127.0.0.1" && *host != "localhost" {
+		log.Printf("[WARNING] Server is listening on EXTERNAL interface (%s). Only do this in a container!", *host)
+	}
+
+	displayHost := *host
+	if displayHost == "0.0.0.0" {
+		displayHost = "localhost"
+	}
+	displayAddr := fmt.Sprintf("%s:%d", displayHost, *port)
+
 	if token != "" {
 		log.Printf("Security: Authentication ENABLED")
-		log.Printf("Access URL: http://%s/?token=%s", addr, token)
+		log.Printf("Access URL: http://%s/?token=%s", displayAddr, token)
 		log.Printf("Token: %s", token)
 	} else {
 		log.Printf("Security: Authentication DISABLED (Running in insecure mode)")
-		log.Printf("Access URL: http://%s/", addr)
+		log.Printf("Access URL: http://%s/", displayAddr)
 	}
 
 	if err := srv.Start(*port); err != nil {

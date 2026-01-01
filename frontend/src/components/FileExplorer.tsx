@@ -186,7 +186,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
   return (
     <div className="explorer">
       <div className="explorer-header">
-      <strong className='hidden'><Icon name={getIcon('dir')} /></strong>
+        <strong className='hidden'><Icon name={getIcon('dir')} /></strong>
         <div className="explorer-controls">
           {/* Settings moved to global settings popup; kept here for accessibility if needed */}
           {canChangeRoot && typeof onChangeRoot === 'function' && (
@@ -226,14 +226,14 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
             )}
             {entries.map(e => (
               <li key={e.path}>
-                  {e.isDir ? (
-                    <button data-path={e.path} type="button" className={"entry" + (selectedPath === e.path ? ' selected' : '')} onClick={() => { load(e.path); onSelect(e.path, true) }} onDrop={(ev) => onDrop(ev, e.path)} onDragOver={(ev) => onDragOver(ev, e.path)} onDragLeave={onDragLeave}>
-                    <span className="icon"><Icon name={iconForExtension('dir') || getIcon('dir')} /></span> {e.name}
+                {e.isDir ? (
+                  <button data-path={e.path} type="button" className={"entry" + (selectedPath === e.path ? ' selected' : '')} onClick={() => { load(e.path); onSelect(e.path, true) }} onDrop={(ev) => onDrop(ev, e.path)} onDragOver={(ev) => onDragOver(ev, e.path)} onDragLeave={onDragLeave}>
+                    <span className="icon"><Icon name={iconForExtension('dir') || getIcon('dir')} /></span> {e.name}{e.isSymlink && <span title="Symbolic Link" style={{ marginLeft: 4, opacity: 0.5 }}>🔗</span>}
                     {dragOver === e.path ? <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>Drop to upload</span> : null}
                   </button>
                 ) : (
                   <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                      <button data-path={e.path} type="button" className="entry" style={{ flex: 1, textAlign: 'left' }} onClick={() => {
+                    <button data-path={e.path} type="button" className="entry" style={{ flex: 1, textAlign: 'left' }} onClick={() => {
                       if (autoOpen === false) {
                         // just select (do not open persistent tab)
                         onSelect(e.path, false)
@@ -241,7 +241,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
                       }
                       onSelect(e.path, false)
                     }}>
-                      <span className="icon"><Icon name={iconForMimeOrFilename(undefined, e.name) || iconForExtension(e.name.split('.').pop()||'') || getIcon('view') || 'icon-text'} /></span> {e.name}
+                      <span className="icon"><Icon name={iconForMimeOrFilename(undefined, e.name) || iconForExtension(e.name.split('.').pop() || '') || getIcon('view') || 'icon-text'} /></span> {e.name}{e.isSymlink && <span title="Symbolic Link" style={{ marginLeft: 4, opacity: 0.5 }}>🔗</span>}
                     </button>
                     {!autoOpen ? (
                       <button className="btn" onClick={() => onView ? onView(e.path) : onSelect(e.path, false)} title="View file"><Icon name={getIcon('view')} /></button>

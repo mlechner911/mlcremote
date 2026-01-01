@@ -8,12 +8,13 @@ BIN_DIR      := bin
 STATIC_DIR   := $(FRONTEND_DIR)/dist
 
 # Defaults
+HOME ?= $(USERPROFILE)
 PORT ?= 8443
 ROOT ?= $(HOME)
 SERVER ?=
 DOCS_SPEC := $(PWD)/docs/openapi.yaml
 
-.PHONY: help backend frontend run docs install connect clean desktop-dev desktop-build desktop-dist desktop-dist-zip dist
+.PHONY: help backend frontend run docs install connect clean desktop-dev desktop-build desktop-dist desktop-dist-zip dist docker-build docker-run test-env-up test-env-down build-linux
 
 help:
 	@echo "Targets:"
@@ -26,6 +27,11 @@ help:
 	@echo "  connect       - Open SSH tunnel to $$SERVER and launch browser"
 	@echo "  desktop-dev   - Run Wails dev (hot reload)"
 	@echo "  desktop-build - Build Wails desktop app"
+	@echo "  docker-build  - Build Docker image for app"
+	@echo "  docker-run    - Run app container on port $(PORT)"
+	@echo "  test-env-up   - Start test environment (app + remote host)"
+	@echo "  test-env-down - Stop test environment"
+	@echo "  build-linux   - Build Wails app for Linux using Docker"
 	@echo "  clean         - Remove build artifacts"
 
 backend:
@@ -127,6 +133,28 @@ dist: icons-gen backend frontend
 	@if [ -d "$(FRONTEND_DIR)/dist" ]; then cp -r $(FRONTEND_DIR)/dist/* build/dist/frontend/; else echo "No frontend dist found; run make frontend"; exit 1; fi
 	@echo "Packaged distribution to build/dist"
 
+# Docker Targets
 .PHONY: icons
 icons:
-	@./scripts/generate-icons.sh
+	@echo "Generating icons..."
+	cd cmd/icon-gen && go run . --manifest ../../icons/icons.yml --raw ../../icons/raw --out ../../frontend/src/generated
+docker-build:
+	docker build -t mlcremote .
+
+docker-run: docker-build
+	docker run -p $(PORT):$(PORT) -v "$(HOME):/data" mlcremote
+
+docker-dev: frontend
+	docker build --target dev -t mlcremote-dev .
+	docker run -p $(PORT):$(PORT) -v "$(CURDIR)/backend:/app/backend" -v "$(CURDIR)/frontend/dist:/app/frontend/dist" -v "$(CURDIR)/tmp/data:/data" mlcremote-dev
+
+test-env-up:
+	docker-compose up -d
+
+test-env-down:
+	docker-compose down
+
+build-linux:
+	mkdir -p dist/linux
+	docker build -t mlcremote-builder -f docker/build-linux/Dockerfile .
+	docker run --rm -v "$(PWD):/app" -v "$(PWD)/dist/linux:/out" mlcremote-builder

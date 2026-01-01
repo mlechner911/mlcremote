@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./backend/testdata:/data
+  
+  remote-host:
+    build:
+      context: .
+      dockerfile: docker/test/Dockerfile
+    ports:
+      - "2222:22"
+    volumes:
+      - ./backend/testdata:/home/testuser/data
