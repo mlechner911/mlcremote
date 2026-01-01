@@ -338,10 +338,12 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
         </div>
           <div className="actions">
           {/* Format removed until implemented */}
-          <button className="btn" onClick={onReload} disabled={!path}>Reload</button>
-          {path && content !== origContent && (
-            <button className="btn" onClick={onSave}>Save</button>
-          )}
+          <button className="link icon-btn" title="Reload" aria-label="Reload" onClick={onReload} disabled={!path}>
+            <Icon name={iconForExtension('refresh') || 'icon-refresh'} title="Reload" size={16} />
+          </button>
+          <button className="link icon-btn" title="Save" aria-label="Save" onClick={onSave} disabled={!path || content === origContent}>
+            <Icon name={iconForExtension('upload') || 'icon-upload'} title="Save" size={16} />
+          </button>
           {settings && settings.allowDelete ? (
             <button className="btn btn-danger" onClick={onDelete} disabled={!path}>Delete</button>
           ) : null}

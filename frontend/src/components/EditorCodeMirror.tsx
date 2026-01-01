@@ -1,6 +1,7 @@
 import React from 'react'
 import { readFile, saveFile, deleteFile } from '../api'
 import { extFromPath, probeFileType } from '../filetypes'
+import { Icon, iconForExtension as getIcon } from '../generated/icons'
 
 type Props = {
   path: string
@@ -14,11 +15,13 @@ export default function EditorCodeMirror({ path, onSaved }: Props) {
   const [langExt, setLangExt] = React.useState<any>(null)
   const [theme, setTheme] = React.useState<any | null>(null)
   const [probe, setProbe] = React.useState<{ mime: string; isText: boolean; ext: string } | null>(null)
+  const [origContent, setOrigContent] = React.useState<string>('')
 
   // lazy-load CodeMirror wrapper + theme once
   React.useEffect(() => {
     let mounted = true
     ;(async () => {
+        console.log('Loading CodeMirror...')
       try {
         const cmMod = await import('@uiw/react-codemirror')
         const themeMod = await import('@codemirror/theme-one-dark')
@@ -54,7 +57,7 @@ export default function EditorCodeMirror({ path, onSaved }: Props) {
     if (!path) return
     setLoading(true)
     probeFileType(path).then(p => setProbe(p)).catch(() => setProbe(null))
-    readFile(path).then(t => setContent(t)).catch(() => setContent('')).finally(() => setLoading(false))
+    readFile(path).then(t => { setContent(t); setOrigContent(t) }).catch(() => { setContent(''); setOrigContent('') }).finally(() => setLoading(false))
   }, [path])
 
   // lazy-load language extension for current file
@@ -151,8 +154,33 @@ export default function EditorCodeMirror({ path, onSaved }: Props) {
     try {
       await saveFile(path, content)
       onSaved && onSaved()
+      setOrigContent(content)
     } catch (e) {
       console.warn('save failed', e)
+    }
+  }
+
+  const onReload = async () => {
+    if (!path) return
+    if (content !== origContent) {
+      if (!confirm('You have unsaved changes. Reloading will discard them. Continue?')) return
+    }
+    setLoading(true)
+    try {
+      const pt = await probeFileType(path)
+      setProbe(pt)
+      if (!pt.isText) {
+        setContent('')
+        setOrigContent('')
+        return
+      }
+      const text = await readFile(path)
+      setContent(text)
+      setOrigContent(text)
+    } catch (e) {
+      console.warn('reload failed', e)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -181,12 +209,19 @@ export default function EditorCodeMirror({ path, onSaved }: Props) {
 
   const CodeMirror = CM
 
+  const hasUnsaved = content !== origContent
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', gap: 8, padding: 8, borderBottom: '1px solid var(--border)', background: 'var(--panel)' }}>
         <strong style={{ alignSelf: 'center' }}>CodeMirror Editor</strong>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-          <button className="btn" onClick={onSave} disabled={!path}>Save</button>
+          <button className="link icon-btn" title="Reload" aria-label="Reload" onClick={onReload} disabled={!path}>
+            <Icon name={getIcon('refresh') || 'icon-refresh'} title="Reload" size={16} />
+          </button>
+          <button className="link icon-btn" title="Save" aria-label="Save" onClick={onSave} disabled={!path || !hasUnsaved}>
+            <Icon name={getIcon('upload') || 'icon-upload'} title="Save" size={16} />
+          </button>
           <button className="btn btn-danger" onClick={onDelete} disabled={!path}>Delete</button>
         </div>
       </div>
