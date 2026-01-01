@@ -12,5 +12,5 @@
   "frontend:build": "npm run build:desktop",
   "wailsjsdir": "./frontend",
   "assetdir": "./frontend/dist",
-  "outputfilename": "lightdev"
+  "outputfilename": "MLCRemote"
 }
