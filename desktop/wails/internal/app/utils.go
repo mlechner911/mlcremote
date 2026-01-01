@@ -3,6 +3,8 @@ package app
 import (
 	"fmt"
 	"net"
+	"os/exec"
+	"syscall"
 )
 
 // splitArgs is a naive splitter that handles quoted tokens roughly
@@ -35,4 +37,13 @@ func splitArgs(s string) []string {
 func netListenTCP(port int) (net.Listener, error) {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	return net.Listen("tcp", addr)
+}
+
+// createSilentCmd works like exec.Command but hides the window on Windows.
+func createSilentCmd(name string, args ...string) *exec.Cmd {
+	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow: true,
+	}
+	return cmd
 }

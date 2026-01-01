@@ -38,3 +38,6 @@ cmd/icon-gen/bin/
 # Wails Payload Artifacts
 desktop/wails/assets/payload/
 bin/
+
+# Wails Generated Bindings
+desktop/wails/frontend/wailsjs/
