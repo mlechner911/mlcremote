@@ -22,7 +22,7 @@ import (
 )
 
 // @title MLCRemote API
-// @version 0.2.1
+// @version 0.3.0
 // @description Lightweight remote development server API.
 // @termsOfService http://swagger.io/terms/
 
@@ -115,18 +115,16 @@ func main() {
 		log.Printf("error during server shutdown: %v", err)
 	}
 
-		// ensure process exits
+	// ensure process exits
 
-		go func() {
+	go func() {
 
-			time.Sleep(2 * time.Second)
+		time.Sleep(2 * time.Second)
 
-			log.Println("forced exit")
+		log.Println("forced exit")
 
-			os.Exit(0)
+		os.Exit(0)
 
-		}()
+	}()
 
-	}
-
-	
+}

@@ -90,7 +90,7 @@ info:
     url: https://opensource.org/licenses/MIT
   termsOfService: http://swagger.io/terms/
   title: MLCRemote API
-  version: 0.2.1
+  version: 0.3.0
 paths:
   /api/auth/check:
     get:

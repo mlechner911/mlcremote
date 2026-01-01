@@ -2,11 +2,11 @@
   "name": "MLCRemote",
   "description": "Lightweight Remote Dev Environment desktop wrapper",
   "author": {
-    "name": "",
-    "email": ""
+    "name": "Michael Lechner",
+    "email": "lechner.altenstadt@web.de"
   },
-  "license": "",
-  "version": "0.2.0",
+  "license": "MIT",
+  "version": "0.3.0",
   "frontend:dir": "./frontend",
   "frontend:install": "npm install",
   "frontend:build": "npm run build:desktop",
