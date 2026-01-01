@@ -18,6 +18,7 @@ export function langForExt(ext: string) {
     case 'c': return L.c
     case 'cpp': return L.cpp
     case 'py': return L.python
+    case 'bashrc': case 'zshrc': case 'bash_history': case 'profile': return L.bash
     case 'sh': case 'bash': return L.bash
     case 'xml': case 'xml-doc': return L['xml-doc']
     case 'html': case 'htm': return L.markup
