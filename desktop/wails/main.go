@@ -11,11 +11,12 @@ import (
 )
 
 //go:embed all:frontend/dist
+//go:embed all:assets/payload
 var assets embed.FS
 
 func main() {
 	// Create an instance of the app structure
-	application := app.NewApp()
+	application := app.NewApp(assets)
 
 	// Create application with options
 	err := wails.Run(&options.App{
