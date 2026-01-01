@@ -37,7 +37,7 @@ The client for remote edit/view etc  works for my needs - but there are a lot of
 
 The native desktop app is now fully functional. With help from AI I was finally able to create the Windows executable ;)
 
-Thanks "Gemini" for that.
+Thanks "Gemini" for that.(I am really bad with windows development)
 
 
 
