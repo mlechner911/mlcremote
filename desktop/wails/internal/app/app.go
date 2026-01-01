@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os/exec"
 	"sync"
@@ -12,14 +13,17 @@ import (
 // App struct
 type App struct {
 	ctx         context.Context
+	payload     fs.FS // Added payload field
 	tunnelMu    sync.Mutex
 	tunnelCmd   *exec.Cmd
 	tunnelState string
 }
 
 // NewApp creates a new App application struct
-func NewApp() *App {
-	return &App{}
+func NewApp(payload fs.FS) *App {
+	return &App{
+		payload: payload,
+	}
 }
 
 // Startup is called at application startup

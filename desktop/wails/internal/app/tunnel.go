@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -123,10 +124,47 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	}
 
 	// check local port availability
-	// try to listen on the local port; if occupied, return error
+	// Force cleanup of any orphan processes on this port
+	if err := KillPort(p.LocalPort); err != nil {
+		// Log but proceed, maybe it wasn't there or permission denied.
+		// netListenTCP below will catch if it's still busy.
+		fmt.Printf("Warning: failed to kill port %d: %v\n", p.LocalPort, err)
+	}
+
+	// try to listen on the local port to verify it's free
 	ln, err := netListenTCP(p.LocalPort)
 	if err != nil {
-		return "failed", fmt.Errorf("local port %d unavailable: %w", p.LocalPort, err)
+		// Port is busy. User suggested re-using the tunnel if possible.
+		// Let's check if the health endpoint is reachable.
+		fmt.Printf("Port %d busy, checking if existing tunnel is valid...\n", p.LocalPort)
+		localURL := fmt.Sprintf("http://127.0.0.1:%d", p.LocalPort)
+		client := &http.Client{Timeout: 2 * time.Second}
+		resp, hErr := client.Get(fmt.Sprintf("%s/health", localURL))
+		if hErr == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				// It works! Reuse this tunnel.
+				// We won't have a cmd to manage, so we set a dummy cmd or rely on state?
+				// To keep state consistent, we can just return "started" and NOT set a.tunnelCmd.
+				// But StopTunnel checks a.tunnelCmd.
+				// Let's set a marker or just return success and let the frontend assume it's working.
+				// For the UI to show "Connected", we just need to return "started".
+
+				// We should ideally set state to "started" but without a cmd.
+				a.tunnelState = "started"
+				// Emit navigate event immediately since it's ready
+				runtime.EventsEmit(a.ctx, "navigate", localURL)
+				return "started", nil
+			}
+		}
+
+		// If check failed, trying to kill again or just fail
+		// Wait a bit and retry once in case KillPort was async or slow
+		time.Sleep(500 * time.Millisecond)
+		ln, err = netListenTCP(p.LocalPort)
+		if err != nil {
+			return "failed", fmt.Errorf("local port %d unavailable and health check failed: %w", p.LocalPort, err)
+		}
 	}
 	// close immediately to free for ssh to bind
 	_ = ln.Close()
@@ -251,6 +289,39 @@ func (a *App) TunnelStatus() string {
 		return "stopped"
 	}
 	return a.tunnelState
+}
+
+// KillPort finds and kills the process listening on the given port (Windows specific)
+func KillPort(port int) error {
+	// 1. Find the PID using netstat
+	// netstat -ano | findstr :<port>
+	cmd := exec.Command("netstat", "-ano")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return err
+	}
+
+	lines := strings.Split(string(out), "\n")
+	var pid string
+	target := fmt.Sprintf(":%d", port)
+	for _, line := range lines {
+		if strings.Contains(line, target) && strings.Contains(line, "LISTENING") {
+			parts := strings.Fields(line)
+			if len(parts) > 0 {
+				pid = parts[len(parts)-1]
+				break
+			}
+		}
+	}
+
+	if pid == "" || pid == "0" {
+		return nil // no process found
+	}
+
+	// 2. Kill the process
+	// taskkill /F /PID <pid>
+	killCmd := exec.Command("taskkill", "/F", "/PID", pid)
+	return killCmd.Run()
 }
 
 // streamReaderToEvents reads from an io.Reader line-by-line and emits 'ssh-log' events

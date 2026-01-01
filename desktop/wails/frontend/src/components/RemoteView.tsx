@@ -23,6 +23,7 @@ export default function RemoteView({ url, profileName, onDisconnect }: RemoteVie
                     <span style={{ fontWeight: 'bold' }}>MLCRemote</span>
                     <span style={{ color: '#9ca3af' }}>|</span>
                     <span style={{ color: '#e5e7eb' }}>Connected to: {profileName}</span>
+                    <span style={{ color: '#6b7280', fontSize: '0.8em', marginLeft: 10 }}>({url})</span>
                 </div>
                 <button
                     onClick={onDisconnect}

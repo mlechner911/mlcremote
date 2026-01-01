@@ -6,6 +6,10 @@ export function CheckBackend(arg1) {
   return window['go']['app']['App']['CheckBackend'](arg1);
 }
 
+export function GetRemoteFileTree(arg1) {
+  return window['go']['app']['App']['GetRemoteFileTree'](arg1);
+}
+
 export function HealthCheck(arg1, arg2) {
   return window['go']['app']['App']['HealthCheck'](arg1, arg2);
 }
@@ -28,6 +32,10 @@ export function StartTunnelWithProfile(arg1) {
 
 export function StopTunnel() {
   return window['go']['app']['App']['StopTunnel']();
+}
+
+export function TailRemoteLogs(arg1) {
+  return window['go']['app']['App']['TailRemoteLogs'](arg1);
 }
 
 export function TunnelStatus() {

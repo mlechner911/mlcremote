@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { StartTunnelWithProfile, CheckBackend, InstallBackend, StopTunnel } from '../../wailsjs/go/app/App'
+import { StartTunnelWithProfile, CheckBackend, InstallBackend, StopTunnel, GetRemoteFileTree, TailRemoteLogs } from '../../wailsjs/go/app/App'
 
 import { Profile } from '../App'
 
@@ -10,8 +10,10 @@ interface ConnectDialogProps {
 }
 
 export default function ConnectDialog({ initialProfile, onClose, onConnected }: ConnectDialogProps) {
+  const [localPort, setLocalPort] = useState(initialProfile?.localPort || 8443)
   const [host, setHost] = useState(initialProfile?.host || '')
   const [user, setUser] = useState(initialProfile?.user || '')
+  const [identityFile, setIdentityFile] = useState(initialProfile?.identityFile || '')
   const [status, setStatus] = useState('')
   const [showInstall, setShowInstall] = useState(false)
   const [profileStr, setProfileStr] = useState('')
@@ -20,16 +22,18 @@ export default function ConnectDialog({ initialProfile, onClose, onConnected }: 
     if (initialProfile) {
       setHost(initialProfile.host)
       setUser(initialProfile.user)
+      setIdentityFile(initialProfile.identityFile || '')
+      setLocalPort(initialProfile.localPort || 8443)
     }
   }, [initialProfile])
 
   const getProfileObj = (): Profile => ({
     user,
     host,
-    localPort: 8443,
+    localPort: Number(localPort),
     remoteHost: 'localhost',
     remotePort: 8443,
-    identityFile: '', // TODO: Add key support
+    identityFile,
     extraArgs: []
   })
 
@@ -116,6 +120,42 @@ export default function ConnectDialog({ initialProfile, onClose, onConnected }: 
     }
   }
 
+  const [debugOutput, setDebugOutput] = useState('')
+
+  const handleDebug = async () => {
+    if (!user || !host) {
+      setStatus('User and Host are required')
+      return
+    }
+    setStatus('Fetching remote file tree...')
+    const pObj = getProfileObj()
+    const pJSON = JSON.stringify(pObj)
+    try {
+      const tree = await GetRemoteFileTree(pJSON)
+      setDebugOutput("--- File Tree ---\n" + tree)
+      setStatus('Debug info received.')
+    } catch (e: any) {
+      setStatus('Debug failed: ' + (e.message || e))
+    }
+  }
+
+  const handleLogs = async () => {
+    if (!user || !host) {
+      setStatus('User and Host are required')
+      return
+    }
+    setStatus('Fetching remote logs...')
+    const pObj = getProfileObj()
+    const pJSON = JSON.stringify(pObj)
+    try {
+      const logs = await TailRemoteLogs(pJSON)
+      setDebugOutput("--- Service Logs ---\n" + logs)
+      setStatus('Logs received.')
+    } catch (e: any) {
+      setStatus('Logs failed: ' + (e.message || e))
+    }
+  }
+
   const [logs, setLogs] = useState<string[]>([])
 
   useEffect(() => {
@@ -144,6 +184,26 @@ export default function ConnectDialog({ initialProfile, onClose, onConnected }: 
           <label style={{ display: 'block', marginBottom: 4 }}>Host</label>
           <input value={host} onChange={e => setHost(e.target.value)} style={{ width: '100%', padding: 8, boxSizing: 'border-box' }} />
         </div>
+        <div style={{ marginBottom: 12, display: 'flex', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', marginBottom: 4 }}>Identity File (Optional)</label>
+            <input
+              value={identityFile}
+              onChange={e => setIdentityFile(e.target.value)}
+              placeholder="e.g. C:\Users\name\.ssh\id_rsa"
+              style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
+            />
+          </div>
+          <div style={{ width: 100 }}>
+            <label style={{ display: 'block', marginBottom: 4 }}>Local Port</label>
+            <input
+              type="number"
+              value={localPort}
+              onChange={e => setLocalPort(parseInt(e.target.value))}
+              style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
+            />
+          </div>
+        </div>
 
         <div style={{ marginBottom: 12, color: status.includes('Error') || status.includes('failed') ? 'red' : '#666' }}>
           {status}
@@ -157,17 +217,39 @@ export default function ConnectDialog({ initialProfile, onClose, onConnected }: 
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
           {!showInstall && (
-            <button
-              onClick={() => { setShowInstall(true); setStatus('Ready to update backend.'); }}
-              style={{ marginRight: 'auto', background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.85rem' }}
-            >
-              Force Update
-            </button>
+            <div style={{ marginRight: 'auto', display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => { setShowInstall(true); setStatus('Ready to update backend.'); }}
+                style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.85rem' }}
+              >
+                Force Update
+              </button>
+              <button
+                onClick={handleDebug}
+                style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.85rem' }}
+              >
+                Debug Files
+              </button>
+              <button
+                onClick={handleLogs}
+                style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.85rem' }}
+              >
+                Server Logs
+              </button>
+            </div>
           )}
           <button onClick={onClose} style={{ padding: '8px 16px', cursor: 'pointer' }}>Cancel</button>
           {!showInstall && <button onClick={handleConnect} style={{ padding: '8px 16px', background: '#007bff', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Connect</button>}
           {showInstall && <button onClick={handleInstall} style={{ padding: '8px 16px', background: '#28a745', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Install Backend</button>}
         </div>
+
+        {debugOutput && (
+          <div style={{ marginTop: 16, borderTop: '1px solid #eee', paddingTop: 16 }}>
+            <h3>Remote File Tree</h3>
+            <pre style={{ background: '#f0f0f0', padding: 8, fontSize: '0.8rem', overflow: 'auto', maxHeight: 200 }}>{debugOutput}</pre>
+            <button onClick={() => setDebugOutput('')} style={{ marginTop: 8 }}>Clear</button>
+          </div>
+        )}
       </div>
     </div>
   )
