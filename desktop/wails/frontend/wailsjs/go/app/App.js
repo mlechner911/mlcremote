@@ -18,6 +18,10 @@ export function InstallBackend(arg1) {
   return window['go']['app']['App']['InstallBackend'](arg1);
 }
 
+export function KillPort(arg1) {
+  return window['go']['app']['App']['KillPort'](arg1);
+}
+
 export function SaveIdentityFile(arg1, arg2) {
   return window['go']['app']['App']['SaveIdentityFile'](arg1, arg2);
 }

@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { StartTunnelWithProfile, CheckBackend, InstallBackend, StopTunnel, GetRemoteFileTree, TailRemoteLogs } from '../../wailsjs/go/app/App'
+import {
+  StartTunnelWithProfile, CheckBackend, InstallBackend, StopTunnel,
+  GetRemoteFileTree, TailRemoteLogs, KillPort
+} from '../../wailsjs/go/app/App'
 
 import { Profile } from '../App'
 
@@ -86,9 +89,13 @@ export default function ConnectDialog({ initialProfile, onClose, onConnected }: 
     } catch (e: any) {
       const msg = typeof e === 'string' ? e : (e.message || JSON.stringify(e))
       // catch string "tunnel already running" if it comes as error
-      if (msg.includes('already running') && retry) {
-        setStatus('Tunnel busy, restarting...')
-        try { await StopTunnel(); await new Promise(r => setTimeout(r, 1000)); } catch (e) { /* ignore */ }
+      if ((msg.includes('already running') || msg.includes('bind')) && retry) {
+        setStatus('Port busy, clearing...')
+        try {
+          await StopTunnel()
+          await KillPort(pObj.localPort)
+          await new Promise(r => setTimeout(r, 1000))
+        } catch (e) { /* ignore */ }
         startTunnel(p, pObj, false)
         return
       }

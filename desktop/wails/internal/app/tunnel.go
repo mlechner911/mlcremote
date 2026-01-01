@@ -125,7 +125,7 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 
 	// check local port availability
 	// Force cleanup of any orphan processes on this port
-	if err := KillPort(p.LocalPort); err != nil {
+	if err := a.KillPort(p.LocalPort); err != nil {
 		// Log but proceed, maybe it wasn't there or permission denied.
 		// netListenTCP below will catch if it's still busy.
 		fmt.Printf("Warning: failed to kill port %d: %v\n", p.LocalPort, err)
@@ -292,7 +292,7 @@ func (a *App) TunnelStatus() string {
 }
 
 // KillPort finds and kills the process listening on the given port (Windows specific)
-func KillPort(port int) error {
+func (a *App) KillPort(port int) error {
 	// 1. Find the PID using netstat
 	// netstat -ano | findstr :<port>
 	cmd := exec.Command("netstat", "-ano")
