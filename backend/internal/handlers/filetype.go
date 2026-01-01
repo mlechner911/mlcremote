@@ -48,7 +48,7 @@ func FileTypeHandler(root string) http.HandlerFunc {
 		fi, err := os.Stat(target)
 		if err != nil || fi.IsDir() {
 			if err != nil && os.IsNotExist(err) {
-				util.RecordMissingAccess()
+				util.RecordMissingAccess(target)
 			}
 			http.Error(w, "not a file", http.StatusBadRequest)
 			return
@@ -56,7 +56,7 @@ func FileTypeHandler(root string) http.HandlerFunc {
 		f, err := os.Open(target)
 		if err != nil {
 			if os.IsNotExist(err) {
-				util.RecordMissingAccess()
+				util.RecordMissingAccess(target)
 			}
 			http.Error(w, "cannot open file", http.StatusInternalServerError)
 			return

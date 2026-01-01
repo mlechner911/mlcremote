@@ -31,6 +31,7 @@ func generateToken() string {
 
 func main() {
 	port := flag.Int("port", 8443, "port to listen on")
+	host := flag.String("host", "127.0.0.1", "host interface to listen on")
 	root := flag.String("root", "", "working directory root (default $HOME)")
 	staticDir := flag.String("static-dir", "", "directory for static files (dev mode)")
 	// add if needed: openapi spec path
@@ -50,17 +51,25 @@ func main() {
 	// Dev server doesn't use config file password for now
 	// AllowDelete = true for dev server
 	trashDir := filepath.Join(os.Getenv("HOME"), ".trash")
-	s := server.New(*root, *staticDir, *openapi, token, "", true, trashDir)
+	s := server.New(*host, *root, *staticDir, *openapi, token, "", true, trashDir)
 
 	s.Routes()
-	
-	addr := fmt.Sprintf("127.0.0.1:%d", *port)
+
+	if *host != "127.0.0.1" && *host != "localhost" {
+		log.Printf("[WARNING] Server is listening on EXTERNAL interface (%s). Only do this in a container!", *host)
+	}
+	displayHost := *host
+	if displayHost == "0.0.0.0" {
+		displayHost = "localhost"
+	}
+	displayAddr := fmt.Sprintf("%s:%d", displayHost, *port)
+
 	if token != "" {
 		log.Printf("Security: Authentication ENABLED")
-		log.Printf("Access URL: http://%s/?token=%s", addr, token)
+		log.Printf("Access URL: http://%s/?token=%s", displayAddr, token)
 	} else {
 		log.Printf("Security: Authentication DISABLED")
-		log.Printf("Access URL: http://%s/", addr)
+		log.Printf("Access URL: http://%s/", displayAddr)
 	}
 
 	if err := s.Start(*port); err != nil {
@@ -81,7 +90,7 @@ func main() {
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	<-sig
 	log.Println("shutdown signal received, shutting down server...")
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := s.Shutdown(ctx); err != nil {

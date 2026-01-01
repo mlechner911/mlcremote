@@ -50,6 +50,7 @@ export type DirEntry = {
     name: string
     path: string // leading '/'
     isDir: boolean
+    isSymlink?: boolean
     size: number
     modTime: string
 }
@@ -77,7 +78,7 @@ export function captureTokenFromURL() {
             setToken(t)
             return true
         }
-    } catch (_) {}
+    } catch (_) { }
     return false
 }
 

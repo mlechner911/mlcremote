@@ -10,9 +10,9 @@ var (
 )
 
 // RecordMissingAccess logs that an access to a non-existent file occurred.
-func RecordMissingAccess() {
+func RecordMissingAccess(path string) {
 	// Logging only, no blocking.
-	log.Println("[INFO] access to non-existent file recorded")
+	log.Printf("[INFO] access to non-existent file recorded: %s", path)
 }
 
 // IsBlocked always returns false as we have removed the blocking mechanism.

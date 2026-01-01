@@ -23,6 +23,8 @@ import (
 
 // Server represents the HTTP server configuration and mux.
 type Server struct {
+	// Host to listen on
+	Host string
 	// current server root  - typically home directory
 	Root string
 	// static files directory (for minimal  mode, e.g., serving built frontend)
@@ -45,8 +47,9 @@ type Server struct {
 }
 
 // New creates a Server with the provided root, static directory, auth token, and password.
-func New(root, staticDir string, openapiPath string, authToken string, password string, allowDelete bool, trashDir string) *Server {
+func New(host, root, staticDir string, openapiPath string, authToken string, password string, allowDelete bool, trashDir string) *Server {
 	return &Server{
+		Host:        host,
 		Root:        root,
 		StaticDir:   staticDir,
 		OpenAPIPath: openapiPath,
@@ -217,9 +220,9 @@ func (s *Server) Routes() {
 
 // Start starts the HTTP server on the given port bound to localhost.
 
-// It runs ListenAndServe in a goroutine and returns immediately.
+// Start starts the HTTP server on the given port bound to configured host.
 func (s *Server) Start(port int) error {
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	addr := fmt.Sprintf("%s:%d", s.Host, port)
 	log.Printf("starting server on http://%s, root=%s", addr, s.Root)
 	// create listener first so we can return binding errors synchronously
 	ln, err := net.Listen("tcp", addr)

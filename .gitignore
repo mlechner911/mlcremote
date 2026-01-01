@@ -43,3 +43,6 @@ bin/
 
 # Wails Generated Bindings
 desktop/wails/frontend/wailsjs/
+
+# Temporary data
+tmp/

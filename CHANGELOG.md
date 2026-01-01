@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [0.3.0] - 2026-01-01
+
+### Added
+- **Docker Support**: Full development workflow with `make docker-dev` including hot reload (Air) and isolated data volume.
+- **Symlink Support**: Backend now detects symbolic links, and Frontend displays them with a 🔗 icon.
+- **Documentation**: Added `DOCKER.md` with setup and usage instructions.
+
+### Changed
+- **Logging**: Access URLs in logs now use `localhost` instead of `0.0.0.0` when running in Docker for better clickability.
+- **Makefile**: Improved Windows compatibility by replacing shell scripts with `go run` commands and handling volume mounts robustly.
+
 ## [0.2.1] - 2025-12-29
 
 ### Added
