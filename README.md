@@ -7,9 +7,20 @@ Status: BETA now — rapid iteration expected; the project is not production-rea
 What it provides
 - **Backend:** Go HTTP server exposing file and terminal APIs (PTY + WebSocket).
 - **Frontend:** React + Vite single-page app for file browsing and editing.
-- **Desktop:** Wails wrapper planned (future work).
+- **Desktop:** Native Wails application (Windows) for seamless remote management.
 
-Motivation
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/startup.png" width="45%" alt="Connection Screen">
+  <img src="screenshots/remote_terminal.png" width="45%" alt="Remote Terminal">
+</p>
+<p align="center">
+  <img src="screenshots/example.png" width="45%" alt="File Editor">
+  <img src="screenshots/image_preview.png" width="45%" alt="Image Preview">
+</p>
+
+## Motivation
 
 I run small virtual servers with very limited RAM and want an easy, low-overhead
 web UI for quick file inspection and light editing when SSH + terminal is inconvenient.
