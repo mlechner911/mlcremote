@@ -2,7 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
-import 'prismjs/themes/prism-tomorrow.css'
+import './editor-theme.css'
 import '@xterm/xterm/css/xterm.css'
 import './styles.css'
 

@@ -62,9 +62,12 @@ func StartShellPTY(shell, cwd string) (io.ReadWriteCloser, *exec.Cmd, error) {
 		if shell != "" && !strings.Contains(shell, "bash") && !strings.Contains(shell, "zsh") {
 			candidates = append(candidates, []string{shell})
 		}
-		candidates = append(candidates, []string{"powershell.exe"})
-		candidates = append(candidates, []string{"cmd.exe"})
-		candidates = append(candidates, []string{"pwsh.exe"})
+		// Force UTF-8 encoding for PowerShell
+		utf8PsCmd := "$OutputEncoding = [Console]::InputEncoding = [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding"
+		candidates = append(candidates, []string{"powershell.exe", "-NoExit", "-Command", utf8PsCmd})
+		candidates = append(candidates, []string{"pwsh.exe", "-NoExit", "-Command", utf8PsCmd})
+		// Force UTF-8 for CMD
+		candidates = append(candidates, []string{"cmd.exe", "/K", "chcp", "65001"})
 	} else {
 		if shell != "" {
 			if strings.HasPrefix(shell, "env ") {

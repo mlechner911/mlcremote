@@ -7,6 +7,21 @@
     --accent: #3b82f6;
     --danger: #ef4444;
     --border: #2a2f3a;
+
+    /* Prism Dark (Tomorrow Night) */
+    --token-bg: #171a21;
+    /* match panel */
+    --token-text: #ccc;
+    --token-comment: #999;
+    --token-punctuation: #ccc;
+    --token-tag: #e2777a;
+    --token-function-name: #6196cc;
+    --token-function: #f08d49;
+    --token-property: #f8c555;
+    --token-keyword: #cc99cd;
+    --token-string: #7ec699;
+    --token-operator: #67cdcc;
+    --token-inserted: green;
 }
 
 /* Light theme overrides */
@@ -18,6 +33,20 @@
     --accent: #0d307a;
     --danger: #b91c1c;
     --border: #e6e9ef;
+
+    /* Prism Light (Tomorrow) */
+    --token-bg: #ffffff;
+    --token-text: #4d4d4c;
+    --token-comment: #8e908c;
+    --token-punctuation: #8e908c;
+    --token-tag: #c82829;
+    --token-function-name: #4271ae;
+    --token-function: #f5871f;
+    --token-property: #eab700;
+    --token-keyword: #8959a8;
+    --token-string: #718c00;
+    --token-operator: #3e999f;
+    --token-inserted: #718c00;
 }
 
 * {
@@ -107,14 +136,17 @@ body {
 .link.icon-btn:active {
     text-decoration: none;
 }
+
 .link.icon-btn:focus {
-    outline: 2px solid rgba(255,255,255,0.08);
+    outline: 2px solid rgba(255, 255, 255, 0.08);
     outline-offset: 2px;
     border-radius: 4px;
 }
+
 .hidden {
     display: none;
 }
+
 .app-body {
     display: flex;
     flex: 1;
@@ -146,7 +178,8 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    overflow: auto;
+    /* Split View manages its own scrolling in panes */
+    overflow: hidden;
 }
 
 /* resizer between sidebar and main */
@@ -157,6 +190,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* SplitPane resizer hover effect */
+.split-resizer:hover {
+    background: var(--accent) !important;
+    transition-delay: 0.2s;
 }
 
 .resizer:hover {
@@ -191,9 +230,11 @@ body {
 }
 
 /* Ensure explorer's scroll spans full sidebar height and shows scrollbar */
-.sidebar, .explorer-body {
+.sidebar,
+.explorer-body {
     max-height: 100vh;
 }
+
 .explorer-body {
     /* Always show vertical scrollbar for clarity */
     scrollbar-width: auto;
@@ -231,13 +272,16 @@ body {
 }
 
 /* Focus ring for keyboard navigation and accessibility */
-.entry:focus, .entry:focus-visible {
+.entry:focus,
+.entry:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.18);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
     border-radius: 6px;
 }
-.entry.selected:focus, .entry.selected:focus-visible {
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.22);
+
+.entry.selected:focus,
+.entry.selected:focus-visible {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
 }
 
 .icon {
@@ -247,7 +291,11 @@ body {
     align-items: center;
     justify-content: center;
 }
-.icon svg { width: 18px; height: 18px; }
+
+.icon svg {
+    width: 18px;
+    height: 18px;
+}
 
 
 .muted {
@@ -263,11 +311,13 @@ body {
     cursor: pointer;
     font-size: 14px;
 }
+
 .about-modal button:hover {
     color: var(--accent);
 }
+
 .about-modal button:focus {
-    outline: 2px solid rgba(255,255,255,0.08);
+    outline: 2px solid rgba(255, 255, 255, 0.08);
     outline-offset: 2px;
 }
 
@@ -391,22 +441,62 @@ body {
     width: 480px;
     max-height: 60vh;
     overflow: auto;
-    background: rgba(0,0,0,0.88);
+    background: rgba(0, 0, 0, 0.88);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 8px;
     z-index: 10000;
 }
-.log-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px }
-.log-entry { padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.02); font-size: 13px }
-.log-meta { color: var(--muted); font-size: 12px; margin-bottom: 4px }
-.log-level { font-weight: 600; margin-left: 6px }
-.log-level-info .log-level { color: var(--accent) }
-.log-level-warn .log-level { color: #f59e0b }
-.log-level-error .log-level { color: var(--danger) }
-.log-level-debug .log-level { color: var(--muted) }
-.log-path { color: var(--accent); font-weight: 600 }
-.log-message { white-space: pre-wrap; word-break: break-word }
+
+.log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px
+}
+
+.log-entry {
+    padding: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    font-size: 13px
+}
+
+.log-meta {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 4px
+}
+
+.log-level {
+    font-weight: 600;
+    margin-left: 6px
+}
+
+.log-level-info .log-level {
+    color: var(--accent)
+}
+
+.log-level-warn .log-level {
+    color: #f59e0b
+}
+
+.log-level-error .log-level {
+    color: var(--danger)
+}
+
+.log-level-debug .log-level {
+    color: var(--muted)
+}
+
+.log-path {
+    color: var(--accent);
+    font-weight: 600
+}
+
+.log-message {
+    white-space: pre-wrap;
+    word-break: break-word
+}
 
 /* TabBar styles */
 .tabbar {
@@ -416,19 +506,27 @@ body {
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     background: var(--panel);
 }
+
 .tabbar {
     display: flex;
     align-items: center;
     position: relative;
 }
+
 .tab-scroll-area {
     display: flex;
     gap: 4px;
     overflow-x: auto;
-    scrollbar-width: none; /* firefox */
-    -ms-overflow-style: none; /* ie */
+    scrollbar-width: none;
+    /* firefox */
+    -ms-overflow-style: none;
+    /* ie */
 }
-.tab-scroll-area::-webkit-scrollbar { display: none; }
+
+.tab-scroll-area::-webkit-scrollbar {
+    display: none;
+}
+
 .tab-scroll {
     background: transparent;
     border: none;
@@ -436,9 +534,18 @@ body {
     cursor: pointer;
     padding: 4px 8px;
 }
-.tab-scroll:focus { outline: 2px solid rgba(255,255,255,0.08); }
-.tab-scroll-left { margin-right: 4px }
-.tab-scroll-right { margin-left: 4px }
+
+.tab-scroll:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.08);
+}
+
+.tab-scroll-left {
+    margin-right: 4px
+}
+
+.tab-scroll-right {
+    margin-left: 4px
+}
 
 /* Unsaved changes indicator in tab titles */
 .tab-unsaved {
@@ -451,22 +558,9 @@ body {
     color: var(--muted);
 }
 
-/* Prism token color overrides for light theme to improve contrast */
-.theme-light .token.comment { color: var(--muted) }
-.theme-light .token.keyword { color: #b45309 }
-.theme-light .token.string { color: #065f46 }
-.theme-light .token.function { color: #1d4ed8 }
-.theme-light .token.punctuation { color: var(--text) }
-.theme-light .token.operator { color: var(--text) }
-.theme-light .token.constant { color: #b91c1c }
-.theme-light .token.selector { color: var(--accent) }
+
 
 /* Override Prism base color for light theme */
-.theme-light pre[class*="language-"],
-.theme-light code[class*="language-"] {
-    color: var(--text);
-}
-
 /* Remove top black header block when in light theme */
 .theme-light .editor-header {
     background: var(--panel);
@@ -500,7 +594,7 @@ body {
 
 .icon-btn:hover {
     background: rgba(255, 255, 255, 0.04);
-    box-shadow: 0 1px 0 rgba(0,0,0,0.04) inset;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04) inset;
 }
 
 .theme-light .icon-btn {
@@ -520,13 +614,15 @@ body {
     cursor: pointer;
     color: var(--text);
 }
+
 .link.icon-btn:hover,
 .link[aria-label]:hover {
-    background: rgba(255,255,255,0.04);
+    background: rgba(255, 255, 255, 0.04);
 }
+
 .link.icon-btn:focus,
 .link[aria-label]:focus {
-    outline: 2px solid rgba(59,130,246,0.35);
+    outline: 2px solid rgba(59, 130, 246, 0.35);
     outline-offset: 2px;
 }
 
@@ -557,8 +653,14 @@ body {
     margin-bottom: 6px;
 }
 
-.log-meta { color: var(--muted); }
-.log-level { color: var(--accent); margin-left: 6px; }
+.log-meta {
+    color: var(--muted);
+}
+
+.log-level {
+    color: var(--accent);
+    margin-left: 6px;
+}
 
 /* Dropdown used by TabBar; themed for light/dark */
 .dropdown {
@@ -584,7 +686,9 @@ body {
 }
 
 /* Ensure form controls follow theme variables */
-input, textarea, select {
+input,
+textarea,
+select {
     color: var(--text);
     background: var(--panel);
     border: 1px solid var(--border);
@@ -592,7 +696,8 @@ input, textarea, select {
     border-radius: 4px;
 }
 
-button, .btn {
+button,
+.btn {
     color: var(--text);
 }
 
@@ -603,12 +708,13 @@ button, .btn {
     right: 0;
     top: 0;
     bottom: 0;
-    background: rgba(0,0,0,0.45);
+    background: rgba(0, 0, 0, 0.45);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 11000;
 }
+
 .login-box {
     background: var(--panel);
     color: var(--text);
@@ -618,7 +724,9 @@ button, .btn {
     min-width: 320px;
 }
 
-.theme-light input, .theme-light textarea, .theme-light select {
+.theme-light input,
+.theme-light textarea,
+.theme-light select {
     background: var(--panel);
     color: var(--text);
     border-color: var(--border);

@@ -26,6 +26,8 @@ import { defaultStore, boolSerializer, strSerializer } from './utils/storage'
 import MessageBox from './components/MessageBox'
 import StatusBar from './components/StatusBar'
 import { getHandler } from './handlers/registry'
+import SplitPane from './components/SplitPane'
+import type { LayoutNode, PaneId, PaneState } from './types/layout'
 
 export default function App() {
 
@@ -56,9 +58,38 @@ export default function App() {
   const handleExplorerDirChange = React.useCallback((d: string) => setExplorerDir(d), [])
   const [focusRequest, setFocusRequest] = React.useState<number>(0)
   const [logoVisible, setLogoVisible] = React.useState<boolean>(true)
-  const [openFiles, setOpenFiles] = React.useState<string[]>([])
+
+  // -- Layout State --
+  // We initialize with one root pane
+  const [panes, setPanes] = React.useState<Record<PaneId, PaneState>>({
+    'root': { id: 'root', files: [], activeFile: null }
+  })
+  const [layout, setLayout] = React.useState<LayoutNode>({ type: 'leaf', paneId: 'root' })
+  const [activePaneId, setActivePaneId] = React.useState<PaneId>('root')
+
+  // Helpers to get current active file/files for legacy compatibility
+  const openFiles = panes[activePaneId]?.files || []
+  const activeFile = panes[activePaneId]?.activeFile || ''
+
+  // Derived setters for legacy compatibility (careful with these!)
+  // We'll need to update usage sites to use specific pane logic. element
+  const setOpenFiles = (fn: (files: string[]) => string[]) => {
+    setPanes(prev => {
+      const p = prev[activePaneId]
+      if (!p) return prev
+      const newFiles = fn(p.files)
+      return { ...prev, [activePaneId]: { ...p, files: newFiles } }
+    })
+  }
+  const setActiveFile = (file: string) => {
+    setPanes(prev => {
+      const p = prev[activePaneId]
+      if (!p) return prev
+      return { ...prev, [activePaneId]: { ...p, activeFile: file } }
+    })
+  }
+
   const [evictedTabs, setEvictedTabs] = React.useState<string[]>([])
-  const [activeFile, setActiveFile] = React.useState<string>('')
   const [binaryPath, setBinaryPath] = React.useState<string | null>(null)
   const [autoOpen, setAutoOpenState] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('autoOpen', boolSerializer, true))
   const setAutoOpen = (v: boolean) => { setAutoOpenState(v); defaultStore.set('autoOpen', v, boolSerializer) }
@@ -152,6 +183,280 @@ export default function App() {
   // listen for online/offline events
   // Effects removed as they are now handled in AuthContext
 
+  // -- Layout Helpers --
+
+  const splitPane = (direction: 'horizontal' | 'vertical') => {
+    const newPaneId = `pane-${Date.now()}`
+    const currentP = panes[activePaneId]
+    const currentFile = currentP?.activeFile
+
+    setPanes(prev => ({
+      ...prev,
+      [newPaneId]: {
+        id: newPaneId,
+        files: currentFile ? [currentFile] : [],
+        activeFile: currentFile || null
+      }
+    }))
+
+    setLayout(prev => {
+      const replace = (node: LayoutNode): LayoutNode => {
+        if (node.type === 'leaf') {
+          if (node.paneId === activePaneId) {
+            return {
+              type: 'branch',
+              direction,
+              size: 50,
+              children: [
+                node,
+                { type: 'leaf', paneId: newPaneId }
+              ]
+            }
+          }
+          return node
+        }
+        return { ...node, children: [replace(node.children[0]), replace(node.children[1])] } as LayoutNode
+      }
+      return replace(prev)
+    })
+    setActivePaneId(newPaneId)
+  }
+
+  const closePane = (id: PaneId) => {
+    // Find parent branch and replace with sibling
+    // If root, do nothing (or clear files?)
+    if (id === 'root' && layout.type === 'leaf') return // cannot close single root
+
+    setLayout(prev => {
+      const prune = (node: LayoutNode): LayoutNode | null => {
+        if (node.type === 'leaf') {
+          return node.paneId === id ? null : node
+        }
+        const c0 = prune(node.children[0])
+        const c1 = prune(node.children[1])
+        if (!c0 && !c1) return null // should not happen
+        if (!c0) return c1 // promote sibling
+        if (!c1) return c0 // promote sibling
+        return { ...node, children: [c0, c1] } as LayoutNode
+      }
+      const res = prune(prev)
+      return res || { type: 'leaf', paneId: 'root' } // fallback
+    })
+
+    setPanes(prev => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+
+    // If we closed the active pane, reset activePaneId?
+    // We need to calculate the new active pane. 
+    // Simplified: set to 'root' or whatever fallback.
+    if (activePaneId === id) setActivePaneId('root') // simplistic
+  }
+
+  const handleLayoutResize = (node: LayoutNode, newSize: number) => {
+    setLayout(prev => {
+      const update = (n: LayoutNode): LayoutNode => {
+        if (n === node) return { ...n, size: newSize } as any
+        if (n.type === 'branch') {
+          return { ...n, children: [update(n.children[0]), update(n.children[1])] } as any
+        }
+        return n
+      }
+      return update(prev)
+    })
+  }
+
+  // Recursive renderer
+  const renderLayout = (node: LayoutNode): React.ReactNode => {
+    if (node.type === 'leaf') {
+      return renderPane(node.paneId)
+    }
+    return (
+      <SplitPane
+        direction={node.direction}
+        initialSize={node.size}
+        onResize={(sz) => handleLayoutResize(node, sz)}
+      >
+        {renderLayout(node.children[0])}
+        {renderLayout(node.children[1])}
+      </SplitPane>
+    )
+  }
+
+  // The content of a single pane (TabBar + Editors)
+  const renderPane = (paneId: string) => {
+    const pState = panes[paneId]
+    if (!pState) return <div className="muted">Pane not found</div>
+    const pFiles = pState.files
+    const pActive = pState.activeFile || ''
+
+    // Local handlers for this pane
+    const onActivate = (path: string) => {
+      setActivePaneId(paneId) // focus pane
+      setPanes(prev => {
+        const p = prev[paneId]
+        if (!p) return prev
+        // if path is directory, just navigating? logic was:
+        if (path && !path.startsWith('shell-') && !path.includes('.')) {
+          // hacky detection for dir? no, tab activation is always file.
+          // wait, FileExplorer calls setActiveFile for dirs too?
+          // The original logic:
+          /*
+          if (isDir) { setActiveFile(p); return }
+          */
+          // For tab activation, it's always a "file" (maybe shell).
+        }
+        return { ...prev, [paneId]: { ...p, activeFile: path } }
+      })
+
+      // side effects (explorer dir sync)
+      if (path && !path.startsWith('shell-')) {
+        const parts = path.split('/').filter(Boolean)
+        parts.pop()
+        const dir = parts.length ? `/${parts.join('/')}` : ''
+        // if (dir !== explorerDir) setExplorerDir(dir) // optional sync
+      }
+      setSelectedPath(path)
+      setFocusRequest(Date.now())
+    }
+
+    const onClose = (path: string) => {
+      // close tab logic
+      setPanes(prev => {
+        const p = prev[paneId]
+        if (!p) return prev
+        const nextFiles = p.files.filter(x => x !== path)
+        // if closing active
+        let nextActive = p.activeFile
+        if (p.activeFile === path) {
+          nextActive = nextFiles[0] || null
+        }
+        return { ...prev, [paneId]: { ...p, files: nextFiles, activeFile: nextActive } }
+      })
+    }
+
+    // Titles / Types logic repeated for this pane
+    const titles: Record<string, string> = {}
+    for (const f of pFiles) {
+      if (f.startsWith('shell-')) {
+        const cwd = shellCwds[f] || ''
+        const parts = (cwd || '/').split('/').filter(Boolean)
+        let name = '/'
+        if (parts.length) {
+          const last = parts[parts.length - 1]
+          if (last.includes('.') && parts.length > 1) {
+            name = parts[parts.length - 2]
+          } else {
+            name = last
+          }
+        }
+        titles[f] = name
+      } else {
+        const baseName = f.split('/').pop() || f
+        titles[f] = unsavedChanges[f] ? `*${baseName}` : baseName
+      }
+    }
+    const types: Record<string, 'file' | 'dir' | 'shell'> = {}
+    const fullPaths: Record<string, string> = {}
+    for (const f of pFiles) {
+      if (f.startsWith('shell-')) {
+        types[f] = 'shell'
+        fullPaths[f] = shellCwds[f] || '/'
+      } else {
+        types[f] = 'file'
+        fullPaths[f] = f
+      }
+    }
+
+    const isActivePane = paneId === activePaneId
+
+    return (
+      <div className="pane-content"
+        style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}
+        onClick={() => { if (!isActivePane) setActivePaneId(paneId) }}
+      >
+        {/* Active Indicator Border */}
+        {isActivePane && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--accent)', zIndex: 10 }} />}
+
+        {pFiles.length > 0 ? (
+          <>
+            <div onContextMenu={(e) => {
+              e.preventDefault()
+              // Todo: Pane context menu (Split Right/Down)
+            }}>
+              <React.Suspense fallback={null}>
+                <TabBarComponent
+                  openFiles={pFiles}
+                  active={pActive}
+                  titles={titles}
+                  fullPaths={fullPaths}
+                  types={types}
+                  onRestoreEvicted={() => { }} // simplified
+                  onActivate={onActivate}
+                  onClose={onClose}
+                  onCloseOthers={(p) => {
+                    setPanes(prev => {
+                      const st = prev[paneId]
+                      if (!st) return prev
+                      // Close all except p
+                      const newFiles = st.files.filter(f => f === p)
+                      // If p was not active, make it active (it's the only one left)
+                      return { ...prev, [paneId]: { ...st, files: newFiles, activeFile: p } }
+                    })
+                  }}
+                  onCloseLeft={(p) => {
+                    setPanes(prev => {
+                      const st = prev[paneId]
+                      if (!st) return prev
+                      const idx = st.files.indexOf(p)
+                      if (idx <= 0) return prev // nothing to the left or p not found
+                      const newFiles = st.files.slice(idx)
+                      // Check if active file is still present
+                      let newActive = st.activeFile
+                      if (!newFiles.includes(newActive || '')) {
+                        newActive = p
+                      }
+                      return { ...prev, [paneId]: { ...st, files: newFiles, activeFile: newActive } }
+                    })
+                  }}
+                />
+              </React.Suspense>
+            </div>
+            <div style={{ flex: 1, position: 'relative' }}>
+              {pFiles.map(f => (
+                <div key={f} style={{ display: f === pActive ? 'block' : 'none', height: '100%' }}>
+                  {f.startsWith('shell-') ? (
+                    <React.Suspense fallback={<div className="muted">Loading terminal…</div>}>
+                      <TerminalTab key={f} shell={(settings && settings.defaultShell) || 'bash'} path={shellCwds[f] || ''} onExit={() => onClose(f)} />
+                    </React.Suspense>
+                  ) : f === 'trash' ? (
+                    <TrashView />
+                  ) : f === 'binary' ? (
+                    <React.Suspense fallback={<div className="muted">Loading…</div>}>
+                      <BinaryView path={binaryPath || undefined} />
+                    </React.Suspense>
+                  ) : (
+                    <Editor path={f} settings={settings || undefined} onSaved={() => { /* no-op */ }} reloadTrigger={reloadTriggers[f] || 0} onUnsavedChange={handleUnsavedChange} onMeta={(m: any) => {
+                      if (m && m.path) setFileMetas(fm => ({ ...fm, [f]: m }))
+                    }} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="welcome-message" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '10px', opacity: 0.2 }}><Icon name={getIcon('folder')} size={48} /></div>
+            <div style={{ opacity: 0.5 }}>Empty Pane</div>
+            {paneId !== 'root' && <button className="btn link" onClick={() => closePane(paneId)}>Close Pane</button>}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -219,7 +524,7 @@ export default function App() {
           </button>
           {/* Logs toggle moved into settings popup */}
           <button className="link icon-btn" title="About" aria-label="About" onClick={() => setAboutOpen(true)}><Icon name={getIcon('info')} title="About" size={16} /></button>
-          <button className="link icon-btn " title="Screenshot" aria-label="Screenshot" onClick={async () => {
+          <button className="link icon-btn" title="Screenshot" aria-label="Screenshot" onClick={async () => {
             const root = document.querySelector('.app') as HTMLElement | null
             if (!root) return
             try {
@@ -236,6 +541,28 @@ export default function App() {
             }
             setActiveFile('trash')
           }}><Icon name="icon-trash" title="Trash" size={16} /></button>
+
+
+          <button className="link icon-btn" title="Split Right" aria-label="Split Right" onClick={() => splitPane('vertical')}>
+            {/* Split Horizontal Icon (Vertical Split) */}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ display: 'block' }}>
+              <path fillRule="evenodd" d="M14 3H2a1 1 0 00-1 1v8a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1zM2 2a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H2z" clipRule="evenodd" />
+              <path d="M8 4v8H7V4h1z" />
+            </svg>
+          </button>
+          <button className="link icon-btn" title="Split Down" aria-label="Split Down" onClick={() => splitPane('horizontal')}>
+            {/* Split Vertical Icon (Horizontal Split) */}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ display: 'block' }}>
+              <path fillRule="evenodd" d="M14 3H2a1 1 0 00-1 1v8a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1zM2 2a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H2z" clipRule="evenodd" />
+              <path d="M2 8h12v1H2V8z" />
+            </svg>
+          </button>
+
+          {layout.type !== 'leaf' && (
+            <button className="link icon-btn" title="Close Active Pane" aria-label="Close Active Pane" onClick={() => closePane(activePaneId)} style={{ marginLeft: 4 }}>
+              <Icon name={getIcon('close')} size={16} />
+            </button>
+          )}
         </div>
         {settingsOpen && (
           <SettingsPopup
@@ -403,140 +730,10 @@ export default function App() {
             {messageBox && (
               <MessageBox title={messageBox.title} message={messageBox.message} onClose={() => setMessageBox(null)} />
             )}
-            {/* Tab bar for multiple open files */}
-            <div>
-              {/* eslint-disable-next-line @typescript-eslint/no-var-requires */}
-            </div>
-            {openFiles.length > 0 && (
-              <div>
-                {/* lazy TabBar import to keep bundle small */}
-                <React.Suspense fallback={null}>
-                  {
-                    (() => {
-                      const titles: Record<string, string> = {}
-                      for (const f of openFiles) {
-                        if (f.startsWith('shell-')) {
-                          const cwd = shellCwds[f] || ''
-                          // show basename of cwd (or / if root) for shell tabs
-                          const parts = (cwd || '/').split('/').filter(Boolean)
-                          let name = '/'
-                          if (parts.length) {
-                            const last = parts[parts.length - 1]
-                            // heuristic: if the last segment looks like a filename (contains a dot), use the parent directory
-                            if (last.includes('.') && parts.length > 1) {
-                              name = parts[parts.length - 2]
-                            } else {
-                              name = last
-                            }
-                          }
-                          titles[f] = name
-                        } else {
-                          const baseName = f.split('/').pop() || f
-                          titles[f] = unsavedChanges[f] ? `*${baseName}` : baseName
-                        }
-                      }
-                      const types: Record<string, 'file' | 'dir' | 'shell'> = {}
-                      const fullPaths: Record<string, string> = {}
-                      for (const f of openFiles) {
-                        if (f.startsWith('shell-')) {
-                          types[f] = 'shell'
-                          fullPaths[f] = shellCwds[f] || '/'
-                        } else {
-                          types[f] = 'file'
-                          fullPaths[f] = f
-                        }
-                      }
 
-                      return (
-                        <TabBarComponent openFiles={openFiles} active={activeFile} titles={titles} fullPaths={fullPaths} types={types} onRestoreEvicted={(p) => {
-                          // Restore an overflowed tab: ensure it's in openFiles,
-                          // set it active, and request focus in the explorer.
-                          setOpenFiles(of => {
-                            if (of.includes(p)) return of
-                            // prepend to keep recent items visible
-                            const next = [p, ...of]
-                            return next.slice(0, maxTabs)
-                          })
-                          setActiveFile(p)
-                          setSelectedPath(p)
-                          setFocusRequest(Date.now())
-                        }}
-                          onActivate={(p) => {
-                            // ensure explorer shows this file's directory
-                            if (p && !p.startsWith('shell-')) {
-                              const parts = p.split('/').filter(Boolean)
-                              parts.pop()
-                              const dir = parts.length ? `/${parts.join('/')}` : ''
-                              if (dir !== explorerDir) setExplorerDir(dir)
-                            }
-                            setSelectedPath(p)
-                            // request explorer to focus the selected entry even if directory unchanged
-                            setFocusRequest(Date.now())
-                            setActiveFile(p)
-                          }} onClose={(p) => {
-                            setOpenFiles(of => of.filter(x => x !== p))
-                            if (activeFile === p) setActiveFile(openFiles.filter(x => x !== p)[0] || '')
-                          }} onCloseOthers={(p) => {
-                            setOpenFiles(of => of.filter(x => x === p || x === activeFile))
-                          }} onCloseLeft={(p) => {
-                            setOpenFiles(of => {
-                              const idx = of.indexOf(p)
-                              if (idx <= 0) return of
-                              return of.slice(idx)
-                            })
-                          }} />
-                      )
-                    })()
-                  }
+            {/* Recursive Layout Renderer */}
+            {renderLayout(layout)}
 
-                </React.Suspense>
-              </div>
-            )}
-            {/* Render all open files but keep only active one visible so their state (e.g., terminal buffer) is preserved */}
-            {openFiles.map(f => (
-              <div key={f} style={{ display: f === activeFile ? 'block' : 'none', height: '100%' }}>
-                {f.startsWith('shell-') ? (
-                  <React.Suspense fallback={<div className="muted">Loading terminal…</div>}>
-                    <TerminalTab key={f} shell={(settings && settings.defaultShell) || 'bash'} path={shellCwds[f] || ''} onExit={() => {
-                      // close shell tab when terminal signals exit
-                      setOpenFiles(of => of.filter(x => x !== f))
-                      if (activeFile === f) setActiveFile(openFiles.filter(x => x !== f)[0] || '')
-                      setShellCwds(s => { const ns = { ...s }; delete ns[f]; return ns })
-                    }} />
-                  </React.Suspense>
-                ) : f === 'trash' ? (
-                  <TrashView />
-                ) : f === 'binary' ? (
-                  <React.Suspense fallback={<div className="muted">Loading…</div>}>
-                    {/* BinaryView shows metadata for a single shared binary tab */}
-                    <BinaryView path={binaryPath || undefined} />
-                  </React.Suspense>
-                ) : (
-                  <Editor path={f} settings={settings || undefined} onSaved={() => { /* no-op for now */ }} reloadTrigger={reloadTriggers[f] || 0} onUnsavedChange={handleUnsavedChange} onMeta={(m: any) => {
-                    if (m && m.path) setFileMetas(fm => ({ ...fm, [f]: m }))
-                  }} />
-                )}
-              </div>
-            ))}
-            {openFiles.length === 0 && (
-              <div className="welcome-message" style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                color: 'var(--text-muted)',
-                fontSize: '18px',
-                textAlign: 'center',
-                padding: '20px'
-              }}>
-                <div style={{ fontSize: '48px', marginBottom: '20px' }}><Icon name={getIcon('folder')} size={48} /></div>
-                <div>Welcome to MLCRemote</div>
-                <div style={{ fontSize: '14px', marginTop: '10px' }}>
-                  Select a file from the explorer to start editing
-                </div>
-              </div>
-            )}
           </div>
         </main>
       </div>

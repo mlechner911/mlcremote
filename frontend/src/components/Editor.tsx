@@ -17,9 +17,12 @@ type Props = {
   onMeta?: (m: any) => void
 }
 
+import { handleBOM, restoreBOM } from '../utils/text'
+
 export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta }: Props) {
   const [content, setContent] = React.useState<string>('')
   const [origContent, setOrigContent] = React.useState<string>('')
+  const [hasBOM, setHasBOM] = React.useState<boolean>(false)
   const [status, setStatus] = React.useState<string>('')
   const [loading, setLoading] = React.useState<boolean>(false)
   const [meta, setMeta] = React.useState<any>(null)
@@ -73,9 +76,11 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       // If handler is Text (editable) then we read the file
       // If handler is Binary/Image/PDF/Shell we might not need to read text content
       if (handler.name === 'Text') {
-        const text = await readFile(path)
+        const rawText = await readFile(path)
+        const { text, hasBOM } = handleBOM(rawText)
         setContent(text)
         setOrigContent(text)
+        setHasBOM(hasBOM)
         setLastLoadTime(Date.now())
         setLoadFailed(false)
       } else {
@@ -208,7 +213,8 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     if (!path) return
     setStatus('Saving...')
     try {
-      await saveFile(path, content)
+      const contentToSave = hasBOM ? restoreBOM(content) : content
+      await saveFile(path, contentToSave)
       setStatus('Saved')
       setTimeout(() => setStatus(s => s === 'Saved' ? '' : s), 1500)
       await loadFile(true)
