@@ -6,6 +6,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"io"
 	"lightdev/internal/util"
 	"log"
 	"net/http"
@@ -24,10 +25,10 @@ import (
 
 // this holds websocc connections and PTY for a terminal session
 
-// terminalSession represents a server-side PTY and its attached websocket connections.
+// terminalSession represents a server-side PTY/Process and its connected websockets.
 type terminalSession struct {
 	id    string
-	ptmx  *os.File
+	tty   io.ReadWriteCloser
 	cmd   *exec.Cmd
 	mu    sync.Mutex
 	conns map[*websocket.Conn]struct{}
@@ -46,13 +47,13 @@ func newTerminalSession(shell string, cwd string) (*terminalSession, error) {
 			shell = "/bin/bash"
 		}
 	}
-	ptmx, cmd, err := termutil.StartShellPTY(shell, cwd)
+	tty, cmd, err := termutil.StartShellPTY(shell, cwd)
 	if err != nil {
 		return nil, err
 	}
 	s := &terminalSession{
 		id:    termutil.GenerateSessionID(),
-		ptmx:  ptmx,
+		tty:   tty,
 		cmd:   cmd,
 		conns: make(map[*websocket.Conn]struct{}),
 	}
@@ -60,7 +61,7 @@ func newTerminalSession(shell string, cwd string) (*terminalSession, error) {
 	go func() {
 		buf := make([]byte, 4096)
 		for {
-			n, err := ptmx.Read(buf)
+			n, err := tty.Read(buf)
 			if n > 0 {
 				sessionsMu.Lock()
 				for c := range s.conns {
@@ -107,18 +108,22 @@ func (s *terminalSession) removeConn(c *websocket.Conn) {
 	log.Printf("terminal: session %s - connection detached (conn=%p)", s.id, c)
 }
 
-// write writes bytes into the PTY backing the session. a nmutex is used to serialize writes.
+// write writes bytes into the PTY/Process backing the session.
 func (s *terminalSession) write(data []byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, _ = s.ptmx.Write(data)
+	_, _ = s.tty.Write(data)
 }
 
 // resize updates the PTY window size for the session.
 func (s *terminalSession) resize(cols, rows int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return pty.Setsize(s.ptmx, &pty.Winsize{Cols: uint16(cols), Rows: uint16(rows)})
+	// only try to resize if underlying writer supports it (e.g. is *os.File from pty)
+	if f, ok := s.tty.(*os.File); ok {
+		return pty.Setsize(f, &pty.Winsize{Cols: uint16(cols), Rows: uint16(rows)})
+	}
+	return nil
 }
 
 // close cleanly shuts down the session by closing all websockets and the PTY.
@@ -130,8 +135,8 @@ func (s *terminalSession) close() {
 		delete(s.conns, c)
 	}
 	sessionsMu.Unlock()
-	// attempt to close PTY
-	_ = s.ptmx.Close()
+	// attempt to close tty
+	_ = s.tty.Close()
 	// attempt to terminate the child process
 	if s.cmd != nil && s.cmd.Process != nil {
 		pid := s.cmd.Process.Pid

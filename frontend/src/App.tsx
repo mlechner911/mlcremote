@@ -25,6 +25,7 @@ import { defaultStore, boolSerializer, strSerializer } from './utils/storage'
  */
 import MessageBox from './components/MessageBox'
 import StatusBar from './components/StatusBar'
+import { getHandler } from './handlers/registry'
 
 export default function App() {
 
@@ -267,9 +268,10 @@ export default function App() {
             (async () => {
               try {
                 const st = await statPath(p)
-                // heuristic: if not text and not a directory, treat as binary
-                if (!st.isDir && st.mime && !st.mime.startsWith('text/') && !st.mime.startsWith('image/') && st.mime !== 'application/pdf') {
-                  // open a single shared binary tab
+                const h = getHandler({ path: p, meta: st })
+
+                // If it's the Binary or Unsupported handler, open the shared binary tab
+                if (h.name === 'Binary' || h.name === 'Unsupported') {
                   if (!openFiles.includes('binary')) openFile('binary')
                   setBinaryPath(p)
                   setActiveFile('binary')

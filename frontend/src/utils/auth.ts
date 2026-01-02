@@ -6,7 +6,7 @@ export function getToken(): string | null {
 }
 
 export function setToken(t: string) {
-  try { localStorage.setItem('mlcremote_token', t) } catch (_) {}
+  try { localStorage.setItem('mlcremote_token', t) } catch (_) { }
 }
 
 export async function authedFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
@@ -16,10 +16,10 @@ export async function authedFetch(input: RequestInfo, init?: RequestInit): Promi
   const merged: RequestInit = { ...(init || {}), headers }
   const res = await fetch(input, merged)
   if (res.status === 401) {
-    try { localStorage.removeItem('mlcremote_token') } catch (_) {}
+    try { localStorage.removeItem('mlcremote_token') } catch (_) { }
     try {
       window.dispatchEvent(new CustomEvent('mlcremote:auth-failed', { detail: { url: typeof input === 'string' ? input : (input as Request).url } }))
-    } catch (_) {}
+    } catch (_) { }
   }
   return res
 }

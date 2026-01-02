@@ -4,10 +4,10 @@
 
 $ErrorActionPreference = "Stop"
 
-$wailsDir = "c:\development\mlcremote\desktop\wails"
-$backendDir = "c:\development\mlcremote\backend"
-$frontendDir = "c:\development\mlcremote\frontend"
-$rootDir = "c:\development\mlcremote"
+$wailsDir = $PSScriptRoot
+$rootDir = (Resolve-Path "$PSScriptRoot\..\..").Path
+$backendDir = "$rootDir\backend"
+$frontendDir = "$rootDir\frontend"
 $payloadDir = "$wailsDir\assets\payload"
 
 # Ensure payload directory exists

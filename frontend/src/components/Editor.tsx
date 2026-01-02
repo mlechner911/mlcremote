@@ -1,32 +1,18 @@
 import React from 'react'
 import { readFile, saveFile, deleteFile, listTree, statPath } from '../api'
-const PdfPreview = React.lazy(() => import('./PdfPreview'))
 import { formatBytes } from '../utils/bytes'
-import { isEditable, isProbablyText, extFromPath, probeFileType } from '../filetypes'
+import { probeFileType, extFromPath } from '../filetypes'
 import { effectiveExtFromFilename } from '../languageForFilename'
 import { authedFetch } from '../utils/auth'
-import TextView from './TextView'
-import ImageView from './ImageView'
-import PdfView from './PdfView'
-import { decideEditorToUse, EditorView } from './decideEditorToUse'
 import { Icon } from '../generated/icons'
-import { iconForMimeOrFilename as getIcon, iconForExtension } from '../generated/icons'
-const ShellView = React.lazy(() => import('./ShellView'))
-
-
-
-
-// Editor no longer computes a Prism alias here — TextView handles highlighting.
-
+import { iconForExtension } from '../generated/icons'
+import { getHandler } from '../handlers/registry'
 
 type Props = {
   path: string
   onSaved?: () => void
   settings?: { allowDelete?: boolean }
   reloadTrigger?: number
-  // onUnsavedChange receives the editor `path` and whether it has
-  // unsaved changes. Parents should pass a stable callback so this
-  // component does not need to create per-render closures.
   onUnsavedChange?: (path: string, hasUnsaved: boolean) => void
   onMeta?: (m: any) => void
 }
@@ -47,6 +33,9 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
   const preRef = React.useRef<HTMLElement | null>(null)
   const prevUnsavedRef = React.useRef<boolean | null>(null)
 
+  const handler = getHandler({ path, meta, probe })
+  const HandlerView = handler.view
+
   const loadFile = React.useCallback(async (force = false) => {
     if (!path) return
     setLoading(true)
@@ -57,7 +46,6 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       setMeta(m)
       if (typeof onMeta === 'function') onMeta(m)
 
-      // Check if file has changed since last load (only if we have previous load data and not forcing)
       if (!force && lastLoadTime && lastModTime && m.modTime !== lastModTime) {
         if (!confirm('File has been modified externally. Reload?')) {
           setLoading(false)
@@ -71,39 +59,40 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       const pt = await probeFileType(path)
       setProbe(pt)
 
-      // If backend reports an image MIME, treat it as an image preview regardless
-      // of `isText` probe. This fixes cases where images were mis-classified as text.
-      if (pt.mime && pt.mime.startsWith('image/')) {
+      // Determine handler to decide if we need to load content
+      const handler = getHandler({ path, meta: m, probe: pt })
+
+      // If it's a directory, listTree is handled in a separate effect for now, 
+      // but let's clear content here just in case.
+      if (m.isDir) {
         setContent('')
-        setStatus('')
-        setLoading(false)
-        return
-      }
-      // pdf preview also special case
-      if (pt.mime && pt.mime === 'application/pdf') {
-        setContent('')
-        setStatus('')
         setLoading(false)
         return
       }
 
-      // If backend says it's not text (and not an image), show binary message
-      if (!pt.isText) {
+      // If handler is Text (editable) then we read the file
+      // If handler is Binary/Image/PDF/Shell we might not need to read text content
+      if (handler.name === 'Text') {
+        const text = await readFile(path)
+        setContent(text)
+        setOrigContent(text)
+        setLastLoadTime(Date.now())
+        setLoadFailed(false)
+      } else {
+        // For non-text, clear content
         setContent('')
-        setStatus('no preview available — unsupported file type, use Download')
         setLoading(false)
-        return
       }
 
-      const text = await readFile(path)
-      setContent(text)
-      setOrigContent(text)
-      setLastLoadTime(Date.now())
-      setLoadFailed(false)
     } catch (error) {
-      setStatus('Failed to load')
-      setLoadFailed(true)
-      setLastLoadTime(null) // Reset so next attempt will try again
+      // If the handler is Binary, a read failure (e.g. "binary file") is expected/handled by not reading it
+      // But if we tried to read and failed, set error.
+      // Actually with the new logic, we only read if handler says Text.
+      if (probe && probe.isText) {
+        setStatus('Failed to load')
+        setLoadFailed(true)
+      }
+      setLastLoadTime(null)
     } finally {
       setLoading(false)
     }
@@ -111,7 +100,6 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
 
   const editableThreshold = 10 * 1024 * 1024 // 10 MB
 
-  // load a section of the file via the server's section endpoint
   const loadSection = async (offset: number, length = 64 * 1024) => {
     if (!path) return
     setSectionLoading(true)
@@ -129,14 +117,11 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     }
   }
 
-  // compute grammar/alias for the current path to set on elements
-  // prefer the probed extension from the backend probe if available
-  const detectedExt = probe && probe.ext ? probe.ext : extFromPath(path)
   const extFromName = effectiveExtFromFilename(path)
   const ext = extFromName || (probe && probe.ext) || extFromPath(path)
   const alias = undefined
   const grammar = (probe && probe.ext) ? probe.ext : 'text'
-  // sanitize id (unique per full path) to avoid duplicate ids and ensure uniqueness
+
   const sanitizeId = (p: string) => {
     if (!p) return 'editor'
     return 'editor-' + p.replace(/[^a-z0-9_-]/gi, '-').replace(/-+/g, '-')
@@ -147,7 +132,6 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     loadFile()
   }, [loadFile])
 
-  // If selected path is a directory, fetch listing for display
   React.useEffect(() => {
     let mounted = true
       ; (async () => {
@@ -156,10 +140,8 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
           const entries = await listTree(path)
           if (!mounted) return
           setContent('')
-          // store entries as a simple newline-separated preview for now
           setOrigContent(entries.map((e: any) => e.name).join('\n'))
         } catch (e) {
-          // ignore
         }
       })()
     return () => { mounted = false }
@@ -167,11 +149,10 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
 
   React.useEffect(() => {
     if (reloadTrigger && reloadTrigger > 0) {
-      loadFile(true) // force reload
+      loadFile(true)
     }
   }, [reloadTrigger])
 
-  // keep pre scrolled to textarea's scroll position when content changes
   React.useEffect(() => {
     if (textareaRef.current && preRef.current) {
       preRef.current.scrollTop = textareaRef.current.scrollTop
@@ -179,9 +160,6 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     }
   }, [content])
 
-  // sync line-height and vertical padding from pre to textarea for alignment
-  // Thius is needed because Prism's line-height can differ from normal textarea line-height
-  // and we had this broken .. .more than once :(
   React.useEffect(() => {
     if (textareaRef.current && preRef.current) {
       const cs = window.getComputedStyle(preRef.current)
@@ -194,7 +172,6 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     }
   }, [content, path])
 
-  // keep grammar attributes and Prism highlighting in sync when grammar or content changes
   React.useEffect(() => {
     if (preRef.current) {
       preRef.current.setAttribute('data-grammar', grammar)
@@ -203,7 +180,6 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       textareaRef.current.setAttribute('data-grammar', grammar)
       if (textareaId) textareaRef.current.id = textareaId
     }
-    // re-run Prism highlight on the code element to ensure grammar changes take effect
     try {
       const code = preRef.current?.querySelector('code')
       if (code) {
@@ -211,13 +187,12 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
         Prism.highlightElement(code)
       }
     } catch (e) {
-      // ignore highlight errors
     }
   }, [grammar, content, textareaId])
 
-  // notify parent when unsaved status changes, but avoid calling parent every render
   React.useEffect(() => {
     if (!onUnsavedChange) return
+    if (!handler.isEditable) return
     const hasUnsaved = content !== origContent
     if (prevUnsavedRef.current === null || prevUnsavedRef.current !== hasUnsaved) {
       try {
@@ -227,8 +202,8 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       }
       prevUnsavedRef.current = hasUnsaved
     }
-  }, [content, origContent, onUnsavedChange, path])
-  // save action saves the file
+  }, [content, origContent, onUnsavedChange, path, handler.isEditable])
+
   const onSave = async () => {
     if (!path) return
     setStatus('Saving...')
@@ -236,36 +211,15 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       await saveFile(path, content)
       setStatus('Saved')
       setTimeout(() => setStatus(s => s === 'Saved' ? '' : s), 1500)
-      // Reload the file to ensure we display exactly what is on disk and update all metadata
       await loadFile(true)
       onSaved && onSaved()
     } catch {
       setStatus('Save failed')
     }
   }
-  /*
-    import('../format').catch(() => {}) // ensure type info available to bundler
-    // NOTE: `formatByExt` is imported statically to avoid Vite chunking warnings.
-    // The actual formatting implementation is lightweight now (passthrough), so
-    // the static import cost is acceptable.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { formatByExt } = require('../format') as typeof import('../format')
-    const onFormat = async () => {
-      if (!path) return
-      const ext = extFromPath(path)
-      setStatus('Formatting...')
-      try {
-        const formatted = formatByExt(ext, content)
-        setContent(formatted)
-        setStatus('Formatted')
-      } catch (e) {
-        setStatus('Format failed')
-      }
-    }
-  */
+
   const onDelete = async () => {
     if (!path) return
-    // confirm with user
     if (!confirm(`Delete ${path}? This will move the file to the server-side trash.`)) return
     setStatus('Deleting...')
     try {
@@ -279,27 +233,12 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
 
   const onReload = async () => {
     if (!path) return
-    // if unsaved changes exist, confirm
     if (content !== origContent) {
       if (!confirm('You have unsaved changes. Reloading will discard them. Continue?')) return
     }
     setStatus('Reloading...')
     try {
-      // re-probe and re-read
-      const pt = await probeFileType(path)
-      setProbe(pt)
-      if (!pt.isText) {
-        setContent('')
-        if (!pt.mime || !pt.mime.startsWith('image/')) {
-          setStatus('?Binary or unsupported file type — use Download' + pt.mime)
-        } else {
-          setStatus('')
-        }
-        return
-      }
-      const text = await readFile(path)
-      setContent(text)
-      setOrigContent(text)
+      await loadFile(true)
       setStatus('Reloaded')
       setTimeout(() => setStatus(s => s === 'Reloaded' ? '' : s), 1500)
     } catch (e) {
@@ -318,6 +257,8 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onSave])
 
+
+
   return (
     <div className="editor">
       <div className="editor-header">
@@ -327,19 +268,10 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
           {meta && (
             <>
               <span className="muted" style={{ fontSize: 11 }}>
-                {
-                  // friendly display: directory, image, pdf, text, or fallback to mime
-                  meta.isDir ? 'directory'
-                    : (probe && probe.mime && probe.mime.startsWith('image/')) ? 'image'
-                      : (probe && probe.mime === 'application/pdf') ? 'pdf'
-                        : (probe && probe.isText) ? 'text'
-                          : (meta.mime && meta.mime !== 'text/plain') ? meta.mime
-                            : (probe && probe.mime) ? probe.mime
-                              : meta.mime || 'file'
-                }
+                {meta.isDir ? 'directory' : handler.name}
                 · {meta.mode} · {new Date(meta.modTime).toLocaleString()} {meta.size ? `· ${formatBytes(meta.size)}` : ''}
               </span>
-              {probe && probe.mime && probe.mime.startsWith('image/') && imageDims ? (
+              {imageDims && handler.name === 'Image' ? (
                 <span style={{ fontSize: 11, marginLeft: 8 }} className="muted">{imageDims.w} × {imageDims.h}</span>
               ) : null}
             </>
@@ -349,22 +281,20 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
           <button className="link icon-btn" title="Reload" aria-label="Reload" onClick={onReload} disabled={!path}>
             <Icon name={iconForExtension('refresh') || 'icon-refresh'} title="Reload" size={16} />
           </button>
-          {content !== origContent && (
+
+          {/* Only show Save if handler supports editing and content changed */}
+          {handler.isEditable && content !== origContent && (
             <button className="link icon-btn" title="Save" aria-label="Save" onClick={onSave} disabled={!path}>
               <Icon name={iconForExtension('upload') || 'icon-upload'} title="Save" size={16} />
             </button>
           )}
         </div>
-        {meta && meta.size && meta.size > editableThreshold ? (
+        {meta && meta.size && meta.size > editableThreshold && handler.isEditable ? (
           <div style={{ marginLeft: 12 }}>
             <div className="muted" style={{ fontSize: 12 }}>File is large ({formatBytes(meta.size)}). Full edit disabled.</div>
             <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
               <button className="btn" onClick={() => loadSection(0, 64 * 1024)}>View head</button>
               <button className="btn" onClick={() => loadSection(Math.max(0, (meta.size || 0) - 64 * 1024), 64 * 1024)}>View tail</button>
-              <button className="btn" onClick={() => {
-                const off = Math.max(0, Math.floor((meta.size || 0) / 2))
-                loadSection(off, 64 * 1024)
-              }}>View middle</button>
             </div>
             {sectionLoading && <div className="muted">Loading section...</div>}
           </div>
@@ -372,48 +302,20 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
         {status && <div className="muted">{status}</div>}
       </div>
       <div className="editor-body">
-        {/* Trash is a global view accessible from the app toolbar */}
         {loading ? (
           <div className="muted">Loading...</div>
-        ) : meta && meta.isDir ? (
-          <div style={{ padding: 12 }}>
-            <div style={{ fontWeight: 600 }}>Directory: {path}</div>
-            <div className="muted" style={{ marginTop: 6 }}>{origContent ? origContent.split('\n').length : '0'} entries</div>
-            <pre style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', padding: 8, background: 'var(--panel)' }}>{origContent}</pre>
-          </div>
-        ) : (() => {
-          const view = decideEditorToUse({ path, meta, probe })
-          switch (view) {
-            case EditorView.TEXT:
-              return <TextView content={content} setContent={setContent} origContent={origContent} ext={ext} alias={alias} textareaId={textareaId} />
-            case EditorView.SHELL:
-              return (
-                <React.Suspense fallback={<div className="muted">Loading shell…</div>}>
-                  <ShellView path={path} />
-                </React.Suspense>
-              )
-            case EditorView.PDF:
-              return <PdfView path={path} />
-            case EditorView.IMAGE:
-              return <ImageView path={path} onDimensions={(w, h) => setImageDims({ w, h })} />
-            case EditorView.DIRECTORY:
-              return (
-                <div style={{ padding: 12 }}>
-                  <div style={{ fontWeight: 600 }}>Directory: {path}</div>
-                  <div className="muted" style={{ marginTop: 6 }}>{origContent ? origContent.split('\n').length : '0'} entries</div>
-                  <pre style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', padding: 8, background: 'var(--panel)' }}>{origContent}</pre>
-                </div>
-              )
-            case EditorView.BINARY:
-            case EditorView.UNSUPPORTED:
-            default:
-              return path ? (
-                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                  <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
-                </div>
-              ) : null
-          }
-        })()}
+        ) : (
+          <HandlerView
+            path={path}
+            content={content}
+            setContent={setContent}
+            origContent={origContent}
+            ext={ext}
+            alias={alias}
+            textareaId={textareaId}
+            onDimensions={(w, h) => setImageDims({ w, h })}
+          />
+        )}
       </div>
     </div>
   )

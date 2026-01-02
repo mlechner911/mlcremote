@@ -17,6 +17,8 @@ type healthInfo struct {
 	Status       string  `json:"status"`
 	Version      string  `json:"version"`
 	Host         string  `json:"host,omitempty"`
+	OS           string  `json:"os,omitempty"`
+	Distro       string  `json:"distro,omitempty"`
 	PID          int     `json:"pid"`
 	GoAlloc      uint64  `json:"go_alloc_bytes"`
 	GoSys        uint64  `json:"go_sys_bytes"`
@@ -50,6 +52,9 @@ func Health(passwordAuth bool, authRequired bool) http.HandlerFunc {
 		if hn, err := os.Hostname(); err == nil {
 			info.Host = hn
 		}
+
+		info.OS = runtime.GOOS
+		info.Distro = util.GetDistroInfo()
 
 		var ms runtime.MemStats
 		runtime.ReadMemStats(&ms)

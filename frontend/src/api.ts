@@ -28,11 +28,13 @@ export type Health = {
     status: string;
     version: string;
     host?: string;
-    pid?: number;
+    os?: string;
+    distro?: string;
+    pid: number;
+    go_alloc_bytes: number;
     cpu_percent?: number;
     sys_mem_total_bytes?: number;
     sys_mem_free_bytes?: number;
-    go_alloc_bytes?: number;
     go_sys_bytes?: number;
     password_auth?: boolean;
     auth_required?: boolean;

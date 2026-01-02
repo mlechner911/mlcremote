@@ -30,6 +30,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [showTokenInput, setShowTokenInput] = useState(false) // renamed from showTokenPrompt/showLoginInput mix
     const [showAuthChooser, setShowAuthChooser] = useState(false)
 
+    // Run this logic once on mount, synchronously, before children render.
+    // This ensures localStorage is populated with the URL token (if any)
+    // before any child components (like FileExplorer) attempt to fetch data.
+    React.useState(() => {
+        if (typeof window === 'undefined') return
+        const params = new URLSearchParams(window.location.search)
+        const urlToken = params.get('token')
+        if (urlToken) {
+            console.log('[Auth] Token found in URL (sync init):', urlToken)
+            localStorage.setItem('mlcremote_token', urlToken)
+            // Remove token from URL for cleaner history
+            const newUrl = window.location.protocol + '//' + window.location.host + window.location.pathname
+            window.history.replaceState({ path: newUrl }, '', newUrl)
+        }
+    })
+
     const refreshHealth = useCallback(async () => {
         if (!navigator.onLine) return
         try {
@@ -38,6 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLastHealthAt(Date.now())
             const ok = await authCheck()
             if (!ok) {
+                // Only remove token if auth check fails AND we didn't just set it from URL?
+                // Actually authCheck failing means the token is invalid.
                 localStorage.removeItem('mlcremote_token')
                 if (h.password_auth) setShowLogin(true)
                 else if (h.auth_required) setShowTokenInput(true)
@@ -59,8 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.addEventListener('online', handleOnline)
         window.addEventListener('offline', handleOffline)
 
+
         // Polling
         const id = setInterval(refreshHealth, 60 * 1000)
+
         refreshHealth() // Initial fetch
 
         // Global auth failure listener

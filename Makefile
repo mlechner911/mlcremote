@@ -14,6 +14,19 @@ ROOT ?= $(HOME)
 SERVER ?=
 DOCS_SPEC := $(PWD)/docs/openapi.yaml
 
+# OS-Specific Configuration
+ifeq ($(OS),Windows_NT)
+    EXT = .exe
+    ENSURE_BIN = if not exist $(BIN_DIR) mkdir $(BIN_DIR)
+    SERVER_BIN = .\$(BIN_DIR)\dev-server.exe
+    ICON_GEN_BIN = .\$(BIN_DIR)\icon-gen.exe
+else
+    EXT =
+    ENSURE_BIN = mkdir -p $(BIN_DIR)
+    SERVER_BIN = ./$(BIN_DIR)/dev-server
+    ICON_GEN_BIN = ./$(BIN_DIR)/icon-gen
+endif
+
 .PHONY: help backend frontend run docs install connect clean desktop-dev desktop-build desktop-dist desktop-dist-zip dist docker-build docker-run test-env-up test-env-down build-linux
 
 help:
@@ -35,10 +48,10 @@ help:
 	@echo "  clean         - Remove build artifacts"
 
 backend:
-	@mkdir -p $(BIN_DIR)
+	@$(ENSURE_BIN)
 	cd $(BACKEND_DIR) && go mod download
-	cd $(BACKEND_DIR) && go build -ldflags "-s -w" -o ../$(BIN_DIR)/dev-server ./cmd/dev-server
-	@echo "Built $(BIN_DIR)/dev-server"
+	cd $(BACKEND_DIR) && go build -ldflags "-s -w" -o ../$(BIN_DIR)/dev-server$(EXT) ./cmd/dev-server
+	@echo "Built $(BIN_DIR)/dev-server$(EXT)"
 
 frontend: icons
 	cd $(FRONTEND_DIR) && npm install
@@ -47,18 +60,18 @@ frontend: icons
 
 .PHONY: icons-gen
 icons-gen:
-	@mkdir -p $(BIN_DIR)
+	@$(ENSURE_BIN)
 	cd cmd/icon-gen && go build -o ../../$(BIN_DIR)/icon-gen .
 	@echo "Built $(BIN_DIR)/icon-gen"
-	@./$(BIN_DIR)/icon-gen --manifest icons/icons.yml --raw icons/raw --out frontend/src/generated
+	@$(ICON_GEN_BIN) --manifest icons/icons.yml --raw icons/raw --out frontend/src/generated
 
 run: backend
 	@echo "Starting backend on 127.0.0.1:$(PORT) serving $(STATIC_DIR)"
-	./$(BIN_DIR)/dev-server --port $(PORT) --root $(ROOT) --static-dir "$(PWD)/$(STATIC_DIR)"
+	$(SERVER_BIN) --port $(PORT) --root $(ROOT) --static-dir "$(CURDIR)/$(STATIC_DIR)"
 
 docs:
 	@echo "Starting backend on 127.0.0.1:$(PORT) with API docs"
-	./$(BIN_DIR)/dev-server --port $(PORT) --root $(ROOT) --openapi "$(DOCS_SPEC)"
+	$(SERVER_BIN) --port $(PORT) --root $(ROOT) --openapi "$(DOCS_SPEC)"
 
 .PHONY: swagger-gen
 swagger-gen:
@@ -93,7 +106,7 @@ desktop-upgrade-wails:
 desktop-dist:
 	@echo "Building frontend and desktop (wails build)"
 	cd $(FRONTEND_DIR) && npm run build
-	cd $(DESKTOP_DIR) && wails build
+	cd $(DESKTOP_DIR)/wails && wails build -s -tags "desktop,production"
 	@echo "Packaging desktop artifacts into dist/"
 	@mkdir -p dist
 	OSNAME=`uname -s | tr '[:upper:]' '[:lower:]'` || OSNAME=unknown; \
@@ -101,19 +114,25 @@ desktop-dist:
 	OUTDIR=dist/desktop-$${OSNAME}-$${ARCH}; \
 	mkdir -p $$OUTDIR; \
 	# copy Wails build output (default: build/bin or build/ for some setups)
-	if [ -d "$(DESKTOP_DIR)/build/bin" ]; then cp -r $(DESKTOP_DIR)/build/bin/* $$OUTDIR/; fi; \
-	if [ -d "$(DESKTOP_DIR)/build" ]; then cp -r $(DESKTOP_DIR)/build/* $$OUTDIR/; fi; \
+	if [ -d "$(DESKTOP_DIR)/wails/build/bin" ]; then cp -r $(DESKTOP_DIR)/wails/build/bin/* $$OUTDIR/; fi; \
+	if [ -d "$(DESKTOP_DIR)/wails/build" ]; then cp -r $(DESKTOP_DIR)/wails/build/* $$OUTDIR/; fi; \
 	@echo "Packaged to $$OUTDIR"
 
 .PHONY: desktop-dist-zip
-desktop-dist-zip: desktop-dist
+desktop-dist-zip:
+ifeq ($(OS),Windows_NT)
+	@echo "Running Windows build script..."
+	powershell -ExecutionPolicy Bypass -File desktop/build-windows.ps1
+else
+	$(MAKE) desktop-dist
 	@echo "Zipping desktop distribution"
 	OSNAME=`uname -s | tr '[:upper:]' '[:lower:]'` || OSNAME=unknown; \
 	ARCH=`uname -m` || ARCH=unknown; \
 	OUTDIR=dist/desktop-$${OSNAME}-$${ARCH}; \
 	ZIPNAME=dist/mlcremote-desktop-$${OSNAME}-$${ARCH}.zip; \
-	if [ -d "$$OUTDIR" ]; then (cd $$OUTDIR && zip -r ../../$$ZIPNAME .); else echo "No desktop build found in $$OUTDIR"; exit 1; fi; \
+	if [ -d "$$OUTDIR" ]; then tar -a -c -f $$ZIPNAME -C $$OUTDIR .; else echo "No desktop build found in $$OUTDIR"; exit 1; fi; \
 	@echo "Created $$ZIPNAME"
+endif
 
 clean:
 	@rm -f $(BIN_DIR)/dev-server

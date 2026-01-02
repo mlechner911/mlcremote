@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 
 
+## [Unreleased]
+
+### Added
+- **Remote OS Info**: Status bar now displays the remote operating system and distro (e.g., Windows, Ubuntu).
+
+### Changed
+- **Windows Shell**: Improved shell execution on Windows. Now falls back to pipes when PTY creation fails (fixing "unsupported" errors) and defaults to PowerShell/CMD.
+- **Frontend Refactor**: Major refactoring of file handling logic using a Strategy Pattern for better maintainability and extensibility.
+
+### Fixed
+- **Auto-Login**: Fixed a race condition where the token URL parameter was ignored on startup.
+- **Windows Build**: Fixed `make run` failing on Windows due to `mkdir -p` syntax errors.
+- **Symlink Dirty State**: Opening a symlink to a directory no longer incorrectly shows the "unsaved changes" (red tab) indicator.
+- **Binary Views**: "Unsupported" files now correctly share the single "Binary" tab instance instead of opening multiple tabs.
+
 ## [0.4.0] - 2026-01-01
 
 ### Added

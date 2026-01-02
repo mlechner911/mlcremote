@@ -40,18 +40,7 @@ export function isProbablyText(path: string): boolean {
   return true
 }
 
-/**
- * Decide whether the file should be opened in the editor. This is stricter
- * than `isProbablyText` — files without an extension are not considered
- * editable by default to avoid offering editing for device files, etc.
- */
-export function isEditable(path: string): boolean {
-  const ext = extFromPath(path)
-  if (!ext) return false
-  if (binaryExtensions.has(ext)) return false
-  // allow YAML, JSON, code, text
-  return true
-}
+
 
 /**
  * Convenience predicate for YAML extensions.

@@ -8,7 +8,7 @@ type Props = {
     health: Health | null
     isOnline: boolean
     hideMemoryUsage: boolean
-    lastHealthAt: number
+    lastHealthAt: number | null | undefined
 }
 
 export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealthAt }: Props) {
@@ -43,11 +43,22 @@ export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealt
                 </div>
 
                 {/* Git Branch / Version (Placeholder for now, using Version) */}
-                {health && health.version && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Icon name={getIcon('git')} size={12} />
-                        <span>{health.version}</span>
-                    </div>
+                <span className={isOnline ? 'ok' : 'err'} title={isOnline ? 'Connected' : 'Disconnected'}>
+                    <Icon name="icon-circle-filled" size={10} /> {isOnline ? 'Online' : 'Offline'}
+                </span>
+                {health && (
+                    <>
+                        <span className="sep" />
+                        <span title={`PID: ${health.pid}`}>Host: {health.host || 'localhost'}</span>
+                        {health.os && (
+                            <>
+                                <span className="sep" />
+                                <span title={`OS: ${health.os} ${health.distro || ''}`}>{health.distro || health.os}</span>
+                            </>
+                        )}
+                        <span className="sep" />
+                        <span title="Server Time">{health.server_time ? new Date(health.server_time).toLocaleTimeString() : ''}</span>
+                    </>
                 )}
             </div>
 

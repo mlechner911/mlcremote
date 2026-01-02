@@ -3,13 +3,14 @@ package terminal
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/creack/pty"
@@ -45,26 +46,43 @@ func ResolveRequestedShell(req string) string {
 	return ""
 }
 
+// ReadWriteCloser combines Reader, Writer and Closer.
+type ReadWriteCloser interface {
+	io.Reader
+	io.Writer
+	io.Closer
+}
+
 // StartShellPTY attempts to start a PTY running the requested shell with fallbacks.
-// It returns the PTY file, the exec.Cmd, or an error.
-func StartShellPTY(shell, cwd string) (*os.File, *exec.Cmd, error) {
+// It returns the PTY file (as a ReadWriteCloser), the exec.Cmd, or an error.
+func StartShellPTY(shell, cwd string) (io.ReadWriteCloser, *exec.Cmd, error) {
 	candidates := [][]string{}
-	if shell != "" {
-		if strings.HasPrefix(shell, "env ") {
-			parts := strings.Fields(shell)
-			if len(parts) > 1 {
-				candidates = append(candidates, parts)
-			}
-		} else {
+	// Windows prefers powershell/cmd
+	if runtime.GOOS == "windows" {
+		if shell != "" && !strings.Contains(shell, "bash") && !strings.Contains(shell, "zsh") {
 			candidates = append(candidates, []string{shell})
 		}
+		candidates = append(candidates, []string{"powershell.exe"})
+		candidates = append(candidates, []string{"cmd.exe"})
+		candidates = append(candidates, []string{"pwsh.exe"})
+	} else {
+		if shell != "" {
+			if strings.HasPrefix(shell, "env ") {
+				parts := strings.Fields(shell)
+				if len(parts) > 1 {
+					candidates = append(candidates, parts)
+				}
+			} else {
+				candidates = append(candidates, []string{shell})
+			}
+		}
+		candidates = append(candidates, []string{"/bin/bash"})
+		candidates = append(candidates, []string{"/usr/bin/bash"})
+		candidates = append(candidates, []string{"bash"})
+		candidates = append(candidates, []string{"zsh"})
+		candidates = append(candidates, []string{"/bin/sh"})
+		candidates = append(candidates, []string{"env", "bash"})
 	}
-	candidates = append(candidates, []string{"/bin/bash"})
-	candidates = append(candidates, []string{"/usr/bin/bash"})
-	candidates = append(candidates, []string{"bash"})
-	candidates = append(candidates, []string{"zsh"})
-	candidates = append(candidates, []string{"/bin/sh"})
-	candidates = append(candidates, []string{"env", "bash"})
 
 	var lastErr error
 	tried := map[string]struct{}{}
@@ -74,7 +92,7 @@ func StartShellPTY(shell, cwd string) (*os.File, *exec.Cmd, error) {
 		if len(parts) == 1 {
 			exe = parts[0]
 			args = []string{}
-			if filepath.IsAbs(exe) {
+			if runtime.GOOS != "windows" && filepath.IsAbs(exe) {
 				if fi, err := os.Stat(exe); err != nil || !fi.Mode().IsRegular() || fi.Mode().Perm()&0111 == 0 {
 					lastErr = err
 					continue
@@ -90,22 +108,14 @@ func StartShellPTY(shell, cwd string) (*os.File, *exec.Cmd, error) {
 		} else {
 			exe = parts[0]
 			args = parts[1:]
-			if !filepath.IsAbs(exe) {
-				if p, err := exec.LookPath(exe); err == nil {
-					exe = p
-				} else {
-					lastErr = err
-					continue
-				}
-			} else {
-				if fi, err := os.Stat(exe); err != nil {
-					lastErr = err
-					continue
-				} else {
-					_ = fi
-				}
+			pathExe, err := exec.LookPath(exe)
+			if err != nil {
+				lastErr = err
+				continue
 			}
+			exe = pathExe
 		}
+
 		key := exe + " " + strings.Join(args, " ")
 		if _, ok := tried[key]; ok {
 			continue
@@ -125,49 +135,62 @@ func StartShellPTY(shell, cwd string) (*os.File, *exec.Cmd, error) {
 				log.Printf("StartShellPTY: provided cwd does not exist, skipping: %s (%v)", cwd, err)
 			}
 		}
+
+		// Try PTY first
 		ptmx, err := pty.Start(cmd)
 		if err == nil {
 			log.Printf("StartShellPTY: started shell '%s' (args='%v')", exe, args)
 			return ptmx, cmd, nil
 		}
-		lastErr = err
-		if filepath.IsAbs(exe) {
-			if fi, statErr := os.Stat(exe); statErr == nil {
-				log.Printf("StartShellPTY: attempt '%v' failed:'%v' (file exists, mode='%v')", append([]string{exe}, args...), err, fi.Mode())
-				if perr, ok := err.(*os.PathError); ok {
-					if errno, ok := perr.Err.(syscall.Errno); ok {
-						switch errno {
-						case syscall.ENOEXEC:
-							log.Printf("StartShellPTY: exec failed with ENOEXEC for %s — file is not a valid executable or has an invalid interpreter", exe)
-						case syscall.ENOENT:
-							log.Printf("StartShellPTY: exec failed with ENOENT for %s — interpreter or loader may be missing", exe)
-						default:
-							log.Printf("StartShellPTY: exec syscall errno=%v", errno)
-						}
-					}
-				}
-				f, err2 := os.Open(exe)
-				if err2 == nil {
-					hdr := make([]byte, 4)
-					if _, err3 := f.Read(hdr); err3 == nil {
-						if string(hdr) == "\x7fELF" {
-							log.Printf("StartShellPTY: %s appears to be an ELF binary — missing interpreter/loader may cause ENOENT", exe)
-						} else if hdr[0] == '#' && hdr[1] == '!' {
-							log.Printf("StartShellPTY: %s is a script with shebang — interpreter in shebang may be missing", exe)
-						} else {
-							log.Printf("StartShellPTY: %s header: %v", exe, hdr)
-						}
-					}
-					_ = f.Close()
-				}
-			} else {
-				log.Printf("StartShellPTY: attempt '%v' failed: '%v'", append([]string{exe}, args...), err)
+
+		// If PTY fails on Windows (unsupported or otherwise), allow fallback to pipes
+		if runtime.GOOS == "windows" {
+			log.Printf("StartShellPTY: pty.Start failed for '%s': %v. Falling back to pipes.", exe, err)
+
+			// dumb terminal fallback using pipes
+			stdin, _ := cmd.StdinPipe()
+			stdout, _ := cmd.StdoutPipe()
+			stderr, _ := cmd.StderrPipe()
+
+			if err := cmd.Start(); err != nil {
+				lastErr = err
+				log.Printf("StartShellPTY: cmd.Start failed fallback: %v", err)
+				continue
 			}
-		} else {
-			log.Printf("StartShellPTY: attempt '%v' failed: '%v'", append([]string{exe}, args...), err)
+
+			// return a combiner
+			return &cmdRW{
+				stdin:  stdin,
+				stdout: stdout,
+				stderr: stderr,
+			}, cmd, nil
+
 		}
+
+		lastErr = err
+		log.Printf("StartShellPTY: attempt '%v' failed: '%v'", append([]string{exe}, args...), err)
 	}
 	return nil, nil, lastErr
+}
+
+// cmdRW implements io.ReadWriteCloser for a command using pipes
+type cmdRW struct {
+	stdin  io.WriteCloser
+	stdout io.ReadCloser
+	stderr io.ReadCloser
+}
+
+func (c *cmdRW) Read(p []byte) (n int, err error) {
+	// read from stdout, maybe stderr? simpler to just read stdout for now
+	return c.stdout.Read(p)
+}
+func (c *cmdRW) Write(p []byte) (n int, err error) {
+	return c.stdin.Write(p)
+}
+func (c *cmdRW) Close() error {
+	_ = c.stdin.Close()
+	_ = c.stdout.Close()
+	return c.stderr.Close()
 }
 
 // GenerateSessionID returns a random hex id prefixed with 's'.
