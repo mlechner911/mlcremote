@@ -98,7 +98,6 @@ export default function App() {
   const [showLogs, setShowLogs] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('showLogs', boolSerializer, false))
   const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
   const [settingsOpen, setSettingsOpen] = React.useState<boolean>(false)
-  const [hideServerName, setHideServerName] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('hideServerName', boolSerializer, false))
   const [hideMemoryUsage, setHideMemoryUsage] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('hideMemoryUsage', boolSerializer, false))
   const [serverInfoOpen, setServerInfoOpen] = React.useState<boolean>(false)
   const [settings, setSettings] = React.useState<{ allowDelete: boolean; defaultShell: string } | null>(null)
@@ -246,8 +245,6 @@ export default function App() {
             onToggleShowHidden={(v) => setShowHidden(v)}
             showLogs={showLogs}
             onToggleLogs={(v) => { setShowLogs(v); defaultStore.set('showLogs', v, boolSerializer) }}
-            hideServerName={hideServerName}
-            onToggleHideServerName={(v) => { setHideServerName(v); defaultStore.set('hideServerName', v, boolSerializer) }}
             hideMemoryUsage={hideMemoryUsage}
             onToggleHideMemoryUsage={(v) => { setHideMemoryUsage(v); defaultStore.set('hideMemoryUsage', v, boolSerializer) }}
             onClose={() => setSettingsOpen(false)}

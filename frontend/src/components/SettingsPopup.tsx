@@ -9,15 +9,12 @@ type Props = {
   onToggleShowHidden: (v: boolean) => void
   showLogs: boolean
   onToggleLogs: (v: boolean) => void
-  hideServerName: boolean
-  onToggleHideServerName: (v: boolean) => void
   hideMemoryUsage: boolean
   onToggleHideMemoryUsage: (v: boolean) => void
   onClose: () => void
 }
 
-export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, onToggleShowHidden, showLogs, onToggleLogs, hideServerName, onToggleHideServerName, hideMemoryUsage, onToggleHideMemoryUsage, onClose }: Props) {
-  const [localHideServerName, setLocalHideServerName] = React.useState<boolean>(hideServerName)
+export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, onToggleShowHidden, showLogs, onToggleLogs, hideMemoryUsage, onToggleHideMemoryUsage, onClose }: Props) {
   const [localHideMemoryUsage, setLocalHideMemoryUsage] = React.useState<boolean>(hideMemoryUsage)
 
   // Quick docs removed — settings simplified
@@ -44,15 +41,9 @@ export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, 
           </label>
         </div>
 
-        {/* quick docs removed */}
         <div style={{ marginTop: 8 }}>
           <label style={{ fontSize: 13 }}>
             <input type="checkbox" checked={showLogs} onChange={e => onToggleLogs(e.target.checked)} /> Show server logs
-          </label>
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <label style={{ fontSize: 13 }}>
-            <input type="checkbox" checked={localHideServerName} onChange={e => { setLocalHideServerName(e.target.checked); onToggleHideServerName(e.target.checked) }} /> Hide server name in header
           </label>
         </div>
         <div style={{ marginTop: 8 }}>
