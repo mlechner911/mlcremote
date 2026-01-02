@@ -62,7 +62,10 @@ cd frontend && npm install && npm run build
 
 Recent changes
 ----------------
-- Authentication: the frontend supports token-based auth and password login. When a token is invalid or a request returns 401 the UI now prompts for re-authentication (either password or access key).
+- **Remote Launch UI**: A new desktop startup experience allows multiple connection profiles.
+- **Auto-Update**: The desktop app now checks the remote backend version on connection and offers to update it automatically.
+- **Launch Security**: SSH connections now strictly enforce backend version compatibility (v1.0.0+ required).
+- Authentication: the frontend supports token-based auth and password login...
 - Trash view: files deleted via the UI are moved to a server-side trash and a global "Trash" view is available in the top toolbar.
 - Image preview: images render responsively with a max height (80vh) so they fit the viewport; the editor shows the natural image dimensions after the image loads.
 - Swagger/OpenAPI: a Makefile target `swagger-gen` is included to generate OpenAPI docs from Go sources; generated files appear under `docs/`.

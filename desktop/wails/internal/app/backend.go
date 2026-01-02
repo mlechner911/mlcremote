@@ -43,6 +43,96 @@ func (a *App) CheckBackend(profileJSON string) (bool, error) {
 	return true, nil
 }
 
+// CheckRemoteVersion returns the version string of the remote backend or "unknown"
+func (a *App) CheckRemoteVersion(profileJSON string) (string, error) {
+	var p TunnelProfile
+	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
+		return "", fmt.Errorf("invalid profile JSON: %w", err)
+	}
+	if p.Host == "" || p.User == "" {
+		return "", errors.New("missing user or host")
+	}
+
+	target := fmt.Sprintf("%s@%s", p.User, p.Host)
+	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
+	if p.IdentityFile != "" {
+		sshBaseArgs = append(sshBaseArgs, "-i", p.IdentityFile)
+	}
+	if len(p.ExtraArgs) > 0 {
+		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
+	}
+
+	// Exec: dev-server --version
+	// We need to assume the binary is in the standard location or check PATH?
+	// The install puts it in ~/%s (RemoteBinDir)
+	// Let's try executing it directly from there.
+	cmdArgs := append([]string{}, sshBaseArgs...)
+	cmdArgs = append(cmdArgs, target, fmt.Sprintf("~/%s/%s --version", RemoteBinDir, RemoteBinaryName))
+
+	out, err := createSilentCmd("ssh", cmdArgs...).Output()
+	if err != nil {
+		// Try fallback? Or just return unknown
+		// Maybe it's an old version that doesn't support --version?
+		// In that case, it might fail or print nothing useful.
+		return "unknown", nil
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// DetectRemoteOS attempts to determine the remote operating system
+func (a *App) DetectRemoteOS(profileJSON string) (string, error) {
+	var p TunnelProfile
+	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
+		return "", fmt.Errorf("invalid profile JSON: %w", err)
+	}
+
+	target := fmt.Sprintf("%s@%s", p.User, p.Host)
+	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
+	if p.IdentityFile != "" {
+		sshBaseArgs = append(sshBaseArgs, "-i", p.IdentityFile)
+	}
+	if len(p.ExtraArgs) > 0 {
+		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
+	}
+
+	// 1. Try Linux (uname)
+	linuxArgs := append([]string{}, sshBaseArgs...)
+	linuxArgs = append(linuxArgs, target, "uname -s")
+	if out, err := createSilentCmd("ssh", linuxArgs...).Output(); err == nil {
+		s := strings.TrimSpace(string(out))
+		if strings.Contains(s, "Linux") {
+			return "linux", nil
+		}
+		if strings.Contains(s, "Darwin") {
+			return "darwin", nil
+		}
+	}
+
+	// 2. Try Windows (ver) - execute in CMD
+	// Windows OpenSSH often defaults to cmd.exe, but sometimes PowerShell.
+	// try "cmd /c ver" to force CMD if possible, or just "ver"
+	winArgs := append([]string{}, sshBaseArgs...)
+	winArgs = append(winArgs, target, "cmd /c ver")
+	if out, err := createSilentCmd("ssh", winArgs...).Output(); err == nil {
+		s := string(out)
+		if strings.Contains(s, "Microsoft Windows") {
+			return "windows", nil
+		}
+	}
+
+	// 3. Fallback: Try PowerShell specific
+	psArgs := append([]string{}, sshBaseArgs...)
+	psArgs = append(psArgs, target, "echo $PSVersionTable")
+	if out, err := createSilentCmd("ssh", psArgs...).Output(); err == nil {
+		s := string(out)
+		if strings.Contains(s, "PSVersion") {
+			return "windows", nil
+		}
+	}
+
+	return "unknown", nil
+}
+
 // InstallBackend deploys the embedded backend and frontend to the remote server
 func (a *App) InstallBackend(profileJSON string) (string, error) {
 	var p TunnelProfile
@@ -199,6 +289,8 @@ cd "$HOME"
 # We use --no-auth because the connection is already secured via SSH tunnel
 exec "$HOME/%s/%s" --port 8443 --root "$HOME" --static-dir "$HOME/%s" --no-auth
 `, RemoteBinDir, RemoteBinaryName, RemoteFrontendDir)
+	// IMPORTANT: Ensure no CRLF line endings as this runs on Linux
+	runScriptContent = strings.ReplaceAll(runScriptContent, "\r", "")
 
 	runScriptFile := filepath.Join(tmpDir, RunScript)
 	_ = ioutil.WriteFile(runScriptFile, []byte(runScriptContent), 0755)

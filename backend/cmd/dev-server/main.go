@@ -37,8 +37,16 @@ func main() {
 	// add if needed: openapi spec path
 	openapi := flag.String("openapi", "", "path to OpenAPI YAML spec (optional)")
 	noAuth := flag.Bool("no-auth", false, "disable authentication (DANGEROUS)")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
-	log.Printf("MLCRemote v0.2.0 starting")
+
+	version := "1.0.0"
+	if *showVersion {
+		fmt.Println(version)
+		os.Exit(0)
+	}
+
+	log.Printf("MLCRemote v%s starting", version)
 	if *root == "" {
 		*root = os.Getenv("HOME")
 	}

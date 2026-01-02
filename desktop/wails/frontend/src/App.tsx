@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react'
-import ConnectDialog from './components/ConnectDialog'
-import SettingsDialog from './components/SettingsDialog'
-import Welcome from './components/Welcome'
+import LaunchScreen from './components/LaunchScreen'
+import AppLock from './components/AppLock'
+import SettingsDialog from './components/SettingsDialog' // Keep existing logic if needed or integrate
 import RemoteView from './components/RemoteView'
-import { StopTunnel } from '../wailsjs/go/app/App'
+import { StopTunnel, HasMasterPassword } from './wailsjs/go/app/App'
+import spriteUrl from './generated/icons-sprite.svg'
 
-// Common type shareable via export
+// Inject SVG sprite
+fetch(spriteUrl).then(r => r.text()).then(svg => {
+  const div = document.createElement('div');
+  div.style.display = 'none';
+  div.innerHTML = svg;
+  document.body.prepend(div);
+}).catch(console.error);
+
 export interface Profile {
   user: string
   host: string
@@ -27,104 +35,92 @@ function loadRuntimeIfPresent() {
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'welcome' | 'settings' | 'remote'>('welcome')
-  const [showConnectDialog, setShowConnectDialog] = useState(false)
-  const [selectedProfile, setSelectedProfile] = useState<Profile | undefined>(undefined)
+  const [view, setView] = useState<'init' | 'locked' | 'launch' | 'remote' | 'settings'>('init')
   const [remoteUrl, setRemoteUrl] = useState('')
-  const [connectedProfileName, setConnectedProfileName] = useState('')
+  const [profileName, setProfileName] = useState('')
 
   useEffect(() => {
+    // 1. Setup Runtime Events
     const rt = loadRuntimeIfPresent()
-    if (!rt || !rt.EventsOn) return
-    const handler = async (args: any) => {
-      const url = Array.isArray(args) && args.length > 0 ? args[0] : args
-      if (typeof url === 'string') {
-        try {
-          const res = await fetch(`${url}/api/version`, { method: 'GET' })
-          if (!res.ok) throw new Error('version check failed')
-          const json = await res.json()
-          // Instead of redirecting, switch to remote view
-          if (json && json.frontendCompatible) {
-            setRemoteUrl(url);
-            setCurrentView('remote');
-            return
-          }
-          try { runtime.EventsEmit('navigate-error', 'incompatible') } catch (e) { }
-        } catch (e: any) { try { runtime.EventsEmit('navigate-error', String(e.message || e)) } catch (e) { } }
+    if (rt && rt.EventsOn) {
+      const handler = async (args: any) => {
+        const url = Array.isArray(args) && args.length > 0 ? args[0] : args
+        if (typeof url === 'string') {
+          // Verify version
+          try {
+            const res = await fetch(`${url}/api/version`, { method: 'GET' })
+            if (!res.ok) throw new Error('version check failed')
+            const json = await res.json()
+            if (json && json.frontendCompatible) {
+              setRemoteUrl(url);
+              setView('remote');
+              return
+            }
+            try { runtime.EventsEmit('navigate-error', 'incompatible') } catch (e) { }
+          } catch (e: any) { try { runtime.EventsEmit('navigate-error', String(e.message || e)) } catch (e) { } }
+        }
       }
+      rt.EventsOn('navigate', handler)
+      return () => { try { rt.EventsOff('navigate', handler) } catch (e) { } }
     }
-    rt.EventsOn('navigate', handler)
-    const errHandler = (args: any) => { const msg = Array.isArray(args) && args.length > 0 ? args[0] : args; alert('Navigation error: ' + String(msg)) }
-    try { rt.EventsOn('navigate-error', errHandler) } catch (e) { }
-    return () => { try { rt.EventsOff('navigate', handler) } catch (e) { }; try { rt.EventsOff('navigate-error', errHandler) } catch (e) { } }
   }, [])
 
-  const handleOpenConnect = (profile?: Profile) => {
-    setSelectedProfile(profile)
-    setShowConnectDialog(true)
-  }
+  useEffect(() => {
+    // 2. Check Lock Status
+    const checkLock = async () => {
+      try {
+        const locked = await HasMasterPassword()
+        if (locked) setView('locked')
+        else setView('launch')
+      } catch (e) {
+        console.error("Failed to check lock status", e)
+        setView('launch') // Fallback
+      }
+    }
+    checkLock()
+  }, [])
 
-  const handleConnected = (profile: Profile) => {
-    // Save to history
-    try {
-      const hStr = localStorage.getItem('mlcremote_history')
-      let h: Profile[] = hStr ? JSON.parse(hStr) : []
-      // remove duplicate if exists
-      h = h.filter(x => !(x.user === profile.user && x.host === profile.host && x.localPort === profile.localPort))
-      // add to top
-      h.unshift(profile)
-      // limit to 10
-      if (h.length > 10) h = h.slice(0, 10)
-      localStorage.setItem('mlcremote_history', JSON.stringify(h))
-    } catch (e) { console.error(e) }
-
-    setConnectedProfileName(`${profile.user}@${profile.host}`)
-    setShowConnectDialog(false)
-    // Wait for 'navigate' event from backend
+  const handleConnected = (p: Profile) => {
+    setProfileName(`${p.user}@${p.host}`)
+    // View switch happens via 'navigate' event from backend usually, 
+    // but we can set remoteUrl if we knew it to show loading?
+    // backend emits 'navigate' with the URL once tunnel + health check passes.
+    // So we just wait.
   }
 
   const handleDisconnect = async () => {
-    try {
-      await StopTunnel()
-    } catch (e) {
-      console.error("Failed to stop tunnel:", e)
-    }
+    try { await StopTunnel() } catch (e) { console.error(e) }
     setRemoteUrl('')
-    setConnectedProfileName('')
-    // small delay to ensure UI updates before potential rapid reconnect
-    setTimeout(() => setCurrentView('welcome'), 100)
+    setProfileName('')
+    setView('launch')
   }
 
+  if (view === 'init') return <div style={{ background: 'var(--bg-root)', height: '100vh' }} />
+
   return (
-    <>
-      <div style={{ fontFamily: 'system-ui, sans-serif', height: '100vh' }}>
-        {currentView === 'welcome' && (
-          <Welcome
-            onConnect={handleOpenConnect}
-            onOpenSettings={() => setCurrentView('settings')}
-          />
-        )}
+    <div style={{ fontFamily: 'system-ui, sans-serif', height: '100vh', background: 'var(--bg-root)', color: 'var(--text-primary)' }}>
+      {view === 'locked' && (
+        <AppLock onUnlock={() => setView('launch')} />
+      )}
 
-        {currentView === 'remote' && (
-          <RemoteView
-            url={remoteUrl}
-            profileName={connectedProfileName}
-            onDisconnect={handleDisconnect}
-          />
-        )}
-
-        {currentView === 'settings' && (
-          <SettingsDialog onClose={() => setCurrentView('welcome')} />
-        )}
-      </div>
-
-      {showConnectDialog && (
-        <ConnectDialog
-          onClose={() => setShowConnectDialog(false)}
-          initialProfile={selectedProfile}
+      {view === 'launch' && (
+        <LaunchScreen
           onConnected={handleConnected}
+          onLocked={() => setView('locked')}
         />
       )}
-    </>
+
+      {view === 'remote' && (
+        <RemoteView
+          url={remoteUrl}
+          profileName={profileName}
+          onDisconnect={handleDisconnect}
+        />
+      )}
+
+      {/* Settings Dialog integration if needed later */}
+    </div>
   )
 }
+
+
