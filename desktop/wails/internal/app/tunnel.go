@@ -117,25 +117,19 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	if p.IdentityFile != "" {
 		if fi, err := os.Stat(p.IdentityFile); err != nil {
 			return "failed", fmt.Errorf("identity file not accessible: %w", err)
-			// Note: os.Stat is in os package
 		} else if fi.IsDir() {
 			return "failed", fmt.Errorf("identity file is a directory: %s", p.IdentityFile)
 		}
 	}
 
 	// check local port availability
-	// Force cleanup of any orphan processes on this port
 	if err := a.KillPort(p.LocalPort); err != nil {
-		// Log but proceed, maybe it wasn't there or permission denied.
-		// netListenTCP below will catch if it's still busy.
 		fmt.Printf("Warning: failed to kill port %d: %v\n", p.LocalPort, err)
 	}
 
 	// try to listen on the local port to verify it's free
 	ln, err := netListenTCP(p.LocalPort)
 	if err != nil {
-		// Port is busy. User suggested re-using the tunnel if possible.
-		// Let's check if the health endpoint is reachable.
 		fmt.Printf("Port %d busy, checking if existing tunnel is valid...\n", p.LocalPort)
 		localURL := fmt.Sprintf("http://127.0.0.1:%d", p.LocalPort)
 		client := &http.Client{Timeout: 2 * time.Second}
@@ -143,34 +137,74 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		if hErr == nil {
 			resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
-				// It works! Reuse this tunnel.
-				// We won't have a cmd to manage, so we set a dummy cmd or rely on state?
-				// To keep state consistent, we can just return "started" and NOT set a.tunnelCmd.
-				// But StopTunnel checks a.tunnelCmd.
-				// Let's set a marker or just return success and let the frontend assume it's working.
-				// For the UI to show "Connected", we just need to return "started".
-
-				// We should ideally set state to "started" but without a cmd.
 				a.tunnelState = "started"
-				// Emit navigate event immediately since it's ready
 				runtime.EventsEmit(a.ctx, "navigate", localURL)
 				return "started", nil
 			}
 		}
-
-		// If check failed, trying to kill again or just fail
-		// Wait a bit and retry once in case KillPort was async or slow
 		time.Sleep(500 * time.Millisecond)
 		ln, err = netListenTCP(p.LocalPort)
 		if err != nil {
 			return "failed", fmt.Errorf("local port %d unavailable and health check failed: %w", p.LocalPort, err)
 		}
 	}
-	// close immediately to free for ssh to bind
 	_ = ln.Close()
 
+	// --- Multi-OS / Agent Deployment Logic ---
+
+	// 1. Detect OS/Arch
+	runtime.EventsEmit(a.ctx, "connection-status", "Scanning remote host...")
+	osArch, err := a.DetectRemoteOS(profileJSON)
+	if err != nil {
+		// Log but proceed? No, detection is critical now.
+		return "failed", fmt.Errorf("remote detection failed: %w", err)
+	}
+	fmt.Printf("Detected Remote: %s\n", osArch)
+
+	// 2. Check if Server is already running (Service Mode Check)
+	runtime.EventsEmit(a.ctx, "connection-status", "Checking for running server...")
+	running, err := a.IsServerRunning(profileJSON, osArch)
+	if err != nil {
+		fmt.Printf("Warning: server check failed: %v\n", err)
+		running = false
+	}
+
+	var remoteCommand string
+	if running {
+		fmt.Println("Server is running (Service Mode). Connecting...")
+		runtime.EventsEmit(a.ctx, "connection-status", "Service found, connecting...")
+	} else {
+		// Agent Mode: Deploy and Run
+		fmt.Println("Server not running (Agent Mode). Deploying...")
+		runtime.EventsEmit(a.ctx, "connection-status", "Deploying agent...")
+
+		status, err := a.DeployAgent(profileJSON, osArch)
+		if err != nil {
+			return "failed", fmt.Errorf("agent deployment failed: %w", err)
+		}
+		fmt.Printf("Agent Deployed: %s\n", status)
+		runtime.EventsEmit(a.ctx, "connection-status", "Starting agent...")
+
+		// Construct Execution Command
+		// Note: We use --no-auth because the tunnel secures the connection
+		// and we don't want to deal with token exchange in this mode if possible.
+		// However, backend authentication middleware might still be active?
+		// The backend flag `--no-auth` disables the token check.
+		if strings.HasPrefix(osArch, "windows") {
+			// Windows: Execute EXE directly
+			// Command: .mlcremote\bin\dev-server.exe --port 8443 --root . --static-dir .mlcremote\frontend --no-auth
+			// We use %UserProfile% or relative path if we start in Home.
+			// SSH usually starts in %UserProfile%.
+			remoteCommand = ".mlcremote\\bin\\dev-server.exe --port 8443 --root . --static-dir .mlcremote\\frontend --no-auth"
+		} else {
+			// Linux/Mac: Execute wrapper script
+			remoteCommand = "~/.mlcremote/run-server.sh"
+		}
+	}
+
 	// Build ssh args
-	args := []string{"-o", "ExitOnForwardFailure=yes", "-N"}
+	args := []string{"-o", "ExitOnForwardFailure=yes"}
+
 	// Add identity file if provided
 	if p.IdentityFile != "" {
 		args = append(args, "-i", p.IdentityFile)
@@ -178,8 +212,22 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	// Forward argument
 	forward := fmt.Sprintf("-L%d:%s:%d", p.LocalPort, p.RemoteHost, p.RemotePort)
 	args = append(args, forward)
+
+	// If Agent Mode, we need TTY maybe? Or just execute.
+	// Actually, if we just run command, we don't pass -N.
+	// If Service Mode (running), we pass -N.
+	if remoteCommand == "" {
+		args = append(args, "-N")
+	}
+
 	// append user@host
 	args = append(args, fmt.Sprintf("%s@%s", p.User, p.Host))
+
+	// append Remote Command if any
+	if remoteCommand != "" {
+		args = append(args, remoteCommand)
+	}
+
 	// append extras
 	if len(p.ExtraArgs) > 0 {
 		args = append(args, p.ExtraArgs...)
@@ -191,14 +239,17 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	if err := cmd.Start(); err != nil {
 		return "failed", err
 	}
+
 	go streamReaderToEvents(a.ctx, stdoutPipe)
 	go streamReaderToEvents(a.ctx, stderrPipe)
+
 	a.tunnelCmd = cmd
-	// monitor process lifetime in a separate goroutine to ensure cleanup
+	a.tunnelState = "starting"
+
+	// ... Monitor Lifecycle ...
 	go func() {
 		_ = cmd.Wait()
 		a.tunnelMu.Lock()
-		// Only clear if it's still OUR cmd (avoid clearing a newer one if raced)
 		if a.tunnelCmd == cmd {
 			a.tunnelCmd = nil
 			a.tunnelState = "stopped"
@@ -206,16 +257,12 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		a.tunnelMu.Unlock()
 	}()
 
-	a.tunnelCmd = cmd
-	a.tunnelState = "starting"
-
 	// monitor health in background and emit navigate event when reachable
 	localURL := fmt.Sprintf("http://127.0.0.1:%d", p.LocalPort)
 	go func() {
 		client := &http.Client{Timeout: 2 * time.Second}
-		// Try for 15 seconds
-		for i := 0; i < 30; i++ {
-			// Check if process died
+		// Try for 15 seconds (slightly longer for cold start)
+		for i := 0; i < 45; i++ {
 			a.tunnelMu.Lock()
 			if a.tunnelCmd != cmd {
 				a.tunnelMu.Unlock()
@@ -241,7 +288,7 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		// Timeout
 		a.tunnelMu.Lock()
 		if a.tunnelCmd == cmd {
-			a.tunnelState = "started" // assume started even if check failed? or failed?
+			a.tunnelState = "started"
 		}
 		a.tunnelMu.Unlock()
 	}()

@@ -14,6 +14,10 @@ export function DeleteProfile(arg1) {
   return window['go']['app']['App']['DeleteProfile'](arg1);
 }
 
+export function DeployAgent(arg1, arg2) {
+  return window['go']['app']['App']['DeployAgent'](arg1, arg2);
+}
+
 export function DetectRemoteOS(arg1) {
   return window['go']['app']['App']['DetectRemoteOS'](arg1);
 }
@@ -36,6 +40,10 @@ export function HealthCheck(arg1, arg2) {
 
 export function InstallBackend(arg1) {
   return window['go']['app']['App']['InstallBackend'](arg1);
+}
+
+export function IsServerRunning(arg1, arg2) {
+  return window['go']['app']['App']['IsServerRunning'](arg1, arg2);
 }
 
 export function KillPort(arg1) {

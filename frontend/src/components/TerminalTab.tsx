@@ -108,11 +108,20 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
         ws.send(JSON.stringify(dims))
       } catch (_) { }
     }
-    const onResize = sendResize
-    window.addEventListener('resize', onResize)
+
+    // Use ResizeObserver to detect container size changes (e.g. split pane resize)
+    const resizeObserver = new ResizeObserver(() => {
+      // Debounce slightly or just call fit? fit() is synchronous and fast usually.
+      // requestAnimationFrame avoids "ResizeObserver loop limit exceeded" sometimes
+      requestAnimationFrame(() => sendResize())
+    })
+
+    if (ref.current) {
+      resizeObserver.observe(ref.current)
+    }
 
     return () => {
-      window.removeEventListener('resize', onResize)
+      resizeObserver.disconnect()
       try { if (ws) ws.close() } catch (_) { }
       wsRef.current = null
       try { term.dispose() } catch (_) { }

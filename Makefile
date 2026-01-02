@@ -63,19 +63,39 @@ frontend: icons
 
 # ... (icons-gen, run, docs, swagger-gen, install, connect kept as is) ...
 
+# Build Targets for Payload
 backend-linux-payload:
-	@echo "Building Linux backend for payload..."
-	@$(MKDIR_PAYLOAD)
-	$(BUILD_LINUX_CMD) -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/dev-server ./cmd/dev-server
+	@echo "Building Linux (amd64) backend..."
+	@$(MKDIR_PAYLOAD)/linux/amd64
+	$(BUILD_LINUX_CMD) -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/linux/amd64/dev-server ./cmd/dev-server
 
-prepare-payload: backend-linux-payload
+backend-windows-payload:
+	@echo "Building Windows (amd64) backend..."
+	@$(MKDIR_PAYLOAD)/windows/amd64
+	cd $(BACKEND_DIR) && set "GOOS=windows" && set "GOARCH=amd64" && go build -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/windows/amd64/dev-server.exe ./cmd/dev-server
+
+backend-darwin-amd64-payload:
+	@echo "Building MacOS (amd64) backend..."
+	@$(MKDIR_PAYLOAD)/darwin/amd64
+	cd $(BACKEND_DIR) && set "GOOS=darwin" && set "GOARCH=amd64" && go build -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/darwin/amd64/dev-server ./cmd/dev-server
+
+backend-darwin-arm64-payload:
+	@echo "Building MacOS (arm64) backend..."
+	@$(MKDIR_PAYLOAD)/darwin/arm64
+	cd $(BACKEND_DIR) && set "GOOS=darwin" && set "GOARCH=arm64" && go build -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/darwin/arm64/dev-server ./cmd/dev-server
+
+prepare-payload: backend-linux-payload backend-windows-payload backend-darwin-amd64-payload backend-darwin-arm64-payload
 	@echo "Building frontend for payload..."
 	cd $(FRONTEND_DIR) && npm run build
 	@echo "Updating payload assets..."
 	@$(CLEAN_PAYLOAD_FRONTEND)
 	@$(MKDIR_PAYLOAD_FRONTEND)
 	@$(COPY_PAYLOAD_FRONTEND)
-	@echo "Payload prepared."
+	@echo "Building verification tool..."
+	@$(ENSURE_BIN)
+	@cd $(BACKEND_DIR) && go build -o ../$(BIN_DIR)/build-util$(EXT) ./cmd/build-util
+	@echo "Payload prepared. Contents:"
+	@$(BIN_DIR)/build-util$(EXT) ls-r $(DESKTOP_DIR)/wails/assets/payload
 
 desktop-dev: prepare-payload
 	cd $(DESKTOP_DIR)/wails && wails dev -tags desktop
@@ -83,9 +103,14 @@ desktop-dev: prepare-payload
 .PHONY: debug
 debug: desktop-dev
 
-desktop-build:
+desktop-build: prepare-payload
+	@$(ENSURE_BIN)
+	cd $(BACKEND_DIR) && go build -o ../$(BIN_DIR)/build-util$(EXT) ./cmd/build-util
 	cd $(FRONTEND_DIR) && npm run build
 	cd $(DESKTOP_DIR)/wails && wails build
+	@echo "---------------------------------------------------"
+	@$(BIN_DIR)/build-util$(EXT) size $(DESKTOP_DIR)/wails/build/bin/MLCRemote$(EXT)
+	@echo "---------------------------------------------------"
 
 .PHONY: desktop-upgrade-wails
 desktop-upgrade-wails:

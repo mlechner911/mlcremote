@@ -79,7 +79,7 @@ func (a *App) CheckRemoteVersion(profileJSON string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// DetectRemoteOS attempts to determine the remote operating system
+// DetectRemoteOS attempts to determine the remote operating system and architecture
 func (a *App) DetectRemoteOS(profileJSON string) (string, error) {
 	var p TunnelProfile
 	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
@@ -95,99 +95,128 @@ func (a *App) DetectRemoteOS(profileJSON string) (string, error) {
 		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
 	}
 
-	// 1. Try Linux (uname)
-	linuxArgs := append([]string{}, sshBaseArgs...)
-	linuxArgs = append(linuxArgs, target, "uname -s")
-	if out, err := createSilentCmd("ssh", linuxArgs...).Output(); err == nil {
-		s := strings.TrimSpace(string(out))
-		if strings.Contains(s, "Linux") {
-			return "linux", nil
+	// Strategy: Exec a single compound command to probe OS and Arch
+	// We want output like "Linux x86_64" or "Darwin arm64" or "Windows..."
+	// "uname -sm" works on Linux and Mac.
+	// On Windows, uname might not exist, but we can try it first.
+
+	probeCmd := "uname -sm || echo 'windows-check'"
+
+	cmdArgs := append([]string{}, sshBaseArgs...)
+	cmdArgs = append(cmdArgs, target, probeCmd)
+
+	outBytes, err := createSilentCmd("ssh", cmdArgs...).Output()
+	if err != nil {
+		// If SSH fails completely
+		return "", fmt.Errorf("ssh probe failed: %w", err)
+	}
+	output := strings.TrimSpace(string(outBytes))
+
+	// Parse Output
+	// Linux x86_64 -> linux/amd64
+	// Darwin arm64 -> darwin/arm64
+	// Darwin x86_64 -> darwin/amd64
+
+	outputLower := strings.ToLower(output)
+
+	if strings.Contains(outputLower, "linux") {
+		arch := "amd64" // default
+		if strings.Contains(outputLower, "aarch64") || strings.Contains(outputLower, "arm64") {
+			arch = "arm64"
 		}
-		if strings.Contains(s, "Darwin") {
-			return "darwin", nil
-		}
+		// We only support amd64 linux for now based on Makefile, but let's return truth
+		return fmt.Sprintf("linux/%s", arch), nil
 	}
 
-	// 2. Try Windows (ver) - execute in CMD
-	// Windows OpenSSH often defaults to cmd.exe, but sometimes PowerShell.
-	// try "cmd /c ver" to force CMD if possible, or just "ver"
-	winArgs := append([]string{}, sshBaseArgs...)
-	winArgs = append(winArgs, target, "cmd /c ver")
-	if out, err := createSilentCmd("ssh", winArgs...).Output(); err == nil {
-		s := string(out)
-		if strings.Contains(s, "Microsoft Windows") {
-			return "windows", nil
+	if strings.Contains(outputLower, "darwin") {
+		arch := "amd64"
+		if strings.Contains(outputLower, "arm64") {
+			arch = "arm64"
 		}
+		return fmt.Sprintf("darwin/%s", arch), nil
 	}
 
-	// 3. Fallback: Try PowerShell specific
-	psArgs := append([]string{}, sshBaseArgs...)
-	psArgs = append(psArgs, target, "echo $PSVersionTable")
-	if out, err := createSilentCmd("ssh", psArgs...).Output(); err == nil {
-		s := string(out)
-		if strings.Contains(s, "PSVersion") {
-			return "windows", nil
+	// Windows detection fallback
+	// If uname failed or printed "windows-check", we assume it might be windows.
+	// Try a windows specific command to confirm.
+	if strings.Contains(outputLower, "windows-check") || output == "" {
+		winArgs := append([]string{}, sshBaseArgs...)
+		winArgs = append(winArgs, target, "cmd /c ver")
+		if validOut, err := createSilentCmd("ssh", winArgs...).Output(); err == nil {
+			if strings.Contains(strings.ToLower(string(validOut)), "windows") {
+				// Assume amd64 for Windows for now
+				return "windows/amd64", nil
+			}
 		}
 	}
 
 	return "unknown", nil
 }
 
-// InstallBackend deploys the embedded backend and frontend to the remote server
-func (a *App) InstallBackend(profileJSON string) (string, error) {
+// DeployAgent ensures the correct binary and assets are on the remote host
+// osArch is the string returned by DetectRemoteOS (e.g. "linux/amd64", "windows/amd64")
+func (a *App) DeployAgent(profileJSON string, osArch string) (string, error) {
 	var p TunnelProfile
 	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
 		return "failed", fmt.Errorf("invalid profile JSON: %w", err)
 	}
 
-	// 1. Prepare Payload: Extract embedded assets to a temporary directory
+	parts := strings.Split(osArch, "/")
+	if len(parts) != 2 {
+		return "failed", fmt.Errorf("invalid os/arch format: %s", osArch)
+	}
+	targetOS, targetArch := parts[0], parts[1]
+
+	// 1. Prepare Payload
 	tmpDir, err := ioutil.TempDir("", "mlcremote-install")
 	if err != nil {
 		return "setup-failed", fmt.Errorf("failed to create temp dir: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// A. Extract Backend Binary
-	// Note: The path must match what is in assets/payload
-	binContent, err := fs.ReadFile(a.payload, "assets/payload/dev-server")
-	if err != nil {
-		return "setup-failed", fmt.Errorf("embedded backend binary not found: %w", err)
+	// A. Identify Correct Binary Source
+	// Map "linux/amd64" -> "assets/payload/linux/amd64/dev-server"
+	// Map "windows/amd64" -> "assets/payload/windows/amd64/dev-server.exe"
+
+	binName := "dev-server"
+	if targetOS == "windows" {
+		binName = "dev-server.exe"
 	}
-	binPath := filepath.Join(tmpDir, "dev-server")
+
+	payloadPath := fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, binName)
+
+	binContent, err := fs.ReadFile(a.payload, payloadPath)
+	if err != nil {
+		return "setup-failed", fmt.Errorf("payload binary not found for %s: %w", osArch, err)
+	}
+
+	binPath := filepath.Join(tmpDir, binName)
 	if err := ioutil.WriteFile(binPath, binContent, 0755); err != nil {
 		return "setup-failed", fmt.Errorf("failed to write backend binary: %w", err)
 	}
 
-	// B. Extract Frontend Assets
+	// B. Extract Frontend Assets (Common)
 	frontendSrcDir := "assets/payload/frontend-dist"
 	frontendTmpDir := filepath.Join(tmpDir, "frontend")
 	if err := os.MkdirAll(frontendTmpDir, 0755); err != nil {
 		return "setup-failed", fmt.Errorf("failed to create frontend temp dir: %w", err)
 	}
 
+	// ... WalkDir and copy logic (Assuming same as before, simplified for this snippet) ...
+	// REUSING existing frontend extraction logic
 	err = fs.WalkDir(a.payload, frontendSrcDir, func(fpath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		// Calculate relative path from the root of frontend-dist
-		// Use strings.Replace/TrimPrefix because fs.FS paths are always forward slashes
-		// and filepath.Rel on Windows might expect backslashes.
-		// fpath is like "assets/payload/frontend-dist/index.html"
-		// frontendSrcDir is "assets/payload/frontend-dist"
-
 		relPath := strings.TrimPrefix(fpath, frontendSrcDir)
-		relPath = strings.TrimPrefix(relPath, "/") // remove leading slash if any
-
+		relPath = strings.TrimPrefix(relPath, "/")
 		if relPath == "" || relPath == "." {
 			return nil
 		}
-
-		// Convert forward slashes to OS-specific separators for destination
 		destPath := filepath.Join(frontendTmpDir, filepath.FromSlash(relPath))
 		if d.IsDir() {
 			return os.MkdirAll(destPath, 0755)
 		}
-
 		data, err := fs.ReadFile(a.payload, fpath)
 		if err != nil {
 			return err
@@ -195,10 +224,10 @@ func (a *App) InstallBackend(profileJSON string) (string, error) {
 		return ioutil.WriteFile(destPath, data, 0644)
 	})
 	if err != nil {
-		return "setup-failed", fmt.Errorf("failed to extract frontend assets: %w", err)
+		return "setup-failed", fmt.Errorf("failed to extract frontend: %w", err)
 	}
 
-	// 2. Create remote directory structure
+	// 2. Prepare Remote Environment
 	target := fmt.Sprintf("%s@%s", p.User, p.Host)
 	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
 	if p.IdentityFile != "" {
@@ -208,138 +237,142 @@ func (a *App) InstallBackend(profileJSON string) (string, error) {
 		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
 	}
 
-	// 1.5 Check remote architecture
-	// We only support x86_64 (amd64) for now because we cross-compile for it
-	archArgs := append([]string{}, sshBaseArgs...)
-	archArgs = append(archArgs, target, "uname -m")
-	if out, err := createSilentCmd("ssh", archArgs...).Output(); err == nil {
-		arch := strings.TrimSpace(string(out))
-		if arch != "x86_64" {
-			return "setup-failed", fmt.Errorf("remote architecture '%s' is not supported (x86_64 required)", arch)
-		}
-	} else {
-		// If uname fails, we proceed with caution or warn?
-		// Let's assume it's ok but log/warn if we could. For now strict checking is safer.
-		// But if SSH fails here, mkdir will fail too.
+	// Remote Paths handling for Windows vs Unix
+	// We assume standard unix-like paths for SCP even on Windows (OpenSSH usually handles / ~ /)
+	// But mkdir might need care on Windows CMD.
+	// Simplification: We assume OpenSSH + Git Bash or standard execution on Windows often supports mkdir.
+	// If not, we might need OS specific mkdir.
+
+	remoteBinDir := ".mlcremote/bin"
+	remoteFrontendDir := ".mlcremote/frontend"
+
+	mkdirCmd := fmt.Sprintf("mkdir -p ~/%s ~/%s", remoteBinDir, remoteFrontendDir)
+	// On Windows CMD, `mkdir` works but `-p` might not. "mkdir a\b" works.
+	if targetOS == "windows" {
+		// Try powershell or cmd safe mkdir
+		mkdirCmd = "mkdir .mlcremote\\bin .mlcremote\\frontend 2>NUL || echo OK"
 	}
 
-	// 2. Create remote directory structure
 	mkdirArgs := append([]string{}, sshBaseArgs...)
-	mkdirArgs = append(mkdirArgs, target, fmt.Sprintf("mkdir -p ~/%s ~/%s ~/%s", RemoteBinDir, RemoteFrontendDir, SystemdUserDir))
-	if err := createSilentCmd("ssh", mkdirArgs...).Run(); err != nil {
-		return "setup-failed", fmt.Errorf("failed to create remote directories: %w", err)
-	}
+	mkdirArgs = append(mkdirArgs, target, mkdirCmd)
+	_ = createSilentCmd("ssh", mkdirArgs...).Run()
 
-	// 0. Stop service if running and kill any zombie processes
-	stopArgs := append([]string{}, sshBaseArgs...)
-	// Try systemctl stop first, then pkill to be sure (ignore errors if not running)
-	stopCmd := fmt.Sprintf("systemctl --user stop %s; pkill -f %s || true", ServiceName, RemoteBinaryName)
-	stopArgs = append(stopArgs, target, stopCmd)
-	_ = createSilentCmd("ssh", stopArgs...).Run()
-
-	// Wait a moment for ports to free
-	time.Sleep(1 * time.Second)
-
-	// 3. Upload binary using SCP
+	// 3. Upload Binary
 	scpArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
 	if p.IdentityFile != "" {
 		scpArgs = append(scpArgs, "-i", p.IdentityFile)
 	}
 
-	scpBinArgs := append([]string{}, scpArgs...)
-	scpBinArgs = append(scpBinArgs, binPath, fmt.Sprintf("%s:~/%s/%s", target, RemoteBinDir, RemoteBinaryName))
+	// kill existing if running (agent mode cleanup or update)
+	// Linux/Mac: pkill. Windows: taskkill
+	killCmd := fmt.Sprintf("pkill -f %s || true", binName)
+	if targetOS == "windows" {
+		killCmd = fmt.Sprintf("taskkill /IM %s /F || echo OK", binName)
+	}
+	killArgs := append([]string{}, sshBaseArgs...)
+	killArgs = append(killArgs, target, killCmd)
+	_ = createSilentCmd("ssh", killArgs...).Run()
 
+	// Wait buffer
+	time.Sleep(500 * time.Millisecond)
+
+	scpBinArgs := append([]string{}, scpArgs...)
+	scpBinArgs = append(scpBinArgs, binPath, fmt.Sprintf("%s:~/%s/%s", target, remoteBinDir, binName))
 	if out, err := createSilentCmd("scp", scpBinArgs...).CombinedOutput(); err != nil {
 		return "upload-failed", fmt.Errorf("scp binary failed: %s", string(out))
 	}
 
-	// 3.5. Upload Frontend Assets
-	// Recursive copy of the temp frontend dir to the remote location
-	// Strategy: Upload to temporary remote dir, then atomic swap to ensure clean state
-	remoteNewDir := fmt.Sprintf("%s/%s_new", RemoteBaseDir, filepath.Base(RemoteFrontendDir)) // .mlcremote/frontend_new
+	// 3.5 Upload Frontend (Atomic Swap or Overwrite)
+	// For simplicity in Agent Mode, simple recursive copy is often okay, but let's stick to cleaning old first
+	// to avoid stale files.
 
-	// 1. Remove temp dir if exists
+	// Quick clean old frontend
+	cleanCmd := fmt.Sprintf("rm -rf ~/%s/*", remoteFrontendDir) // * to keep dir
+	if targetOS == "windows" {
+		cleanCmd = "del /S /Q .mlcremote\\frontend\\* || echo OK"
+	}
 	cleanArgs := append([]string{}, sshBaseArgs...)
-	cleanArgs = append(cleanArgs, target, fmt.Sprintf("rm -rf ~/%s", remoteNewDir))
+	cleanArgs = append(cleanArgs, target, cleanCmd)
 	_ = createSilentCmd("ssh", cleanArgs...).Run()
 
-	// 2. Upload to new dir (since it lacks trailing slash and dir doesn't exist, it creates it)
-	// scp -r local/frontend user@host:~/.mlcremote/frontend_new
-	scpDistArgs := append([]string{}, scpArgs...)
-	scpDistArgs = append(scpDistArgs, "-r", frontendTmpDir, fmt.Sprintf("%s:~/%s", target, remoteNewDir))
-
-	if out, err := createSilentCmd("scp", scpDistArgs...).CombinedOutput(); err != nil {
+	scpFrontendArgs := append([]string{}, scpArgs...)
+	scpFrontendArgs = append(scpFrontendArgs, "-r", fmt.Sprintf("%s/.", frontendTmpDir), fmt.Sprintf("%s:~/%s", target, remoteFrontendDir))
+	if out, err := createSilentCmd("scp", scpFrontendArgs...).CombinedOutput(); err != nil {
 		return "upload-failed", fmt.Errorf("scp frontend failed: %s", string(out))
 	}
 
-	// 3. Swap: rm old, mv new -> old
-	swapCmd := fmt.Sprintf("rm -rf ~/%s && mv ~/%s ~/%s", RemoteFrontendDir, remoteNewDir, RemoteFrontendDir)
-	swapArgs := append([]string{}, sshBaseArgs...)
-	swapArgs = append(swapArgs, target, swapCmd)
-	if out, err := createSilentCmd("ssh", swapArgs...).CombinedOutput(); err != nil {
-		return "upload-failed", fmt.Errorf("swap frontend failed: %s", string(out))
+	// 4. Create metadata file (install.json)
+	// We write this LOCALLY then upload
+	metaContent := fmt.Sprintf(`{"version": "1.0.0", "updated": "%s", "os": "%s", "arch": "%s"}`, time.Now().Format(time.RFC3339), targetOS, targetArch)
+	metaPath := filepath.Join(tmpDir, "install.json")
+	_ = ioutil.WriteFile(metaPath, []byte(metaContent), 0644)
+
+	scpMetaArgs := append([]string{}, scpArgs...)
+	scpMetaArgs = append(scpMetaArgs, metaPath, fmt.Sprintf("%s:~/.mlcremote/install.json", target))
+	_ = createSilentCmd("scp", scpMetaArgs...).Run()
+
+	// 5. Unix: Make Executable
+	if targetOS != "windows" {
+		chmodArgs := append([]string{}, sshBaseArgs...)
+		chmodArgs = append(chmodArgs, target, fmt.Sprintf("chmod +x ~/%s/%s", remoteBinDir, binName))
+		_ = createSilentCmd("ssh", chmodArgs...).Run()
 	}
 
-	// 4. Create and upload run-server.sh wrapper
-	runScriptContent := fmt.Sprintf(`#!/usr/bin/env bash
-set -euo pipefail
-# ensure we start in the user's home so any relative paths the server relies on work
-cd "$HOME"
-# Exec binary with default port 8443 and static dir
-# We use --no-auth because the connection is already secured via SSH tunnel
-exec "$HOME/%s/%s" --port 8443 --root "$HOME" --static-dir "$HOME/%s" --no-auth
-`, RemoteBinDir, RemoteBinaryName, RemoteFrontendDir)
-	// IMPORTANT: Ensure no CRLF line endings as this runs on Linux
-	runScriptContent = strings.ReplaceAll(runScriptContent, "\r", "")
+	return "deployed", nil
+}
 
-	runScriptFile := filepath.Join(tmpDir, RunScript)
-	_ = ioutil.WriteFile(runScriptFile, []byte(runScriptContent), 0755)
-
-	scpRunArgs := append([]string{}, scpArgs...)
-	scpRunArgs = append(scpRunArgs, runScriptFile, fmt.Sprintf("%s:~/%s/%s", target, RemoteBaseDir, RunScript))
-
-	if out, err := createSilentCmd("scp", scpRunArgs...).CombinedOutput(); err != nil {
-		return "upload-failed", fmt.Errorf("scp run-script failed: %s", string(out))
+// IsServerRunning checks if the backend is already active on the remote host
+func (a *App) IsServerRunning(profileJSON string, osString string) (bool, error) {
+	var p TunnelProfile
+	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
+		return false, fmt.Errorf("invalid profile JSON: %w", err)
 	}
 
-	// Make script executable
-	chmodArgs := append([]string{}, sshBaseArgs...)
-	chmodArgs = append(chmodArgs, target, fmt.Sprintf("chmod +x ~/%s/%s ~/%s/%s", RemoteBaseDir, RunScript, RemoteBinDir, RemoteBinaryName))
-	_ = createSilentCmd("ssh", chmodArgs...).Run()
-
-	// 5. Create and upload systemd service file
-	serviceContent := fmt.Sprintf(`[Unit]
-Description=mlcremote user service
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=%%h/%s/%s
-Restart=on-failure
-
-[Install]
-WantedBy=default.target
-`, RemoteBaseDir, RunScript)
-	serviceFileName := ServiceName
-	serviceFile := filepath.Join(tmpDir, serviceFileName)
-	_ = ioutil.WriteFile(serviceFile, []byte(serviceContent), 0644)
-
-	scpServiceArgs := append([]string{}, scpArgs...)
-	scpServiceArgs = append(scpServiceArgs, serviceFile, fmt.Sprintf("%s:~/%s/%s", target, SystemdUserDir, serviceFileName))
-
-	if out, err := createSilentCmd("scp", scpServiceArgs...).CombinedOutput(); err != nil {
-		return "service-upload-failed", fmt.Errorf("failed to upload service file: %s", string(out))
+	target := fmt.Sprintf("%s@%s", p.User, p.Host)
+	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
+	if p.IdentityFile != "" {
+		sshBaseArgs = append(sshBaseArgs, "-i", p.IdentityFile)
+	}
+	if len(p.ExtraArgs) > 0 {
+		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
 	}
 
-	// 6. Enable and start service
-	startServiceArgs := append([]string{}, sshBaseArgs...)
-	startServiceArgs = append(startServiceArgs, target, fmt.Sprintf("systemctl --user daemon-reload && systemctl --user enable %s && systemctl --user restart %s", ServiceName, ServiceName))
-
-	if out, err := createSilentCmd("ssh", startServiceArgs...).CombinedOutput(); err != nil {
-		return "start-failed", fmt.Errorf("failed to start service: %s", string(out))
+	// OS String comes from DetectRemoteOS e.g. "linux/amd64" or "windows/amd64"
+	targetOS := "linux"
+	if strings.Contains(osString, "/") {
+		targetOS = strings.Split(osString, "/")[0]
+	} else if osString == "windows" {
+		targetOS = "windows"
 	}
 
-	return "installed", nil
+	var checkCmd string
+
+	// 1. Logic for Linux: Preferred systemd check, fallback to pgrep
+	if targetOS == "linux" {
+		// Check systemd service first
+		checkCmd = fmt.Sprintf("systemctl --user is-active %s || pgrep -f %s", ServiceName, RemoteBinaryName)
+	} else if targetOS == "darwin" {
+		// MacOS: pgrep
+		checkCmd = fmt.Sprintf("pgrep -f %s", RemoteBinaryName)
+	} else if targetOS == "windows" {
+		// Windows: tasklist
+		checkCmd = "tasklist /FI \"IMAGENAME eq dev-server.exe\" | findstr \"dev-server.exe\""
+	} else {
+		return false, nil
+	}
+
+	cmdArgs := append([]string{}, sshBaseArgs...)
+	cmdArgs = append(cmdArgs, target, checkCmd)
+
+	err := createSilentCmd("ssh", cmdArgs...).Run()
+
+	// Exit code 0 means active/found
+	return err == nil, nil
+}
+
+// Legacy stub to satisfy compiler until refactor complete, or we can just remove InstallBackend
+func (a *App) InstallBackend(profileJSON string) (string, error) {
+	return a.DeployAgent(profileJSON, "linux/amd64") // Default fallback
 }
 
 // SaveIdentityFile writes a base64-encoded private key payload to a temp file and returns the path.

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import {
-    ListProfiles, SaveProfile, DeleteProfile, DetectRemoteOS,
-    StartTunnelWithProfile, InstallBackend, StopTunnel, KillPort, CheckRemoteVersion
+    ListProfiles, SaveProfile, DeleteProfile,
+    StartTunnelWithProfile
 } from '../wailsjs/go/app/App'
 import { Icon } from '../generated/icons'
 import ProfileEditor, { ConnectionProfile } from './ProfileEditor'
@@ -62,12 +62,22 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
         }
     }
 
+    useEffect(() => {
+        // Listen for backend connection status updates
+        // @ts-ignore
+        window.runtime.EventsOn("connection-status", (msg: string) => {
+            if (loading) setStatus(msg)
+        })
+        return () => {
+            // Cleanup? Wails runtime doesn't always expose easy off for specific handlers without cleanup function
+        }
+    }, [loading])
+
     const handleConnect = async (p: ConnectionProfile) => {
         setLoading(true)
-        setStatus('Checking remote...')
+        setStatus('Initializing connection...')
         setErrorWin(null)
 
-        // 1. Detect OS
         try {
             // Map to backend TunnelProfile requirements
             const backendProfile = {
@@ -86,77 +96,24 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
             }
 
             const pStr = JSON.stringify(backendProfile)
-            const osType = await DetectRemoteOS(pStr)
 
-            if (osType === 'windows') {
-                setErrorWin(`Windows detected on ${p.host}. Automatic installation is not supported.`)
-                setLoading(false)
-                return
-            }
-
-            // 1.5 Check Version
-            setStatus('Checking remote version...')
-            // We use the backendProfile pStr which has localhost/8443, but for SSH execution checks it relies on user/host/identity mostly.
-            // CheckRemoteVersion uses the same P structure.
-            const remoteVer = await CheckRemoteVersion(pStr)
-            console.log('Remote version:', remoteVer)
-
-            const EXPECTED_VERSION = "1.0.0"
-            // If unknown or mismatch, offer update
-            if (remoteVer !== EXPECTED_VERSION) {
-                // If it's "unknown", it's likely an old version (pre-1.0.0 didn't have --version)
-                // If it's something else (e.g. 0.2.0), it's also old.
-                // We prompt user.
-                const msg = remoteVer === 'unknown'
-                    ? `The remote backend version could not be determined (likely outdated). Expected ${EXPECTED_VERSION}.`
-                    : `The remote backend version is ${remoteVer}, but the desktop app expects ${EXPECTED_VERSION}.`
-
-                if (confirm(`${msg}\n\nDo you want to update the remote backend now?`)) {
-                    setStatus('Updating backend...')
-                    const installRes = await InstallBackend(pStr)
-                    if (installRes !== 'installed') {
-                        alert("Update failed: " + installRes)
-                        setLoading(false)
-                        return
-                    }
-                    setStatus('Update complete. Re-checking...')
-                } else {
-                    // User chose to skip update?
-                    // We can proceed but warn connection issues might happen.
-                    if (!confirm("Skipping update might cause issues. Continue anyway?")) {
-                        setLoading(false)
-                        return
-                    }
-                }
-            }
-
-
-            // 2. Install/Check Backend (Linux default)
-            setStatus('Ensuring backend is running...')
-            // We already checked version or updated.
-            // Now we proceed to tunnel stats.
-
-            // Note: We need to update LastUsed
+            // Update LastUsed
             p.lastUsed = Math.floor(Date.now() / 1000)
-            // Ensure ID is string
             const validP = { ...p, id: p.id || "" }
-            // @ts-ignore - mismatch
-            SaveProfile(validP) // fire and forget update
+            // @ts-ignore
+            SaveProfile(validP)
             refreshProfiles()
 
-            // Start Tunnel logic
-            setStatus('Starting tunnel...')
+            // Unified Flow: StartTunnelWithProfile handles all logic (Detect -> Deploy -> Connect)
             const res = await StartTunnelWithProfile(pStr)
 
             if (res === 'started') {
                 setStatus('Connected!')
-                // Map to App Profile type
                 onConnected({
                     user: p.user, host: p.host, localPort: p.localPort, remoteHost: 'localhost', remotePort: 8443,
                     identityFile: p.identityFile, extraArgs: p.extraArgs
                 })
             } else {
-                // Should not happen if installed correctly, but handle gracefully
                 alert("Failed to start tunnel: " + res)
             }
 

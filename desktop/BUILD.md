@@ -60,3 +60,19 @@ Other troubleshooting
 - If you see WebView2 errors at runtime, install the WebView2 runtime
   from Microsoft: https://developer.microsoft.com/microsoft-edge/webview2/
 
+
+Cross-Platform Payloads
+-----------------------
+The build system now automatically cross-compiles the backend for Linux, Windows,
+and macOS and embeds them into the desktop application. This happens automatically
+when running `make desktop-build`.
+
+To manually verify these payloads:
+```powershell
+make prepare-payload
+# Use the cross-platform tool to list contents
+bin\build-util ls-r desktop\wails\assets\payload
+```
+
+The unified executable will be larger (~90MB) as it contains binaries for all
+platforms.

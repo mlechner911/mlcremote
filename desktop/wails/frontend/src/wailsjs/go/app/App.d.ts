@@ -8,6 +8,8 @@ export function CheckRemoteVersion(arg1:string):Promise<string>;
 
 export function DeleteProfile(arg1:string):Promise<boolean>;
 
+export function DeployAgent(arg1:string,arg2:string):Promise<string>;
+
 export function DetectRemoteOS(arg1:string):Promise<string>;
 
 export function GetProfile(arg1:string):Promise<app.ConnectionProfile>;
@@ -19,6 +21,8 @@ export function HasMasterPassword():Promise<boolean>;
 export function HealthCheck(arg1:string,arg2:number):Promise<string>;
 
 export function InstallBackend(arg1:string):Promise<string>;
+
+export function IsServerRunning(arg1:string,arg2:string):Promise<boolean>;
 
 export function KillPort(arg1:number):Promise<void>;
 
