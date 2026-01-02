@@ -1,5 +1,5 @@
 import React from 'react'
-import { DirEntry, listTree, deleteFile } from '../api'
+import { DirEntry, listTree, deleteFile, makeUrl } from '../api'
 import { authedFetch } from '../utils/auth'
 import { Icon, iconForMimeOrFilename, iconForExtension } from '../generated/icons'
 import { getIcon } from '../generated/icon-helpers'
@@ -318,7 +318,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
               icon: <Icon name={getIcon('download')} />,
               action: () => {
                 const link = document.createElement('a')
-                link.href = `/api/file?path=${encodeURIComponent(contextMenu.item.path)}${localStorage.getItem('mlcremote_token') ? `&token=${encodeURIComponent(localStorage.getItem('mlcremote_token') || '')}` : ''}`
+                link.href = makeUrl(`/api/file?path=${encodeURIComponent(contextMenu.item.path)}${localStorage.getItem('mlcremote_token') ? `&token=${encodeURIComponent(localStorage.getItem('mlcremote_token') || '')}` : ''}`)
                 link.download = contextMenu.item.name
                 document.body.appendChild(link)
                 link.click()

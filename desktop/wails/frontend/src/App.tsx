@@ -4,6 +4,7 @@ import AppLock from './components/AppLock'
 import SettingsDialog from './components/SettingsDialog' // Keep existing logic if needed or integrate
 import RemoteView from './components/RemoteView'
 import { StopTunnel, HasMasterPassword } from './wailsjs/go/app/App'
+// @ts-ignore
 import spriteUrl from './generated/icons-sprite.svg'
 
 // Inject SVG sprite
@@ -22,6 +23,10 @@ export interface Profile {
   remotePort: number
   identityFile: string
   extraArgs: string[]
+  remoteOS?: string
+  remoteArch?: string
+  remoteVersion?: string
+  id?: string
 }
 
 let runtime: any = null
@@ -38,6 +43,17 @@ export default function App() {
   const [view, setView] = useState<'init' | 'locked' | 'launch' | 'remote' | 'settings'>('init')
   const [remoteUrl, setRemoteUrl] = useState('')
   const [profileName, setProfileName] = useState('')
+  const [shuttingDown, setShuttingDown] = useState(false)
+
+  useEffect(() => {
+    // Global shutdown listener
+    const rt = loadRuntimeIfPresent()
+    if (rt && rt.EventsOn) {
+      rt.EventsOn('shutdown-initiated', () => {
+        setShuttingDown(true)
+      })
+    }
+  }, [])
 
   useEffect(() => {
     // 1. Setup Runtime Events
@@ -119,6 +135,24 @@ export default function App() {
       )}
 
       {/* Settings Dialog integration if needed later */}
+
+      {shuttingDown && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          color: 'white'
+        }}>
+          <div style={{ marginBottom: 16 }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1.5s linear infinite' }}>
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+            <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+          </div>
+          <h2 style={{ margin: 0, fontWeight: 500 }}>Disconnecting...</h2>
+          <p style={{ marginTop: 8, opacity: 0.7 }}>Closing remote tunnels safely.</p>
+        </div>
+      )}
     </div>
   )
 }

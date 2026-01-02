@@ -1,9 +1,11 @@
 import { info, warn } from './utils/logger'
-import { getToken, setToken, authedFetch } from './utils/auth'
+import { getToken, setToken, authedFetch, makeUrl, setApiBaseUrl, getApiBaseUrl } from './utils/auth'
+
+export { setApiBaseUrl, getApiBaseUrl, makeUrl }
 
 export async function login(password: string): Promise<string> {
     info('POST /api/login')
-    const r = await fetch('/api/login', {
+    const r = await fetch(makeUrl('/api/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password })
@@ -80,8 +82,16 @@ export function captureTokenFromURL() {
         const t = params.get('token')
         if (t) {
             setToken(t)
-            return true
+            // Do not return true here, so we continue to check API url?
+            // actually main.tsx calls this.
         }
+
+        const api = params.get('api')
+        if (api) {
+            setApiBaseUrl(api)
+        }
+
+        return !!t
     } catch (_) { }
     return false
 }

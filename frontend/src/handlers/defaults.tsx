@@ -1,5 +1,6 @@
 import React from 'react'
 import { FileHandler, DecideOpts, ViewProps } from './types'
+import { makeUrl } from '../api'
 import TextView from '../components/TextView'
 import ImageView from '../components/ImageView'
 import PdfView from '../components/PdfView'
@@ -93,7 +94,7 @@ export const BinaryHandler: FileHandler = {
     },
     view: ({ path }: ViewProps) => (
         <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-            <a className="link" href={`/api/file?path=${encodeURIComponent(path)}`} download={path.split('/').pop()}>Download</a>
+            <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split('/').pop()}>Download</a>
             <span className="muted">(Binary or unsupported file type)</span>
         </div>
     ),

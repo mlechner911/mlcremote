@@ -13,17 +13,20 @@ import (
 
 // ConnectionProfile represents a saved remote connection
 type ConnectionProfile struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	Color        string   `json:"color"`
-	User         string   `json:"user"`
-	Host         string   `json:"host"`
-	Port         int      `json:"port"`
-	LocalPort    int      `json:"localPort"`
-	IdentityFile string   `json:"identityFile"`
-	IsWindows    bool     `json:"isWindows"`
-	LastUsed     int64    `json:"lastUsed"`
-	ExtraArgs    []string `json:"extraArgs"`
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Color         string   `json:"color"`
+	User          string   `json:"user"`
+	Host          string   `json:"host"`
+	Port          int      `json:"port"`
+	LocalPort     int      `json:"localPort"`
+	IdentityFile  string   `json:"identityFile"`
+	IsWindows     bool     `json:"isWindows"`
+	LastUsed      int64    `json:"lastUsed"`
+	ExtraArgs     []string `json:"extraArgs"`
+	RemoteOS      string   `json:"remoteOS"`      // e.g. Linux, Darwin, Windows
+	RemoteArch    string   `json:"remoteArch"`    // e.g. amd64, arm64
+	RemoteVersion string   `json:"remoteVersion"` // e.g. 1.0.0
 }
 
 const profilesFileName = "profiles.json"

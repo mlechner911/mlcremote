@@ -1,6 +1,7 @@
 package app
 
 import (
+	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -257,6 +258,39 @@ func (a *App) DeployAgent(profileJSON string, osArch string) (string, error) {
 	mkdirArgs = append(mkdirArgs, target, mkdirCmd)
 	_ = createSilentCmd("ssh", mkdirArgs...).Run()
 
+	// 2.5 Check MD5 to skip upload if possible
+	skipBinary := false
+	localSum := fmt.Sprintf("%x", md5.Sum(binContent))
+
+	var remoteSumCmd string
+	if targetOS == "linux" {
+		remoteSumCmd = fmt.Sprintf("md5sum ~/%s/%s | awk '{print $1}'", remoteBinDir, binName)
+	} else if targetOS == "darwin" {
+		// macOS: MD5 (path) = hash
+		remoteSumCmd = fmt.Sprintf("md5 -q ~/%s/%s", remoteBinDir, binName)
+	} else if targetOS == "windows" {
+		// CertUtil Output has header, hash, footer. We need to parse.
+		// "CertUtil -hashfile path MD5"
+		// But checking regex via SSH on windows is hard.
+		// Let's rely on always copy for Windows for now to avoid complexity,
+		// or try a simple powershell one liner?
+		// Get-FileHash -Algorithm MD5 | Select -ExpandProperty Hash
+		remoteSumCmd = fmt.Sprintf("powershell -Command \"(Get-FileHash -Algorithm MD5 .mlcremote\\bin\\%s).Hash\"", binName)
+	}
+
+	if remoteSumCmd != "" {
+		sumArgs := append([]string{}, sshBaseArgs...)
+		sumArgs = append(sumArgs, target, remoteSumCmd)
+		if out, err := createSilentCmd("ssh", sumArgs...).Output(); err == nil {
+			remoteSum := strings.TrimSpace(string(out))
+			// Windows Powershell returns uppercase
+			if strings.EqualFold(remoteSum, localSum) {
+				fmt.Println("Binary up to date, skipping upload.")
+				skipBinary = true
+			}
+		}
+	}
+
 	// 3. Upload Binary
 	scpArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
 	if p.IdentityFile != "" {
@@ -264,8 +298,8 @@ func (a *App) DeployAgent(profileJSON string, osArch string) (string, error) {
 	}
 
 	// kill existing if running (agent mode cleanup or update)
-	// Linux/Mac: pkill. Windows: taskkill
-	killCmd := fmt.Sprintf("pkill -f %s || true", binName)
+	// Linux/Mac: pkill. Also try stopping systemd service to avoid restart loops.
+	killCmd := fmt.Sprintf("systemctl --user stop %s 2>/dev/null; pkill -f %s || true", ServiceName, binName)
 	if targetOS == "windows" {
 		killCmd = fmt.Sprintf("taskkill /IM %s /F || echo OK", binName)
 	}
@@ -276,30 +310,41 @@ func (a *App) DeployAgent(profileJSON string, osArch string) (string, error) {
 	// Wait buffer
 	time.Sleep(500 * time.Millisecond)
 
-	scpBinArgs := append([]string{}, scpArgs...)
-	scpBinArgs = append(scpBinArgs, binPath, fmt.Sprintf("%s:~/%s/%s", target, remoteBinDir, binName))
-	if out, err := createSilentCmd("scp", scpBinArgs...).CombinedOutput(); err != nil {
-		return "upload-failed", fmt.Errorf("scp binary failed: %s", string(out))
+	if !skipBinary {
+		scpBinArgs := append([]string{}, scpArgs...)
+		scpBinArgs = append(scpBinArgs, binPath, fmt.Sprintf("%s:~/%s/%s", target, remoteBinDir, binName))
+		if out, err := createSilentCmd("scp", scpBinArgs...).CombinedOutput(); err != nil {
+			return "upload-failed", fmt.Errorf("scp binary failed: %s", string(out))
+		}
 	}
 
 	// 3.5 Upload Frontend (Atomic Swap or Overwrite)
-	// For simplicity in Agent Mode, simple recursive copy is often okay, but let's stick to cleaning old first
-	// to avoid stale files.
+	// OPTIMIZATION: We now serve the frontend locally in the desktop app (multi-page)
+	// and point it to the remote API. So we DO NOT upload the frontend assets anymore.
+	// We only ensure the directory exists for --static-dir flag compatibility.
+	fmt.Println("Frontend upload skipped (using local desktop view).")
 
-	// Quick clean old frontend
-	cleanCmd := fmt.Sprintf("rm -rf ~/%s/*", remoteFrontendDir) // * to keep dir
-	if targetOS == "windows" {
-		cleanCmd = "del /S /Q .mlcremote\\frontend\\* || echo OK"
-	}
-	cleanArgs := append([]string{}, sshBaseArgs...)
-	cleanArgs = append(cleanArgs, target, cleanCmd)
-	_ = createSilentCmd("ssh", cleanArgs...).Run()
+	/*
+		// We want to upload 'tmp/frontend' (dir) to '~/.mlcremote' so we get '~/.mlcremote/frontend'
+		// 1. Remove old '~/.mlcremote/frontend'
+		// 2. Upload
 
-	scpFrontendArgs := append([]string{}, scpArgs...)
-	scpFrontendArgs = append(scpFrontendArgs, "-r", fmt.Sprintf("%s/.", frontendTmpDir), fmt.Sprintf("%s:~/%s", target, remoteFrontendDir))
-	if out, err := createSilentCmd("scp", scpFrontendArgs...).CombinedOutput(); err != nil {
-		return "upload-failed", fmt.Errorf("scp frontend failed: %s", string(out))
-	}
+		cleanCmd := fmt.Sprintf("rm -rf ~/%s", remoteFrontendDir) // remove the dir itself
+		if targetOS == "windows" {
+			cleanCmd = "rmdir /S /Q .mlcremote\\frontend || echo OK"
+		}
+		cleanArgs := append([]string{}, sshBaseArgs...)
+		cleanArgs = append(cleanArgs, target, cleanCmd)
+		_ = createSilentCmd("ssh", cleanArgs...).Run()
+
+		scpFrontendArgs := append([]string{}, scpArgs...)
+		// Upload directory 'frontendTmpDir' to '~/.mlcremote/' (parent)
+		scpFrontendArgs = append(scpFrontendArgs, "-r", frontendTmpDir, fmt.Sprintf("%s:~/.mlcremote/", target))
+
+		if out, err := createSilentCmd("scp", scpFrontendArgs...).CombinedOutput(); err != nil {
+			return "upload-failed", fmt.Errorf("scp frontend failed: %s", string(out))
+		}
+	*/
 
 	// 4. Create metadata file (install.json)
 	// We write this LOCALLY then upload
@@ -347,15 +392,17 @@ func (a *App) IsServerRunning(profileJSON string, osString string) (bool, error)
 
 	var checkCmd string
 
-	// 1. Logic for Linux: Preferred systemd check, fallback to pgrep
+	// 1. Logic for Linux: Check for process strictly having --no-auth
 	if targetOS == "linux" {
-		// Check systemd service first
-		checkCmd = fmt.Sprintf("systemctl --user is-active %s || pgrep -f %s", ServiceName, RemoteBinaryName)
+		// We use pgrep -f to check command line args.
+		// Regex: dev-server.*--no-auth
+		checkCmd = fmt.Sprintf("pgrep -f \"%s.*--no-auth\"", RemoteBinaryName)
 	} else if targetOS == "darwin" {
 		// MacOS: pgrep
-		checkCmd = fmt.Sprintf("pgrep -f %s", RemoteBinaryName)
+		checkCmd = fmt.Sprintf("pgrep -f \"%s.*--no-auth\"", RemoteBinaryName)
 	} else if targetOS == "windows" {
-		// Windows: tasklist
+		// Windows: tasklist doesn't show args easily, but we can assume if it's running it might be ours or legacy.
+		// For now, let's just check existence. If user hits issue on Windows, we can refine.
 		checkCmd = "tasklist /FI \"IMAGENAME eq dev-server.exe\" | findstr \"dev-server.exe\""
 	} else {
 		return false, nil
@@ -366,7 +413,7 @@ func (a *App) IsServerRunning(profileJSON string, osString string) (bool, error)
 
 	err := createSilentCmd("ssh", cmdArgs...).Run()
 
-	// Exit code 0 means active/found
+	// Exit code 0 means active/found WITH correct flags
 	return err == nil, nil
 }
 

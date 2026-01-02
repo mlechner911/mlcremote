@@ -29,8 +29,9 @@ func main() {
 		Bind: []interface{}{
 			application,
 		},
-		OnStartup:  application.Startup,
-		OnShutdown: application.Shutdown,
+		OnStartup:     application.Startup,
+		OnShutdown:    application.Shutdown,
+		OnBeforeClose: application.BeforeClose,
 	})
 
 	if err != nil {

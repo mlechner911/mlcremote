@@ -1,9 +1,10 @@
 import React from 'react'
 import { getToken } from '../utils/auth'
+import { makeUrl } from '../api'
 
 export default function ImageView({ path, onDimensions }: { path: string; onDimensions?: (w: number, h: number) => void }) {
   const token = getToken()
-  const src = `/api/file?path=${encodeURIComponent(path)}${token ? `&token=${encodeURIComponent(token)}` : ''}`
+  const src = makeUrl(`/api/file?path=${encodeURIComponent(path)}${token ? `&token=${encodeURIComponent(token)}` : ''}`)
   const [natural, setNatural] = React.useState<{ w: number; h: number } | null>(null)
   const imgRef = React.useRef<HTMLImageElement | null>(null)
 

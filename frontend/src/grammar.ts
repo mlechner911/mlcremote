@@ -7,7 +7,7 @@ export function langForExt(ext: string) {
     case 'tsx': return L.tsx
     case 'java': return L.java
     case 'ini': return L.ini
-    case 'js':   return L.javascript
+    case 'js': return L.javascript
     case 'ts': return L.typescript
     case 'go': return L.go
     case 'php': return L.php
@@ -15,8 +15,8 @@ export function langForExt(ext: string) {
     case 'yaml': case 'yml': return L.yaml
     case 'toml': return L.toml || L.markup
     case 'md': case 'markdown': return L.markdown
-    case 'c': return L.c
-    case 'cpp': return L.cpp
+    case 'c': case 'h': return L.c
+    case 'cpp': case 'hpp': return L.cpp
     case 'py': return L.python
     case 'makefile': return L.makefile
     case 'bashrc': case 'zshrc': case 'bash_history': case 'profile': return L.bash
@@ -40,8 +40,8 @@ export function aliasForExt(ext: string) {
     case 'toml': return 'toml'
     case 'ini': return 'ini'
     case 'md': case 'markdown': return 'markdown'
-    case 'c': return 'c'
-    case 'cpp': case 'cxx': case 'c++': return 'cpp'
+    case 'c': case 'h': return 'c'
+    case 'cpp': case 'cxx': case 'c++': case 'hpp': return 'cpp'
     case 'py': return 'python'
     case 'makefile': return 'makefile'
     case 'dockerfile': return 'dockerfile'
@@ -49,7 +49,7 @@ export function aliasForExt(ext: string) {
     case 'bashrc': case 'zshrc': case 'bash_history': case 'profile': return 'bash'
     case 'xml': case 'xml-doc': return 'xml-doc'
     case 'html': case 'htm': return 'markup'
-    case 'sass': case 'scss':  return 'sass'
+    case 'sass': case 'scss': return 'sass'
     case 'sql': return 'sql'
     case 'less': case 'css': return 'css'
     default: return 'text'

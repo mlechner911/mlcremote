@@ -162,12 +162,12 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	fmt.Printf("Detected Remote: %s\n", osArch)
 
 	// 2. Check if Server is already running (Service Mode Check)
-	runtime.EventsEmit(a.ctx, "connection-status", "Checking for running server...")
-	running, err := a.IsServerRunning(profileJSON, osArch)
-	if err != nil {
-		fmt.Printf("Warning: server check failed: %v\n", err)
-		running = false
-	}
+	// FORCING AGENT MODE: We ignore existing services for now to ensure we always
+	// run the latest binary with correct flags and assets. This avoids 404s from stale installs.
+	runtime.EventsEmit(a.ctx, "connection-status", "Checking for running server... (Skipped)")
+	// running, err := a.IsServerRunning(profileJSON, osArch)
+	running := false
+	var _ = err // suppress unused var error if needed
 
 	var remoteCommand string
 	if running {
@@ -192,13 +192,12 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		// The backend flag `--no-auth` disables the token check.
 		if strings.HasPrefix(osArch, "windows") {
 			// Windows: Execute EXE directly
-			// Command: .mlcremote\bin\dev-server.exe --port 8443 --root . --static-dir .mlcremote\frontend --no-auth
-			// We use %UserProfile% or relative path if we start in Home.
-			// SSH usually starts in %UserProfile%.
-			remoteCommand = ".mlcremote\\bin\\dev-server.exe --port 8443 --root . --static-dir .mlcremote\\frontend --no-auth"
+			// Command: .mlcremote\bin\dev-server.exe --no-auth --port 8443 --root . --static-dir .mlcremote\frontend
+			remoteCommand = ".mlcremote\\bin\\dev-server.exe --no-auth --port 8443 --root . --static-dir .mlcremote\\frontend"
 		} else {
-			// Linux/Mac: Execute wrapper script
-			remoteCommand = "~/.mlcremote/run-server.sh"
+			// Linux/Mac: Execute binary directly
+			// Use relative paths from HOME (ssh default cwd) to avoid tilde expansion issues in dev-server flag parsing
+			remoteCommand = ".mlcremote/bin/dev-server --no-auth --port 8443 --root . --static-dir .mlcremote/frontend"
 		}
 	}
 
@@ -352,10 +351,17 @@ func (a *App) KillPort(port int) error {
 	var pid string
 	target := fmt.Sprintf(":%d", port)
 	for _, line := range lines {
-		if strings.Contains(line, target) && strings.Contains(line, "LISTENING") {
+		// remove LISTENING check to be locale agnostic (German Windows etc)
+		// We expect TCP lines mostly.
+		if strings.Contains(line, target) {
 			parts := strings.Fields(line)
-			if len(parts) > 0 {
+			// Windows netstat -ano lines:
+			// TCP 127.0.0.1:8443 0.0.0.0:0 LISTENING 1234
+			// Length should be at least 4. Last is PID.
+			if len(parts) >= 4 {
 				pid = parts[len(parts)-1]
+				// Filter out non-numeric PIDs if any (headers)
+				// but usually headers don't match ":8443"
 				break
 			}
 		}

@@ -31,6 +31,11 @@ ifeq ($(OS),Windows_NT)
     CLEAN_PAYLOAD_FRONTEND = powershell -noprofile -command "if (Test-Path $(DESKTOP_DIR)/wails/assets/payload/frontend-dist) { Remove-Item -Recurse -Force $(DESKTOP_DIR)/wails/assets/payload/frontend-dist }"
     MKDIR_PAYLOAD_FRONTEND = if not exist $(DESKTOP_DIR)\wails\assets\payload\frontend-dist mkdir $(DESKTOP_DIR)\wails\assets\payload\frontend-dist
     COPY_PAYLOAD_FRONTEND = powershell -noprofile -command "Copy-Item -Recurse -Force $(FRONTEND_DIR)/dist/* $(DESKTOP_DIR)/wails/assets/payload/frontend-dist/"
+    
+    # Copy frontend to desktop public/ide for local serving
+    CLEAN_DESKTOP_IDE = powershell -noprofile -command "if (Test-Path $(DESKTOP_DIR)/wails/frontend/public/ide) { Remove-Item -Recurse -Force $(DESKTOP_DIR)/wails/frontend/public/ide }"
+    MKDIR_DESKTOP_IDE = if not exist $(DESKTOP_DIR)\wails\frontend\public\ide mkdir $(DESKTOP_DIR)\wails\frontend\public\ide
+    COPY_DESKTOP_IDE = powershell -noprofile -command "Copy-Item -Recurse -Force $(FRONTEND_DIR)/dist/* $(DESKTOP_DIR)/wails/frontend/public/ide/"
 else
     EXT =
     ENSURE_BIN = mkdir -p $(BIN_DIR)
@@ -44,6 +49,10 @@ else
     CLEAN_PAYLOAD_FRONTEND = rm -rf $(DESKTOP_DIR)/wails/assets/payload/frontend-dist
     MKDIR_PAYLOAD_FRONTEND = mkdir -p $(DESKTOP_DIR)/wails/assets/payload/frontend-dist
     COPY_PAYLOAD_FRONTEND = cp -r $(FRONTEND_DIR)/dist/* $(DESKTOP_DIR)/wails/assets/payload/frontend-dist/
+    
+    CLEAN_DESKTOP_IDE = rm -rf $(DESKTOP_DIR)/wails/frontend/public/ide
+    MKDIR_DESKTOP_IDE = mkdir -p $(DESKTOP_DIR)/wails/frontend/public/ide
+    COPY_DESKTOP_IDE = cp -r $(FRONTEND_DIR)/dist/* $(DESKTOP_DIR)/wails/frontend/public/ide/
 endif
 
 .PHONY: help backend frontend run docs install connect clean desktop-dev desktop-build desktop-dist desktop-dist-zip dist docker-build docker-run test-env-up test-env-down build-linux backend-linux-payload prepare-payload
@@ -91,6 +100,12 @@ prepare-payload: backend-linux-payload backend-windows-payload backend-darwin-am
 	@$(CLEAN_PAYLOAD_FRONTEND)
 	@$(MKDIR_PAYLOAD_FRONTEND)
 	@$(COPY_PAYLOAD_FRONTEND)
+	
+	@echo "Updating desktop local IDE assets..."
+	@$(CLEAN_DESKTOP_IDE)
+	@$(MKDIR_DESKTOP_IDE)
+	@$(COPY_DESKTOP_IDE)
+	
 	@echo "Building verification tool..."
 	@$(ENSURE_BIN)
 	@cd $(BACKEND_DIR) && go build -o ../$(BIN_DIR)/build-util$(EXT) ./cmd/build-util

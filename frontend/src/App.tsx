@@ -171,8 +171,35 @@ export default function App() {
         if (j && typeof j.allowChangeRoot !== 'undefined') setCanChangeRoot(!!j.allowChangeRoot)
       })
       .catch(() => setSettings({ allowDelete: false, defaultShell: 'bash' }))
-    // load persisted prefs handled by LocalStore initializers
+
+    // Restore state if profileId is present
+    const params = new URLSearchParams(window.location.search)
+    const pid = params.get('profileId')
+    if (pid) {
+      console.log("Restoring state for profile:", pid)
+      try {
+        const saved = localStorage.getItem(`workspace_state_${pid}`)
+        if (saved) {
+          const state = JSON.parse(saved)
+          if (state.panes) setPanes(state.panes)
+          if (state.layout) setLayout(state.layout)
+          if (state.activePaneId) setActivePaneId(state.activePaneId)
+        }
+      } catch (e) {
+        console.error("Failed to restore workspace state", e)
+      }
+    }
   }, [])
+
+  // Persist state when it changes
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const pid = params.get('profileId')
+    if (pid) {
+      const state = { panes, layout, activePaneId }
+      localStorage.setItem(`workspace_state_${pid}`, JSON.stringify(state))
+    }
+  }, [panes, layout, activePaneId])
 
   // apply theme whenever it changes
   React.useEffect(() => {

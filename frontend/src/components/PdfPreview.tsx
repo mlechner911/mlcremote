@@ -1,5 +1,5 @@
 import React from 'react'
-import { getToken, authedFetch } from '../utils/auth'
+import { getToken, authedFetch, makeUrl } from '../utils/auth'
 
 export default function PdfPreview({ path }: { path: string }) {
   const [pdfLib, setPdfLib] = React.useState<any | null>(null)
@@ -85,7 +85,7 @@ export default function PdfPreview({ path }: { path: string }) {
         <button className="btn" onClick={() => setPageNum(p => Math.max(1, p - 1))} disabled={pageNum <= 1}>Prev</button>
         <span>{pageNum}{numPages ? ` / ${numPages} ` : ''}</span>
         <button className="btn" onClick={() => setPageNum(p => Math.min((numPages || Infinity), p + 1))} disabled={numPages ? pageNum >= numPages : false}>Next</button>
-        <a className="link" href={`/ api / file ? path = ${encodeURIComponent(path)} `} download={path.split('/').pop()}>Download</a>
+        <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split('/').pop()}>Download</a>
       </div>
       <div style={{ marginTop: 8 }}>
         {(!pdfDoc) ? <div className="muted">No preview</div> : <canvas ref={canvasRef} style={{ maxWidth: '100%', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }} />}

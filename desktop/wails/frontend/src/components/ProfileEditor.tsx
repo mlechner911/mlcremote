@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Icon } from '../generated/icons'
 
 // Define the shape locally until generated bindings are available/updated
+// should come from swagger at some point..
 export interface ConnectionProfile {
     id?: string
     name: string
@@ -14,6 +15,9 @@ export interface ConnectionProfile {
     isWindows: boolean
     lastUsed: number
     extraArgs: string[]
+    remoteOS?: string
+    remoteArch?: string
+    remoteVersion?: string
 }
 
 type int = number

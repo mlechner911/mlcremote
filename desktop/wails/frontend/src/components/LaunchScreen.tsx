@@ -108,10 +108,36 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
             const res = await StartTunnelWithProfile(pStr)
 
             if (res === 'started') {
+                setStatus('Connected! Updating metadata...')
+
+                try {
+                    // Update metadata
+                    // @ts-ignore
+                    const osArch = await window.runtime.Call('DetectRemoteOS', pStr)
+                    // @ts-ignore
+                    const ver = await window.runtime.Call('CheckRemoteVersion', pStr)
+
+                    if (osArch) {
+                        const [os, arch] = osArch.split(' ')
+                        p.remoteOS = os
+                        p.remoteArch = arch
+                    }
+                    if (ver) p.remoteVersion = ver
+
+                    const validP = { ...p, id: p.id || "" }
+                    // @ts-ignore
+                    SaveProfile(validP)
+                    refreshProfiles()
+                } catch (e) {
+                    console.error("Failed to update metadata", e)
+                }
+
                 setStatus('Connected!')
                 onConnected({
                     user: p.user, host: p.host, localPort: p.localPort, remoteHost: 'localhost', remotePort: 8443,
-                    identityFile: p.identityFile, extraArgs: p.extraArgs
+                    identityFile: p.identityFile, extraArgs: p.extraArgs,
+                    remoteOS: p.remoteOS, remoteArch: p.remoteArch, remoteVersion: p.remoteVersion,
+                    id: p.id
                 })
             } else {
                 alert("Failed to start tunnel: " + res)
@@ -128,16 +154,21 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
     const selectedProfile = profiles.find(p => p.id === selectedId)
 
     return (
-        <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-root)', color: 'var(--text-primary)' }}>
+        <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-root)', color: 'var(--text-primary)', cursor: loading ? 'wait' : 'default' }}>
             {/* Sidebar */}
-            <div style={{ width: 280, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg-panel)' }}>
+            <div style={{
+                width: 280, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column',
+                background: 'var(--bg-panel)',
+                opacity: loading ? 0.6 : 1,
+                pointerEvents: loading ? 'none' : 'auto'
+            }}>
                 <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ margin: 0 }}>Connections</h3>
                     <button className="link icon-btn" onClick={() => { setSelectedId(null); setEditing(true) }} title="New Connection">
                         <Icon name="icon-plus" size={16} />
                     </button>
                 </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: 8, minHeight: 0 }}>
                     {profiles.map(p => (
                         <div key={p.id}
                             onClick={() => { setSelectedId(p.id!); setEditing(false) }}
@@ -149,7 +180,19 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
                             <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color || '#666' }} />
                             <div style={{ flex: 1, overflow: 'hidden' }}>
                                 <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                                <div className="muted" style={{ fontSize: 11 }}>{p.user}@{p.host}</div>
+                                <div className="muted" style={{ fontSize: 11 }}>
+                                    {p.user}@{p.host}
+                                    {p.remoteOS && <span style={{ marginLeft: 6, opacity: 0.8 }}> • {p.remoteOS} {p.remoteVersion && `v${p.remoteVersion}`}</span>}
+                                </div>
+                            </div>
+                            <div className="muted" style={{ fontSize: 10, minWidth: 60, textAlign: 'right' }}>
+                                {p.lastUsed > 0 ? (() => {
+                                    const diff = Math.floor(Date.now() / 1000) - p.lastUsed
+                                    if (diff < 60) return 'Just now'
+                                    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+                                    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+                                    return `${Math.floor(diff / 86400)}d ago`
+                                })() : ''}
                             </div>
                             <button className="icon-btn link" style={{ opacity: 0.5 }} onClick={(e) => handleDelete(p.id!, e)}>
                                 <Icon name="icon-trash" size={14} />
@@ -170,53 +213,63 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
             </div>
 
             {/* Main Content */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                {editing || !selectedId ? (
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: '100%', maxWidth: 500 }}>
-                            <ProfileEditor
-                                profile={selectedProfile}
-                                onSave={handleSave}
-                                onCancel={() => { setEditing(false); if (profiles.length > 0) setSelectedId(profiles[0].id!) }}
-                            />
-                        </div>
-                    </div>
-                ) : selectedProfile ? (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center' }}>
-                        <div style={{ marginBottom: 32, transform: 'scale(1.5)' }}>
-                            <div style={{ width: 64, height: 64, borderRadius: '50%', background: selectedProfile.color, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.3)', color: 'white' }}>
-                                <Icon name="icon-server" size={32} />
+            <div style={{
+                flex: 1, display: 'flex', flexDirection: 'column', position: 'relative',
+                backgroundImage: 'url(/startup_hero.png)', backgroundSize: 'cover', backgroundPosition: 'center'
+            }}>
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(0px)' }} />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(13, 17, 23, 0.95), rgba(22, 27, 34, 0.8))' }} />
+
+                <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    {editing || !selectedId ? (
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: '100%', maxWidth: 500 }}>
+                                <ProfileEditor
+                                    profile={selectedProfile}
+                                    onSave={handleSave}
+                                    onCancel={() => { setEditing(false); if (profiles.length > 0) setSelectedId(profiles[0].id!) }}
+                                />
                             </div>
                         </div>
-                        <h1 style={{ margin: '0 0 8px 0' }}>{selectedProfile.name}</h1>
-                        <div className="muted" style={{ fontSize: 16, marginBottom: 32 }}>{selectedProfile.user}@{selectedProfile.host}</div>
-
-                        {status && <div style={{ marginBottom: 20, color: 'var(--accent)' }}>{status}</div>}
-
-                        {errorWin && (
-                            <div style={{ background: '#3a1c1c', border: '1px solid #751b1b', color: '#ffadad', padding: 16, borderRadius: 6, marginBottom: 20, maxWidth: 400, textAlign: 'left' }}>
-                                <strong>{errorWin}</strong>
-                                <p style={{ fontSize: 13, marginTop: 8 }}>
-                                    To allow remote connections, please download and run the
-                                    <code>MLCRemote-Service.exe</code> on the Windows host.
-                                </p>
+                    ) : selectedProfile ? (
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center' }}>
+                            <div style={{ marginBottom: 32, transform: 'scale(1.5)' }}>
+                                <div style={{ width: 64, height: 64, borderRadius: '50%', background: selectedProfile.color, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', color: 'white', border: '2px solid rgba(255,255,255,0.1)' }}>
+                                    <Icon name="icon-server" size={32} />
+                                </div>
                             </div>
-                        )}
+                            <h1 style={{ margin: '0 0 8px 0', textShadow: '0 2px 4px rgba(0,0,0,0.5)', color: '#fff' }}>{selectedProfile.name}</h1>
+                            <div className="muted" style={{ fontSize: 16, marginBottom: 32, color: 'rgba(255,255,255,0.7)' }}>{selectedProfile.user}@{selectedProfile.host}</div>
 
-                        <div style={{ display: 'flex', gap: 16 }}>
-                            <button className="btn primary" style={{ padding: '12px 32px', fontSize: 16 }} onClick={() => handleConnect(selectedProfile)} disabled={loading}>
-                                {loading ? 'Connecting...' : 'Connect'}
-                            </button>
-                            <button className="btn" style={{ padding: '12px 24px' }} onClick={() => setEditing(true)} disabled={loading}>
-                                Edit
-                            </button>
+                            {status && <div style={{ marginBottom: 20, color: '#ff7b72', background: 'rgba(0,0,0,0.4)', padding: '4px 12px', borderRadius: 100 }}>{status}</div>}
+
+                            {errorWin && (
+                                <div style={{ background: 'rgba(58, 28, 28, 0.9)', border: '1px solid #751b1b', color: '#ffadad', padding: 16, borderRadius: 6, marginBottom: 20, maxWidth: 400, textAlign: 'left', backdropFilter: 'blur(4px)' }}>
+                                    <strong>{errorWin}</strong>
+                                    <p style={{ fontSize: 13, marginTop: 8 }}>
+                                        To allow remote connections, please download and run the
+                                        <code>MLCRemote-Service.exe</code> on the Windows host.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', gap: 16 }}>
+                                <button className="btn primary" style={{ padding: '12px 32px', fontSize: 16, boxShadow: '0 4px 12px rgba(0,123,255,0.3)' }} onClick={() => handleConnect(selectedProfile)} disabled={loading}>
+                                    {loading ? 'Connecting...' : 'Connect'}
+                                </button>
+                                <button className="btn" style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} onClick={() => setEditing(true)} disabled={loading}>
+                                    Edit
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                ) : (
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="muted">
-                        Select a connection or create a new one
-                    </div>
-                )}
+                    ) : (
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="muted">
+                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px 24px', borderRadius: 100, backdropFilter: 'blur(4px)', color: 'rgba(255,255,255,0.6)' }}>
+                                Select a connection or create a new one
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     )

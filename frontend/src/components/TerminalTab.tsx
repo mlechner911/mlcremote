@@ -1,5 +1,5 @@
 import React from 'react'
-import { statPath } from '../api'
+import { statPath, getApiBaseUrl } from '../api'
 import { getToken, authedFetch } from '../utils/auth'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -83,13 +83,27 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
         sessionId = j.id
         const token = localStorage.getItem('mlcremote_token')
         const q = token ? `?session=${encodeURIComponent(sessionId!)}&token=${encodeURIComponent(token)}` : `?session=${encodeURIComponent(sessionId!)}`
-        const socket = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/ws/terminal${q}`)
+
+        let wsUrl = location.origin.replace(/^http/, 'ws')
+        const apiBase = getApiBaseUrl()
+        if (apiBase) {
+          wsUrl = apiBase.replace(/^http/, 'ws')
+        }
+
+        const socket = new WebSocket(`${wsUrl}/ws/terminal${q}`)
         attachWS(socket, 'Connected to shell session: ' + sessionId)
       }).catch(() => {
         // fallback to ephemeral connection
         const token = localStorage.getItem('mlcremote_token')
         const q = token ? `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(path)}&token=${encodeURIComponent(token)}` : `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(path)}`
-        const socket = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/ws/terminal${q}`)
+
+        let wsUrl = location.origin.replace(/^http/, 'ws')
+        const apiBase = getApiBaseUrl()
+        if (apiBase) {
+          wsUrl = apiBase.replace(/^http/, 'ws')
+        }
+
+        const socket = new WebSocket(`${wsUrl}/ws/terminal${q}`)
         attachWS(socket, 'Connected to ephemeral shell')
       })
     })

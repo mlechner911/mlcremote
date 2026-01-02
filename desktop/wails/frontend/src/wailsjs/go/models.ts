@@ -12,6 +12,9 @@ export namespace app {
 	    isWindows: boolean;
 	    lastUsed: number;
 	    extraArgs: string[];
+	    remoteOS: string;
+	    remoteArch: string;
+	    remoteVersion: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ConnectionProfile(source);
@@ -30,6 +33,9 @@ export namespace app {
 	        this.isWindows = source["isWindows"];
 	        this.lastUsed = source["lastUsed"];
 	        this.extraArgs = source["extraArgs"];
+	        this.remoteOS = source["remoteOS"];
+	        this.remoteArch = source["remoteArch"];
+	        this.remoteVersion = source["remoteVersion"];
 	    }
 	}
 

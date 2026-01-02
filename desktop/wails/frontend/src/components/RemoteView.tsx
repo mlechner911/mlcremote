@@ -3,10 +3,14 @@ import React from 'react'
 interface RemoteViewProps {
     url: string
     profileName: string
+    profileId?: string
     onDisconnect: () => void
 }
 
-export default function RemoteView({ url, profileName, onDisconnect }: RemoteViewProps) {
+export default function RemoteView({ url, profileName, profileId, onDisconnect }: RemoteViewProps) {
+    // Append profileId to URL if present
+    const targetSrc = `/ide/index.html?api=${encodeURIComponent(url)}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
             {/* Header */}
@@ -47,7 +51,7 @@ export default function RemoteView({ url, profileName, onDisconnect }: RemoteVie
             {/* Iframe Content */}
             <div style={{ flex: 1, position: 'relative' }}>
                 <iframe
-                    src={url}
+                    src={targetSrc}
                     style={{
                         width: '100%',
                         height: '100%',

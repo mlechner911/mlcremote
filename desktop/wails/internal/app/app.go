@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"sync"
 	"time"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -32,11 +34,37 @@ func (a *App) Startup(ctx context.Context) {
 }
 
 // Shutdown is called at application termination
+// Shutdown is called at application termination
 func (a *App) Shutdown(ctx context.Context) {
+	a.cleanup()
+}
+
+// BeforeClose is called when the user tries to close the window
+func (a *App) BeforeClose(ctx context.Context) (prevent bool) {
+	a.tunnelMu.Lock()
+	running := a.tunnelCmd != nil && a.tunnelCmd.Process != nil
+	a.tunnelMu.Unlock()
+
+	if running {
+		runtime.EventsEmit(ctx, "shutdown-initiated")
+		go func() {
+			// Give UI a moment to show "Disconnecting..."
+			time.Sleep(500 * time.Millisecond)
+			a.cleanup()
+			runtime.Quit(ctx)
+		}()
+		return true // Prevent immediate close
+	}
+	return false // Allow close
+}
+
+func (a *App) cleanup() {
 	a.tunnelMu.Lock()
 	defer a.tunnelMu.Unlock()
 	if a.tunnelCmd != nil && a.tunnelCmd.Process != nil {
+		fmt.Println("Gracefully stopping tunnel...")
 		_ = a.tunnelCmd.Process.Kill()
+		a.tunnelCmd = nil
 	}
 }
 
