@@ -93,7 +93,16 @@ func (m *Manager) SaveProfile(p ConnectionProfile) (string, error) {
 	}
 
 	if p.ID == "" {
-		p.ID = uuid.NewString()
+		// Check for existing profile with same User, Host, Port
+		for _, existing := range profiles {
+			if existing.User == p.User && existing.Host == p.Host && existing.Port == p.Port {
+				p.ID = existing.ID
+				break
+			}
+		}
+		if p.ID == "" {
+			p.ID = uuid.NewString()
+		}
 	}
 	p.LastUsed = time.Now().Unix()
 
@@ -109,6 +118,13 @@ func (m *Manager) SaveProfile(p ConnectionProfile) (string, error) {
 	found := false
 	for i, existing := range profiles {
 		if existing.ID == p.ID {
+			// Merge: keep some fields from existing if they are more complete
+			if p.Name == "" {
+				p.Name = existing.Name
+			}
+			if p.Color == "" {
+				p.Color = existing.Color
+			}
 			profiles[i] = p
 			found = true
 			break
@@ -174,4 +190,59 @@ func (m *Manager) GetProfile(id string) (*ConnectionProfile, error) {
 		}
 	}
 	return nil, fmt.Errorf("profile not found")
+}
+
+// DeduplicateProfiles removes entries with identical User, Host, Port
+func (m *Manager) DeduplicateProfiles() (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	path, err := m.getProfilesPath()
+	if err != nil {
+		return 0, err
+	}
+
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+
+	var profiles []ConnectionProfile
+	if err := json.Unmarshal(data, &profiles); err != nil {
+		return 0, err
+	}
+
+	unique := []ConnectionProfile{}
+	seen := make(map[string]bool)
+	removed := 0
+
+	// Keep the most recently used one for each User@Host:Port
+	// Sort by LastUsed descending first
+	for i := 0; i < len(profiles); i++ {
+		for j := i + 1; j < len(profiles); j++ {
+			if profiles[i].LastUsed < profiles[j].LastUsed {
+				profiles[i], profiles[j] = profiles[j], profiles[i]
+			}
+		}
+	}
+
+	for _, p := range profiles {
+		key := fmt.Sprintf("%s@%s:%d", p.User, p.Host, p.Port)
+		if seen[key] {
+			removed++
+			continue
+		}
+		seen[key] = true
+		unique = append(unique, p)
+	}
+
+	if removed > 0 {
+		data, _ := json.MarshalIndent(unique, "", "  ")
+		_ = os.WriteFile(path, data, 0644)
+	}
+
+	return removed, nil
 }

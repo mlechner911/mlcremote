@@ -586,13 +586,12 @@ export default function App() {
             </svg>
           </button>
 
-          <button className="link icon-btn" aria-label={t('settings')} title={t('settings')} onClick={() => setSettingsOpen(s => !s)}><Icon name={getIcon('settings')} title={t('settings')} size={16} /></button>
-
           {layout.type !== 'leaf' && (
             <button className="link icon-btn" title="Close Active Pane" aria-label="Close Active Pane" onClick={() => closePane(activePaneId)} style={{ marginLeft: 4 }}>
               <Icon name={getIcon('close')} size={16} />
             </button>
           )}
+          <button className="link icon-btn" aria-label={t('settings')} title={t('settings')} onClick={() => setSettingsOpen(s => !s)}><Icon name={getIcon('settings')} title={t('settings')} size={16} /></button>
         </div>
         {settingsOpen && (
           <SettingsPopup

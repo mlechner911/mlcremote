@@ -10,6 +10,10 @@ export function CheckRemoteVersion(arg1) {
   return window['go']['app']['App']['CheckRemoteVersion'](arg1);
 }
 
+export function DeduplicateProfiles() {
+  return window['go']['app']['App']['DeduplicateProfiles']();
+}
+
 export function DeleteProfile(arg1) {
   return window['go']['app']['App']['DeleteProfile'](arg1);
 }

@@ -6,6 +6,8 @@ export function CheckBackend(arg1:string):Promise<boolean>;
 
 export function CheckRemoteVersion(arg1:string):Promise<string>;
 
+export function DeduplicateProfiles():Promise<number>;
+
 export function DeleteProfile(arg1:string):Promise<boolean>;
 
 export function DeployAgent(arg1:string,arg2:string):Promise<string>;

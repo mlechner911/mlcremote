@@ -35,6 +35,7 @@ func NewApp(payload fs.FS) *App {
 // Startup is called at application startup
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
+	_, _ = a.Config.DeduplicateProfiles()
 }
 
 // Shutdown is called at application termination
@@ -64,6 +65,11 @@ func (a *App) BeforeClose(ctx context.Context) (prevent bool) {
 func (a *App) cleanup() {
 	fmt.Println("Gracefully stopping tunnel...")
 	_, _ = a.SSH.StopTunnel()
+}
+
+// DeduplicateProfiles removes entries with identical User, Host, Port
+func (a *App) DeduplicateProfiles() (int, error) {
+	return a.Config.DeduplicateProfiles()
 }
 
 // HealthCheck checks whether the backend at the given URL responds to /health
