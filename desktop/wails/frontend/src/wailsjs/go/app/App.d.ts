@@ -33,6 +33,8 @@ export function KillPort(arg1:number):Promise<void>;
 
 export function ListProfiles():Promise<Array<config.ConnectionProfile>>;
 
+export function ProbeConnection(arg1:app.SSHDeployRequest):Promise<string>;
+
 export function SaveIdentityFile(arg1:string,arg2:string):Promise<string>;
 
 export function SaveProfile(arg1:config.ConnectionProfile):Promise<string>;

@@ -18,7 +18,7 @@ export const translations = {
         port: "SSH Port",
         localPort: "Local Tunnel Port",
         identityFile: "Identity File (Optional)",
-        name: "Name (Optional)",
+        name: "Name",
         color: "Color",
         search_profiles: "Search profiles...",
         no_profiles: "No profiles found. Create one to get started!",
@@ -62,7 +62,12 @@ export const translations = {
         error_unreachable: "Could not connect to remote server. Please make sure the server is reachable and check the IP address.",
         remove_password: "Remove Password",
         remove_password_confirm: "Are you sure you want to remove the master password? Your profiles will not be protected.",
-        password_removed: "Password removed"
+        password_removed: "Password removed",
+        test_connection: "Test Connection",
+        connection_ok: "Connection verified!",
+        auth_failed_deploy: "Authentication failed. Install SSH key?",
+        installing_key: "Installing SSH key...",
+        key_installed: "SSH Key installed successfully!"
     },
     de: {
         app_title: "MLCRemote Desktop",
@@ -83,7 +88,7 @@ export const translations = {
         port: "SSH Port",
         localPort: "Lokaler Tunnel-Port",
         identityFile: "Identitätsdatei (Optional)",
-        name: "Name (Optional)",
+        name: "Name",
         color: "Farbe",
         search_profiles: "Profile suchen...",
         no_profiles: "Keine Profile gefunden. Erstellen Sie eines, um loszulegen!",
@@ -127,7 +132,12 @@ export const translations = {
         error_unreachable: "Verbindung zum Remote-Server fehlgeschlagen. Bitte stellen Sie sicher, dass der Server erreichbar ist, und überprüfen Sie die IP-Adresse.",
         remove_password: "Passwort entfernen",
         remove_password_confirm: "Sind Sie sicher, dass Sie das Master-Passwort entfernen möchten? Ihre Profile werden nicht mehr geschützt sein.",
-        password_removed: "Passwort entfernt"
+        password_removed: "Passwort entfernt",
+        test_connection: "Verbindung testen",
+        connection_ok: "Verbindung verifiziert!",
+        auth_failed_deploy: "Authentifizierung fehlgeschlagen. SSH-Schlüssel installieren?",
+        installing_key: "Installiere SSH-Schlüssel...",
+        key_installed: "SSH-Schlüssel erfolgreich installiert!"
     },
     es: {
         app_title: "MLCRemote Desktop",
@@ -148,7 +158,7 @@ export const translations = {
         port: "Puerto SSH",
         localPort: "Puerto de Túnel Local",
         identityFile: "Archivo de Identidad (Opcional)",
-        name: "Nombre (Opcional)",
+        name: "Nombre",
         color: "Color",
         search_profiles: "Buscar perfiles...",
         no_profiles: "No se encontraron perfiles. ¡Crea uno para comenzar!",
@@ -192,7 +202,12 @@ export const translations = {
         error_unreachable: "No se pudo conectar al servidor remoto. Asegúrese de que el servidor sea accesible y verifique la dirección IP.",
         remove_password: "Eliminar contraseña",
         remove_password_confirm: "¿Está seguro de que desea eliminar la contraseña maestra? Sus perfiles no estarán protegidos.",
-        password_removed: "Contraseña eliminada"
+        password_removed: "Contraseña eliminada",
+        test_connection: "Prueba de conexión",
+        connection_ok: "¡Conexión verificada!",
+        auth_failed_deploy: "Autenticación fallida. ¿Instalar clave SSH?",
+        installing_key: "Instalando clave SSH...",
+        key_installed: "¡Clave SSH instalada con éxito!"
     },
     fr: {
         app_title: "MLCRemote Desktop",
@@ -213,7 +228,7 @@ export const translations = {
         port: "Port SSH",
         localPort: "Port du Tunnel Local",
         identityFile: "Fichier d'Identité (Optionnel)",
-        name: "Nom (Optionnel)",
+        name: "Nom",
         color: "Couleur",
         search_profiles: "Rechercher des profils...",
         no_profiles: "Aucun profil trouvé. Créez-en un pour commencer !",
@@ -256,7 +271,12 @@ export const translations = {
         error_unknown_host: "Serveur introuvable. Veuillez vérifier le nom d'hôte ou vos paramètres DNS.",
         remove_password: "Supprimer le mot de passe",
         remove_password_confirm: "Êtes-vous sûr de vouloir supprimer le mot de passe maître ? Vos profils ne seront plus protégés.",
-        password_removed: "Mot de passe supprimé"
+        password_removed: "Mot de passe supprimé",
+        test_connection: "Tester la connexion",
+        connection_ok: "Connexion vérifiée !",
+        auth_failed_deploy: "Authentification échouée. Installer la clé SSH ?",
+        installing_key: "Installation de la clé SSH...",
+        key_installed: "Clé SSH installée avec succès !"
     }
 };
 
