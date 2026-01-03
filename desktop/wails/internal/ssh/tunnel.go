@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -57,6 +58,11 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 	}
 	if profile.RemoteHost == "" {
 		profile.RemoteHost = "localhost"
+	}
+
+	// Verify DNS
+	if _, err := net.LookupHost(profile.Host); err != nil {
+		return "unknown-host", nil
 	}
 
 	// Kill existing on 8443?

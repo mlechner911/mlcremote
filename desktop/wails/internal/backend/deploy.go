@@ -38,6 +38,9 @@ func (m *Manager) DetectRemoteOS(profileJSON string) (string, error) {
 
 	outBytes, err := createSilentCmd("ssh", cmdArgs...).Output()
 	if err != nil {
+		if strings.Contains(err.Error(), "exit status 255") {
+			return "", fmt.Errorf("ssh-unreachable: %w", err)
+		}
 		return "", fmt.Errorf("ssh probe failed: %w", err)
 	}
 	output := strings.TrimSpace(string(outBytes))

@@ -5,10 +5,11 @@ interface RemoteViewProps {
     url: string
     profileName: string
     profileId?: string
+    profileColor?: string
     onDisconnect: () => void
 }
 
-export default function RemoteView({ url, profileName, profileId, onDisconnect }: RemoteViewProps) {
+export default function RemoteView({ url, profileName, profileId, profileColor, onDisconnect }: RemoteViewProps) {
     const { t } = useI18n()
     // Append profileId to URL if present
     const targetSrc = `/ide/index.html?api=${encodeURIComponent(url)}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
@@ -27,6 +28,13 @@ export default function RemoteView({ url, profileName, profileId, onDisconnect }
                 userSelect: 'none'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {profileColor && (
+                        <div style={{
+                            width: 12, height: 12, borderRadius: 3,
+                            backgroundColor: profileColor,
+                            boxShadow: '0 0 8px ' + profileColor + '44'
+                        }} />
+                    )}
                     <span style={{ fontWeight: 'bold' }}>MLCRemote</span>
                     <span style={{ color: '#9ca3af' }}>|</span>
                     <span style={{ color: '#e5e7eb' }}>{t('connected_to')}: {profileName}</span>

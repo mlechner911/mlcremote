@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/config"
@@ -31,6 +32,11 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	// We might want to ensure ID is set if missing, but LaunchScreen usually handles it.
 	if _, err := a.Config.SaveProfile(cp); err != nil {
 		fmt.Printf("Warning: Failed to save profile: %v\n", err)
+	}
+
+	// 2.5 Verify DNS (Fail fast)
+	if _, err := net.LookupHost(cp.Host); err != nil {
+		return "unknown-host", fmt.Errorf("unknown host: %w", err)
 	}
 
 	// 3. Detect Remote OS

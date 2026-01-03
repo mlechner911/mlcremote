@@ -23,6 +23,14 @@ type App struct {
 	Backend *backend.Manager
 }
 
+type SSHDeployRequest struct {
+	Host         string `json:"host"`
+	User         string `json:"user"`
+	Port         int    `json:"port"`
+	Password     string `json:"password"`
+	IdentityFile string `json:"identityFile"`
+}
+
 // NewApp creates a new App application struct
 func NewApp(payload fs.FS) *App {
 	return &App{
@@ -70,6 +78,10 @@ func (a *App) cleanup() {
 // DeduplicateProfiles removes entries with identical User, Host, Port
 func (a *App) DeduplicateProfiles() (int, error) {
 	return a.Config.DeduplicateProfiles()
+}
+
+func (a *App) DeploySSHKey(req SSHDeployRequest) error {
+	return a.SSH.DeployPublicKey(req.Host, req.User, req.Port, req.Password, req.IdentityFile)
 }
 
 // HealthCheck checks whether the backend at the given URL responds to /health

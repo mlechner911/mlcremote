@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import {
     ListProfiles, SaveProfile, DeleteProfile,
-    StartTunnelWithProfile, DetectRemoteOS, CheckRemoteVersion
+    StartTunnelWithProfile, HasMasterPassword, DetectRemoteOS, CheckRemoteVersion, DeploySSHKey
 } from '../wailsjs/go/app/App'
 import { Icon } from '../generated/icons'
 import ProfileEditor, { ConnectionProfile } from './ProfileEditor'
 import { Profile } from '../App' // Legacy Profile type if needed, but we use ConnectionProfile mostly
-
 import { useI18n } from '../utils/i18n'
+import PasswordDialog from './PasswordDialog'
+import AboutDialog from './AboutDialog'
 
 interface LaunchScreenProps {
     onConnected: (p: Profile) => void
-    onLocked?: () => void
-    onOpenSettings?: () => void
+    onLocked: () => void
+    onOpenSettings: () => void
 }
 
 export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: LaunchScreenProps) {
@@ -23,11 +24,17 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
     const [loading, setLoading] = useState(false)
     const [status, setStatus] = useState('')
     const [errorWin, setErrorWin] = useState<string | null>(null) // For Windows install prompt
+    const [hasPassword, setHasPassword] = useState(false)
+    const [promptDeploy, setPromptDeploy] = useState<ConnectionProfile | null>(null)
+    const [deployLoading, setDeployLoading] = useState(false)
+    const [showAbout, setShowAbout] = useState(false)
 
     // Load profiles on mount
     const refreshProfiles = async () => {
         try {
             const list = await ListProfiles()
+            const hasPass = await HasMasterPassword()
+            setHasPassword(hasPass)
             // sort by lastUsed desc
             list.sort((a: ConnectionProfile, b: ConnectionProfile) => b.lastUsed - a.lastUsed)
             setProfiles(list)
@@ -143,17 +150,60 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                     user: p.user, host: p.host, localPort: p.localPort, remoteHost: 'localhost', remotePort: 8443,
                     identityFile: p.identityFile, extraArgs: p.extraArgs,
                     remoteOS: p.remoteOS, remoteArch: p.remoteArch, remoteVersion: p.remoteVersion,
-                    id: p.id
+                    id: p.id, color: p.color
                 })
             } else {
-                alert(t('status_failed') + ": " + res)
+                // Check if it's an auth error
+                if (res.toLowerCase().includes('permission denied') || res.toLowerCase().includes('publickey')) {
+                    setPromptDeploy(p)
+                    setStatus('')
+                } else if (res === 'unknown-host') {
+                    alert(t('error_unknown_host'))
+                    setStatus('')
+                } else {
+                    alert(t('status_failed') + ": " + res)
+                }
             }
 
         } catch (e: any) {
             console.error("Connection failed", e)
-            setStatus(t('status_failed') + ': ' + (e?.message || String(e)))
+            const msg = (e?.message || String(e)).toLowerCase()
+            if (msg.includes('permission denied') || msg.includes('publickey')) {
+                setPromptDeploy(p)
+                setStatus('')
+            } else if (msg.includes('unknown-host')) {
+                alert(t('error_unknown_host'))
+                setStatus('')
+            } else if (msg.includes('ssh-unreachable')) {
+                alert(t('error_unreachable'))
+                setStatus('')
+            } else {
+                setStatus(t('status_failed') + ': ' + (e?.message || String(e)))
+            }
         } finally {
             setLoading(false)
+        }
+    }
+
+    const onDeployKey = async (password: string) => {
+        if (!promptDeploy) return
+        setDeployLoading(true)
+        try {
+            await DeploySSHKey({
+                host: promptDeploy.host,
+                user: promptDeploy.user,
+                port: promptDeploy.port || 22,
+                password: password,
+                identityFile: promptDeploy.identityFile
+            })
+            // Success! Clear prompt and retry
+            const p = promptDeploy
+            setPromptDeploy(null)
+            handleConnect(p)
+        } catch (e: any) {
+            alert(t('status_failed') + ": " + (e.message || e))
+        } finally {
+            setDeployLoading(false)
         }
     }
 
@@ -171,6 +221,9 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ margin: 0 }}>{t('connections')}</h3>
                     <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="link icon-btn" onClick={() => setShowAbout(true)} title={t('about')}>
+                            <Icon name="icon-info" size={16} />
+                        </button>
                         {onOpenSettings && (
                             <button className="link icon-btn" onClick={onOpenSettings} title={t('settings')}>
                                 <Icon name="icon-settings" size={16} />
@@ -217,7 +270,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                     )}
                 </div>
                 <div style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
-                    {onLocked && (
+                    {hasPassword && (
                         <button onClick={onLocked} className="btn" style={{ width: '100%', justifyContent: 'center' }}>
                             <span style={{ marginRight: 8, display: 'flex' }}><Icon name="icon-lock" size={14} /></span> {t('lock_app')}
                         </button>
@@ -274,6 +327,16 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                     )}
                 </div>
             </div>
+            {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
+            {promptDeploy && (
+                <PasswordDialog
+                    title={t('master_password')}
+                    description={t('deploy_key_msg')}
+                    onConfirm={onDeployKey}
+                    onCancel={() => setPromptDeploy(null)}
+                    loading={deployLoading}
+                />
+            )}
         </div>
     )
 }

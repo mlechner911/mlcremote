@@ -1,3 +1,28 @@
+export namespace app {
+	
+	export class SSHDeployRequest {
+	    host: string;
+	    user: string;
+	    port: number;
+	    password: string;
+	    identityFile: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SSHDeployRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.host = source["host"];
+	        this.user = source["user"];
+	        this.port = source["port"];
+	        this.password = source["password"];
+	        this.identityFile = source["identityFile"];
+	    }
+	}
+
+}
+
 export namespace config {
 	
 	export class ConnectionProfile {

@@ -28,6 +28,7 @@ export interface Profile {
   remoteArch?: string
   remoteVersion?: string
   id?: string
+  color?: string
 }
 
 let runtime: any = null
@@ -45,6 +46,7 @@ function AppContent() {
   const [view, setView] = useState<'init' | 'locked' | 'launch' | 'remote' | 'settings'>('init')
   const [remoteUrl, setRemoteUrl] = useState('')
   const [profileName, setProfileName] = useState('')
+  const [profileColor, setProfileColor] = useState('')
   const [shuttingDown, setShuttingDown] = useState(false)
 
   useEffect(() => {
@@ -100,6 +102,7 @@ function AppContent() {
 
   const handleConnected = (p: Profile) => {
     setProfileName(`${p.user}@${p.host}`)
+    setProfileColor(p.color || '')
     setRemoteUrl(`http://localhost:${p.localPort || 8443}`)
     setView('remote')
   }
@@ -108,6 +111,7 @@ function AppContent() {
     try { await StopTunnel() } catch (e) { console.error(e) }
     setRemoteUrl('')
     setProfileName('')
+    setProfileColor('')
     setView('launch')
   }
 
@@ -131,6 +135,7 @@ function AppContent() {
         <RemoteView
           url={remoteUrl}
           profileName={profileName}
+          profileColor={profileColor}
           onDisconnect={handleDisconnect}
         />
       )}
