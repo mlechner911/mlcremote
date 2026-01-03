@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import LaunchScreen from './components/LaunchScreen'
 import AppLock from './components/AppLock'
-import SettingsDialog from './components/SettingsDialog' // Keep existing logic if needed or integrate
+import SettingsDialog from './components/SettingsDialog'
 import RemoteView from './components/RemoteView'
 import { StopTunnel, HasMasterPassword } from './wailsjs/go/app/App'
+import { I18nProvider, useI18n } from './utils/i18n'
 // @ts-ignore
 import spriteUrl from './generated/icons-sprite.svg'
 
@@ -39,7 +40,8 @@ function loadRuntimeIfPresent() {
   return runtime
 }
 
-export default function App() {
+function AppContent() {
+  const { t } = useI18n()
   const [view, setView] = useState<'init' | 'locked' | 'launch' | 'remote' | 'settings'>('init')
   const [remoteUrl, setRemoteUrl] = useState('')
   const [profileName, setProfileName] = useState('')
@@ -98,10 +100,8 @@ export default function App() {
 
   const handleConnected = (p: Profile) => {
     setProfileName(`${p.user}@${p.host}`)
-    // View switch happens via 'navigate' event from backend usually, 
-    // but we can set remoteUrl if we knew it to show loading?
-    // backend emits 'navigate' with the URL once tunnel + health check passes.
-    // So we just wait.
+    setRemoteUrl(`http://localhost:${p.localPort || 8443}`)
+    setView('remote')
   }
 
   const handleDisconnect = async () => {
@@ -123,6 +123,7 @@ export default function App() {
         <LaunchScreen
           onConnected={handleConnected}
           onLocked={() => setView('locked')}
+          onOpenSettings={() => setView('settings')}
         />
       )}
 
@@ -134,7 +135,9 @@ export default function App() {
         />
       )}
 
-      {/* Settings Dialog integration if needed later */}
+      {view === 'settings' && (
+        <SettingsDialog onClose={() => setView('launch')} />
+      )}
 
       {shuttingDown && (
         <div style={{
@@ -149,7 +152,7 @@ export default function App() {
             </svg>
             <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
           </div>
-          <h2 style={{ margin: 0, fontWeight: 500 }}>Disconnecting...</h2>
+          <h2 style={{ margin: 0, fontWeight: 500 }}>{t('disconnecting')}</h2>
           <p style={{ marginTop: 8, opacity: 0.7 }}>Closing remote tunnels safely.</p>
         </div>
       )}
@@ -157,4 +160,10 @@ export default function App() {
   )
 }
 
-
+export default function App() {
+  return (
+    <I18nProvider>
+      <AppContent />
+    </I18nProvider>
+  )
+}

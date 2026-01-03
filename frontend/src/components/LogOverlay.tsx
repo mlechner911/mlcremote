@@ -1,9 +1,11 @@
 import React from 'react'
 import { getLogs, subscribe, clear } from '../utils/logger'
+import { useTranslation } from 'react-i18next'
 
 type Props = { visible?: boolean; onClose?: () => void }
 
 export default function LogOverlay({ visible = true, onClose }: Props) {
+  const { t } = useTranslation()
   const [, setTick] = React.useState(0)
   React.useEffect(() => {
     const unsub = subscribe(() => setTick(t => t + 1))
@@ -32,15 +34,15 @@ export default function LogOverlay({ visible = true, onClose }: Props) {
   return (
     <div className="log-overlay">
       <div className="log-header">
-        <strong>Logs</strong>
+        <strong>{t('logs')}</strong>
         <div>
-          <button className="btn" onClick={() => clear()}>Clear</button>
-          <button className="btn" onClick={() => onClose && onClose()} style={{ marginLeft: 8 }}>Close</button>
+          <button className="btn" onClick={() => clear()}>{t('clear')}</button>
+          <button className="btn" onClick={() => onClose && onClose()} style={{ marginLeft: 8 }}>{t('close')}</button>
         </div>
       </div>
       <div>
         {logs.map((l, i) => (
-          <div key={i} className={`log - entry log - level - ${(l.level || '').toLowerCase()} `}>
+          <div key={i} className={`log-entry log-level-${(l.level || '').toLowerCase()}`}>
             <div className="log-meta">{l.ts} <span className="log-level">{l.level}</span></div>
             <div className="log-message">{renderMessage(l.msg)}</div>
           </div>

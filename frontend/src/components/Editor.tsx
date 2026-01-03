@@ -7,6 +7,8 @@ import { authedFetch } from '../utils/auth'
 import { Icon } from '../generated/icons'
 import { iconForExtension } from '../generated/icons'
 import { getHandler } from '../handlers/registry'
+import { useTranslation } from 'react-i18next'
+import { handleBOM, restoreBOM } from '../utils/text'
 
 type Props = {
   path: string
@@ -17,9 +19,8 @@ type Props = {
   onMeta?: (m: any) => void
 }
 
-import { handleBOM, restoreBOM } from '../utils/text'
-
 export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta }: Props) {
+  const { t } = useTranslation()
   const [content, setContent] = React.useState<string>('')
   const [origContent, setOrigContent] = React.useState<string>('')
   const [hasBOM, setHasBOM] = React.useState<boolean>(false)
@@ -50,7 +51,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       if (typeof onMeta === 'function') onMeta(m)
 
       if (!force && lastLoadTime && lastModTime && m.modTime !== lastModTime) {
-        if (!confirm('File has been modified externally. Reload?')) {
+        if (!confirm(t('confirm_reload_external', 'File has been modified externally. Reload?'))) {
           setLoading(false)
           return
         }
@@ -90,18 +91,15 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       }
 
     } catch (error) {
-      // If the handler is Binary, a read failure (e.g. "binary file") is expected/handled by not reading it
-      // But if we tried to read and failed, set error.
-      // Actually with the new logic, we only read if handler says Text.
       if (probe && probe.isText) {
-        setStatus('Failed to load')
+        setStatus(t('failed_to_load', 'Failed to load'))
         setLoadFailed(true)
       }
       setLastLoadTime(null)
     } finally {
       setLoading(false)
     }
-  }, [path])
+  }, [path, t])
 
   const editableThreshold = 10 * 1024 * 1024 // 10 MB
 
@@ -116,7 +114,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       setContent(txt)
       setOrigContent(txt)
     } catch (e) {
-      setStatus('Failed to load section')
+      setStatus(t('failed_to_load_section', 'Failed to load section'))
     } finally {
       setSectionLoading(false)
     }
@@ -156,7 +154,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     if (reloadTrigger && reloadTrigger > 0) {
       loadFile(true)
     }
-  }, [reloadTrigger])
+  }, [reloadTrigger, loadFile])
 
   React.useEffect(() => {
     if (textareaRef.current && preRef.current) {
@@ -211,44 +209,31 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
 
   const onSave = async () => {
     if (!path) return
-    setStatus('Saving...')
+    setStatus(t('saving', 'Saving...'))
     try {
       const contentToSave = hasBOM ? restoreBOM(content) : content
       await saveFile(path, contentToSave)
-      setStatus('Saved')
-      setTimeout(() => setStatus(s => s === 'Saved' ? '' : s), 1500)
+      setStatus(t('saved', 'Saved'))
+      setTimeout(() => setStatus(s => s === t('saved', 'Saved') ? '' : s), 1500)
       await loadFile(true)
       onSaved && onSaved()
     } catch {
-      setStatus('Save failed')
-    }
-  }
-
-  const onDelete = async () => {
-    if (!path) return
-    if (!confirm(`Delete ${path}? This will move the file to the server-side trash.`)) return
-    setStatus('Deleting...')
-    try {
-      await deleteFile(path)
-      setStatus('Deleted')
-      setContent('')
-    } catch {
-      setStatus('Delete failed')
+      setStatus(t('save_failed', 'Save failed'))
     }
   }
 
   const onReload = async () => {
     if (!path) return
     if (content !== origContent) {
-      if (!confirm('You have unsaved changes. Reloading will discard them. Continue?')) return
+      if (!confirm(t('confirm_reload_unsaved', 'You have unsaved changes. Reloading will discard them. Continue?'))) return
     }
-    setStatus('Reloading...')
+    setStatus(t('reloading', 'Reloading...'))
     try {
       await loadFile(true)
-      setStatus('Reloaded')
-      setTimeout(() => setStatus(s => s === 'Reloaded' ? '' : s), 1500)
+      setStatus(t('reloaded', 'Reloaded'))
+      setTimeout(() => setStatus(s => s === t('reloaded', 'Reloaded') ? '' : s), 1500)
     } catch (e) {
-      setStatus('Reload failed')
+      setStatus(t('reload_failed', 'Reload failed'))
     }
   }
 
@@ -263,14 +248,12 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onSave])
 
-
-
   return (
     <div className="editor">
       <div className="editor-header">
-        <strong>Editor</strong>
+        <strong>{t('editor')}</strong>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span className="muted">{(meta && meta.absPath) ? meta.absPath : (path || 'Select a file')}</span>
+          <span className="muted">{(meta && meta.absPath) ? meta.absPath : (path || t('select_or_create'))}</span>
           {meta && (
             <>
               <span className="muted" style={{ fontSize: 11 }}>
@@ -284,32 +267,32 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
           )}
         </div>
         <div className="actions">
-          <button className="link icon-btn" title="Reload" aria-label="Reload" onClick={onReload} disabled={!path}>
-            <Icon name={iconForExtension('refresh') || 'icon-refresh'} title="Reload" size={16} />
+          <button className="link icon-btn" title={t('refresh')} aria-label={t('refresh')} onClick={onReload} disabled={!path}>
+            <Icon name={iconForExtension('refresh') || 'icon-refresh'} title={t('refresh')} size={16} />
           </button>
 
           {/* Only show Save if handler supports editing and content changed */}
           {handler.isEditable && content !== origContent && (
-            <button className="link icon-btn" title="Save" aria-label="Save" onClick={onSave} disabled={!path}>
-              <Icon name={iconForExtension('upload') || 'icon-upload'} title="Save" size={16} />
+            <button className="link icon-btn" title={t('save')} aria-label={t('save')} onClick={onSave} disabled={!path}>
+              <Icon name={iconForExtension('upload') || 'icon-upload'} title={t('save')} size={16} />
             </button>
           )}
         </div>
         {meta && meta.size && meta.size > editableThreshold && handler.isEditable ? (
           <div style={{ marginLeft: 12 }}>
-            <div className="muted" style={{ fontSize: 12 }}>File is large ({formatBytes(meta.size)}). Full edit disabled.</div>
+            <div className="muted" style={{ fontSize: 12 }}>{t('file_too_large', 'File is large ({{size}}). Full edit disabled.', { size: formatBytes(meta.size) })}</div>
             <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
-              <button className="btn" onClick={() => loadSection(0, 64 * 1024)}>View head</button>
-              <button className="btn" onClick={() => loadSection(Math.max(0, (meta.size || 0) - 64 * 1024), 64 * 1024)}>View tail</button>
+              <button className="btn" onClick={() => loadSection(0, 64 * 1024)}>{t('view_head', 'View head')}</button>
+              <button className="btn" onClick={() => loadSection(Math.max(0, (meta.size || 0) - 64 * 1024), 64 * 1024)}>{t('view_tail', 'View tail')}</button>
             </div>
-            {sectionLoading && <div className="muted">Loading section...</div>}
+            {sectionLoading && <div className="muted">{t('loading_section', 'Loading section...')}</div>}
           </div>
         ) : null}
         {status && <div className="muted">{status}</div>}
       </div>
       <div className="editor-body">
         {loading ? (
-          <div className="muted">Loading...</div>
+          <div className="muted">{t('loading')}</div>
         ) : (
           <HandlerView
             path={path}

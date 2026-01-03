@@ -4,6 +4,7 @@ import { getToken, authedFetch } from '../utils/auth'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   shell: string
@@ -19,6 +20,7 @@ type Props = {
  * resize events and exposes copy/paste helpers.
  */
 export default function TerminalTab({ shell, path, onExit }: Props) {
+  const { t } = useTranslation()
   const ref = React.useRef<HTMLDivElement | null>(null)
   const termRef = React.useRef<Terminal | null>(null)
   const fitRef = React.useRef<FitAddon | null>(null)
@@ -91,7 +93,7 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
         }
 
         const socket = new WebSocket(`${wsUrl}/ws/terminal${q}`)
-        attachWS(socket, 'Connected to shell session: ' + sessionId)
+        attachWS(socket, t('terminal_connected_session', { id: sessionId }))
       }).catch(() => {
         // fallback to ephemeral connection
         const token = localStorage.getItem('mlcremote_token')
@@ -104,7 +106,7 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
         }
 
         const socket = new WebSocket(`${wsUrl}/ws/terminal${q}`)
-        attachWS(socket, 'Connected to ephemeral shell')
+        attachWS(socket, t('terminal_connected_ephemeral'))
       })
     })
 
@@ -140,7 +142,7 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
       wsRef.current = null
       try { term.dispose() } catch (_) { }
     }
-  }, [shell, path])
+  }, [shell, path, t])
 
   return (
     <div className="terminal-root">
@@ -167,7 +169,7 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
             } catch (e) {
               console.warn('copy failed', e)
             }
-          }}>Copy</button>
+          }}>{t('copy')}</button>
           <button className="btn" onClick={async () => {
             // Paste from clipboard into terminal (send to ws)
             try {
@@ -175,7 +177,7 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
               if (navigator.clipboard && navigator.clipboard.readText) text = await navigator.clipboard.readText()
               else {
                 // fallback: prompt user
-                text = window.prompt('Paste text here') || ''
+                text = window.prompt(t('paste_text_here')) || ''
               }
               if (!text) return
               // send to WS if available, otherwise inject directly
@@ -188,7 +190,7 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
             } catch (e) {
               console.warn('paste failed', e)
             }
-          }}>Paste</button>
+          }}>{t('paste')}</button>
         </div>
       </div>
       <div className="terminal-body" ref={ref} />

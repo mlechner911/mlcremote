@@ -20,7 +20,7 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "MLCRemote Desktop Prototype",
+		Title:  "MLCRemote Desktop",
 		Width:  900,
 		Height: 700,
 		AssetServer: &assetserver.Options{

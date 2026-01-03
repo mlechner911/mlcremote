@@ -1,6 +1,7 @@
 import React from 'react'
-import { Icon, iconForExtension } from   '../generated/icons'
+import { Icon, iconForExtension } from '../generated/icons'
 import { getIcon } from '../generated/icon-helpers'
+import { useTranslation } from 'react-i18next'
 type Props = {
   openFiles: string[]
   active: string
@@ -8,13 +9,15 @@ type Props = {
   onClose: (path: string) => void
   onCloseOthers?: (path: string) => void
   onCloseLeft?: (path: string) => void
-  titles?: Record<string,string>
-  fullPaths?: Record<string,string>
-  types?: Record<string, 'file'|'dir'|'shell'>
+  titles?: Record<string, string>
+  fullPaths?: Record<string, string>
+  types?: Record<string, 'file' | 'dir' | 'shell'>
+  evictedTabs?: string[]
   onRestoreEvicted?: (path: string) => void
 }
 
 export default function TabBar({ openFiles, active, onActivate, onClose, onCloseOthers, onCloseLeft, titles, fullPaths, types, evictedTabs = [], onRestoreEvicted }: Props) {
+  const { t } = useTranslation()
   const [openIdx, setOpenIdx] = React.useState<number | null>(null)
   const containerRef = React.useRef<HTMLDivElement | null>(null)
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
@@ -90,13 +93,13 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
             <button className="btn" onClick={() => setEvictedOpen(o => !o)}>⋯</button>
             {evictedOpen && (
               <div style={{ position: 'absolute', left: 0, top: '100%', background: 'var(--bg)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', padding: 8, zIndex: 50 }}>
-                {overflow.map(t => (
-                  <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px' }}>
-                    <button className="link" onClick={() => { onRestoreEvicted && onRestoreEvicted(t); setEvictedOpen(false) }} style={{ flex: 1, textAlign: 'left' }}>{(titles && titles[t]) || t.split('/').pop()}</button>
+                {overflow.map(t2 => (
+                  <div key={t2} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px' }}>
+                    <button className="link" onClick={() => { onRestoreEvicted && onRestoreEvicted(t2); setEvictedOpen(false) }} style={{ flex: 1, textAlign: 'left' }}>{(titles && titles[t2]) || t2.split('/').pop()}</button>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn-small" title="Restore" onClick={() => { onRestoreEvicted && onRestoreEvicted(t); setEvictedOpen(false) }}>↺</button>
-                      <button className="btn btn-small" title="Close" onClick={() => { onClose && onClose(t); setEvictedOpen(false) }}>✕</button>
-                      <button className="btn btn-small" title="Close Others" onClick={() => { overflow.filter(x => x !== t).forEach(x => onClose && onClose(x)); setEvictedOpen(false) }}>⋯</button>
+                      <button className="btn btn-small" title={t('restore')} onClick={() => { onRestoreEvicted && onRestoreEvicted(t2); setEvictedOpen(false) }}>↺</button>
+                      <button className="btn btn-small" title={t('close')} onClick={() => { onClose && onClose(t2); setEvictedOpen(false) }}>✕</button>
+                      <button className="btn btn-small" title={t('close_others')} onClick={() => { overflow.filter(x => x !== t2).forEach(x => onClose && onClose(x)); setEvictedOpen(false) }}>⋯</button>
                     </div>
                   </div>
                 ))}
@@ -105,15 +108,15 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
           </div>
         )
       })()}
-      {showLeft && <button className="tab-scroll tab-scroll-left" aria-label="scroll left" onClick={() => scrollBy(-200)}>◀</button>}
+      {showLeft && <button className="tab-scroll tab-scroll-left" aria-label={t('scroll_left')} onClick={() => scrollBy(-200)}>◀</button>}
       <div className="tab-scroll-area" ref={scrollRef} onScroll={updateScrollButtons}>
         {openFiles.map((p, idx) => (
           <div key={p} className="tab-item" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px' }}>
-          <button
-            className={p === active ? 'btn' : 'link'}
-            onClick={() => onActivate(p)}
-            onContextMenu={(e) => { e.preventDefault(); setOpenIdx(idx); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              className={p === active ? 'btn' : 'link'}
+              onClick={() => onActivate(p)}
+              onContextMenu={(e) => { e.preventDefault(); setOpenIdx(idx); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span key={`${types?.[p] || 'file'}-${p}`} className="tab-icon">
                 {(() => {
                   // Prefer using the generated `iconForExtension` mapping for all
@@ -136,9 +139,9 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
                 const cls = (titles && titles[p] && titles[p].startsWith('*')) ? 'tab-title tab-unsaved' : 'tab-title'
                 return <span title={fullPaths?.[p] || full} className={cls} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 120 }}>{display}</span>
               })()}
-          </button>
-          {/* removed small menu button; right-click the tab to open menu */}
-        </div>
+            </button>
+            {/* removed small menu button; right-click the tab to open menu */}
+          </div>
         ))}
       </div>
       {/* Render dropdown at tabbar level so it is not clipped by horizontal scroll */}
@@ -162,13 +165,13 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
         }
         return (
           <div className="dropdown" style={style}>
-            <button ref={el => { if (el) el.focus() }} className="link" onClick={() => { onClose?.(p); setOpenIdx(null) }}>Close</button>
-            <button className="link" onClick={() => { onCloseOthers?.(p); setOpenIdx(null) }}>Close Others</button>
-            <button className="link" onClick={() => { onCloseLeft?.(p); setOpenIdx(null) }}>Close Left</button>
+            <button ref={el => { if (el) el.focus() }} className="link" onClick={() => { onClose?.(p); setOpenIdx(null) }}>{t('close')}</button>
+            <button className="link" onClick={() => { onCloseOthers?.(p); setOpenIdx(null) }}>{t('close_others')}</button>
+            <button className="link" onClick={() => { onCloseLeft?.(p); setOpenIdx(null) }}>{t('close_left')}</button>
           </div>
         )
       })()}
-      {showRight && <button className="tab-scroll tab-scroll-right" aria-label="scroll right" onClick={() => scrollBy(200)}>▶</button>}
+      {showRight && <button className="tab-scroll tab-scroll-right" aria-label={t('scroll_right')} onClick={() => scrollBy(200)}>▶</button>}
     </div>
   )
 }

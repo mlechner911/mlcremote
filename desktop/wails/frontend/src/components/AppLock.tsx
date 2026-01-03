@@ -1,12 +1,14 @@
 import React, { useState } from 'react'
 import { VerifyMasterPassword } from '../wailsjs/go/app/App'
 import { Icon } from '../generated/icons'
+import { useI18n } from '../utils/i18n'
 
 interface AppLockProps {
     onUnlock: () => void
 }
 
 export default function AppLock({ onUnlock }: AppLockProps) {
+    const { t } = useI18n()
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
@@ -20,10 +22,10 @@ export default function AppLock({ onUnlock }: AppLockProps) {
             if (valid) {
                 onUnlock()
             } else {
-                setError('Incorrect password')
+                setError(t('incorrect_password'))
             }
         } catch (e: any) {
-            setError('Error verifying password: ' + (e.message || e))
+            setError(t('status_failed') + ': ' + (e.message || e))
         } finally {
             setLoading(false)
         }
@@ -44,8 +46,8 @@ export default function AppLock({ onUnlock }: AppLockProps) {
         }}>
             <div style={{ marginBottom: 24, textAlign: 'center' }}>
                 <div style={{ color: 'var(--accent)', display: 'inline-flex' }}><Icon name="icon-lock" size={48} /></div>
-                <h2 style={{ marginTop: 16 }}>MLCRemote is Locked</h2>
-                <div className="muted">Please enter your master password to continue.</div>
+                <h2 style={{ marginTop: 16 }}>{t('locked_msg')}</h2>
+                <div className="muted">{t('enter_password_continue')}</div>
             </div>
 
             <div style={{ width: 300 }}>
@@ -54,7 +56,7 @@ export default function AppLock({ onUnlock }: AppLockProps) {
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Master Password"
+                    placeholder={t('master_password')}
                     autoFocus
                     style={{
                         width: '100%', padding: '10px 12px', borderRadius: 4,
@@ -70,7 +72,7 @@ export default function AppLock({ onUnlock }: AppLockProps) {
                     className="btn"
                     style={{ width: '100%', padding: '10px', justifyContent: 'center' }}
                 >
-                    {loading ? 'Verifying...' : 'Unlock'}
+                    {loading ? t('verifying') : t('unlock')}
                 </button>
             </div>
         </div>

@@ -1,7 +1,9 @@
 import React from 'react'
 import { getToken, authedFetch, makeUrl } from '../utils/auth'
+import { useTranslation } from 'react-i18next'
 
 export default function PdfPreview({ path }: { path: string }) {
+  const { t } = useTranslation()
   const [pdfLib, setPdfLib] = React.useState<any | null>(null)
   const [pdfDoc, setPdfDoc] = React.useState<any | null>(null)
   const [pageNum, setPageNum] = React.useState<number>(1)
@@ -76,19 +78,19 @@ export default function PdfPreview({ path }: { path: string }) {
     return () => { mounted = false }
   }, [pdfDoc, pageNum])
 
-  if (!pdfLib) return <div className="muted">Loading PDF support…</div>
-  if (loading && !pdfDoc) return <div className="muted">Loading PDF…</div>
+  if (!pdfLib) return <div className="muted">{t('loading_pdf_support')}</div>
+  if (loading && !pdfDoc) return <div className="muted">{t('loading_pdf')}</div>
 
   return (
     <div style={{ padding: 12 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <button className="btn" onClick={() => setPageNum(p => Math.max(1, p - 1))} disabled={pageNum <= 1}>Prev</button>
+        <button className="btn" onClick={() => setPageNum(p => Math.max(1, p - 1))} disabled={pageNum <= 1}>{t('previous')}</button>
         <span>{pageNum}{numPages ? ` / ${numPages} ` : ''}</span>
-        <button className="btn" onClick={() => setPageNum(p => Math.min((numPages || Infinity), p + 1))} disabled={numPages ? pageNum >= numPages : false}>Next</button>
-        <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split('/').pop()}>Download</a>
+        <button className="btn" onClick={() => setPageNum(p => Math.min((numPages || Infinity), p + 1))} disabled={numPages ? pageNum >= numPages : false}>{t('next')}</button>
+        <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split('/').pop()}>{t('download')}</a>
       </div>
       <div style={{ marginTop: 8 }}>
-        {(!pdfDoc) ? <div className="muted">No preview</div> : <canvas ref={canvasRef} style={{ maxWidth: '100%', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }} />}
+        {(!pdfDoc) ? <div className="muted">{t('no_preview')}</div> : <canvas ref={canvasRef} style={{ maxWidth: '100%', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }} />}
       </div>
     </div>
   )

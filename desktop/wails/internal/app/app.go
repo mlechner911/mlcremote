@@ -5,26 +5,30 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
-	"os/exec"
-	"sync"
 	"time"
 
+	"github.com/mlechner911/mlcremote/desktop/wails/internal/backend"
+	"github.com/mlechner911/mlcremote/desktop/wails/internal/config"
+	"github.com/mlechner911/mlcremote/desktop/wails/internal/ssh"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
 type App struct {
-	ctx         context.Context
-	payload     fs.FS // Added payload field
-	tunnelMu    sync.Mutex
-	tunnelCmd   *exec.Cmd
-	tunnelState string
+	ctx context.Context
+
+	// Services
+	Config  *config.Manager
+	SSH     *ssh.Manager
+	Backend *backend.Manager
 }
 
 // NewApp creates a new App application struct
 func NewApp(payload fs.FS) *App {
 	return &App{
-		payload: payload,
+		Config:  config.NewManager(),
+		SSH:     ssh.NewManager(),
+		Backend: backend.NewManager(payload),
 	}
 }
 
@@ -41,9 +45,8 @@ func (a *App) Shutdown(ctx context.Context) {
 
 // BeforeClose is called when the user tries to close the window
 func (a *App) BeforeClose(ctx context.Context) (prevent bool) {
-	a.tunnelMu.Lock()
-	running := a.tunnelCmd != nil && a.tunnelCmd.Process != nil
-	a.tunnelMu.Unlock()
+	status := a.SSH.TunnelStatus()
+	running := status == "connected" || status == "starting"
 
 	if running {
 		runtime.EventsEmit(ctx, "shutdown-initiated")
@@ -59,13 +62,8 @@ func (a *App) BeforeClose(ctx context.Context) (prevent bool) {
 }
 
 func (a *App) cleanup() {
-	a.tunnelMu.Lock()
-	defer a.tunnelMu.Unlock()
-	if a.tunnelCmd != nil && a.tunnelCmd.Process != nil {
-		fmt.Println("Gracefully stopping tunnel...")
-		_ = a.tunnelCmd.Process.Kill()
-		a.tunnelCmd = nil
-	}
+	fmt.Println("Gracefully stopping tunnel...")
+	_, _ = a.SSH.StopTunnel()
 }
 
 // HealthCheck checks whether the backend at the given URL responds to /health

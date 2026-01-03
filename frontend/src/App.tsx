@@ -1,9 +1,10 @@
 import React from 'react'
 import type { Health } from './api'
-import { statPath, authCheck } from './api'
+import { statPath } from './api'
 import { useAuth } from './context/AuthContext'
 import FileExplorer from './components/FileExplorer'
 import SettingsPopup from './components/SettingsPopup'
+import { useTranslation } from 'react-i18next'
 import { Icon } from './generated/icons'
 import { getIconForShell, getIconForDir, getIcon } from './generated/icon-helpers'
 import TrashView from './components/TrashView'
@@ -30,6 +31,7 @@ import SplitPane from './components/SplitPane'
 import type { LayoutNode, PaneId, PaneState } from './types/layout'
 
 export default function App() {
+  const { t } = useTranslation()
 
   const {
     health, isOnline, lastHealthAt, refreshHealth,
@@ -455,7 +457,7 @@ export default function App() {
               {pFiles.map(f => (
                 <div key={f} style={{ display: f === pActive ? 'block' : 'none', height: '100%' }}>
                   {f.startsWith('shell-') ? (
-                    <React.Suspense fallback={<div className="muted">Loading terminal…</div>}>
+                    <React.Suspense fallback={<div className="muted">{t('loading')}</div>}>
                       <TerminalTab key={f} shell={(settings && settings.defaultShell) || 'bash'} path={shellCwds[f] || ''} onExit={() => onClose(f)} />
                     </React.Suspense>
                   ) : f === 'trash' ? (
@@ -476,8 +478,8 @@ export default function App() {
         ) : (
           <div className="welcome-message" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
             <div style={{ fontSize: '48px', marginBottom: '10px', opacity: 0.2 }}><Icon name={getIcon('folder')} size={48} /></div>
-            <div style={{ opacity: 0.5 }}>Empty Pane</div>
-            {paneId !== 'root' && <button className="btn link" onClick={() => closePane(paneId)}>Close Pane</button>}
+            <div style={{ opacity: 0.5 }}>{t('no_files')}</div>
+            {paneId !== 'root' && <button className="btn link" onClick={() => closePane(paneId)}>{t('close')} Pane</button>}
           </div>
         )}
       </div>
@@ -537,7 +539,7 @@ export default function App() {
             }
             setShellCwds(s => ({ ...s, [shellName]: norm }))
             openFile(shellName)
-          }} title="Open shell" aria-label="Open shell"><Icon name={getIcon('terminal')} title="Open shell" size={16} /></button>
+          }} title={t('terminal')} aria-label={t('terminal')}><Icon name={getIcon('terminal')} title={t('terminal')} size={16} /></button>
 
           {/* Settings moved to popup (icon at the right). */}
           <button className="link icon-btn" aria-label="Toggle theme" onClick={() => {
@@ -547,10 +549,10 @@ export default function App() {
             if (next === 'light') document.documentElement.classList.add('theme-light')
             else document.documentElement.classList.remove('theme-light')
           }}>
-            {theme === 'dark' ? <Icon name={getIcon('moon')} title="Dark theme" size={16} /> : <Icon name={getIcon('sun')} title="Light theme" size={16} />}
+            {theme === 'dark' ? <Icon name={getIcon('moon')} title={t('theme')} size={16} /> : <Icon name={getIcon('sun')} title={t('theme')} size={16} />}
           </button>
           {/* Logs toggle moved into settings popup */}
-          <button className="link icon-btn" title="About" aria-label="About" onClick={() => setAboutOpen(true)}><Icon name={getIcon('info')} title="About" size={16} /></button>
+          <button className="link icon-btn" title={t('about')} aria-label={t('about')} onClick={() => setAboutOpen(true)}><Icon name={getIcon('info')} title={t('about')} size={16} /></button>
           <button className="link icon-btn" title="Screenshot" aria-label="Screenshot" onClick={async () => {
             const root = document.querySelector('.app') as HTMLElement | null
             if (!root) return
@@ -560,7 +562,6 @@ export default function App() {
               console.error('Screenshot failed', e)
             }
           }}><Icon name={getIcon('screenshot')} title="Screenshot" size={16} /></button>
-          <button className="link icon-btn" aria-label="Open settings" title="Settings" onClick={() => setSettingsOpen(s => !s)}><Icon name={getIcon('settings')} title="Settings" size={16} /></button>
           <button className="link icon-btn" title="Trash" aria-label="Trash" onClick={() => {
             // open a single trash tab
             if (!openFiles.includes('trash')) {
@@ -584,6 +585,8 @@ export default function App() {
               <path d="M2 8h12v1H2V8z" />
             </svg>
           </button>
+
+          <button className="link icon-btn" aria-label={t('settings')} title={t('settings')} onClick={() => setSettingsOpen(s => !s)}><Icon name={getIcon('settings')} title={t('settings')} size={16} /></button>
 
           {layout.type !== 'leaf' && (
             <button className="link icon-btn" title="Close Active Pane" aria-label="Close Active Pane" onClick={() => closePane(activePaneId)} style={{ marginLeft: 4 }}>
@@ -703,7 +706,7 @@ export default function App() {
                   <h3>Not Authenticated</h3>
                   <p>You need to sign in or provide an access key to continue.</p>
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <button className="btn" onClick={() => { setShowAuthChooser(false); setShowLogin(true) }}>Sign in (password)</button>
+                    <button className="btn" onClick={() => { setShowAuthChooser(false); setShowLogin(true) }}>{t('open')} (password)</button>
                     <button className="btn" onClick={() => { setShowAuthChooser(false); setShowTokenInput(true) }}>I have an access key</button>
                   </div>
                 </div>
@@ -726,7 +729,7 @@ export default function App() {
                       } catch (e: any) {
                         alert('Login failed: ' + (e?.message || e))
                       }
-                    }}>Sign in</button>
+                    }}>{t('open')}</button>
                   </div>
                 </div>
               </div>
@@ -774,7 +777,7 @@ export default function App() {
           <div className="about-modal" onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0 }}>MLCRemote</h3>
-              <button aria-label="Close about" title="Close" onClick={() => setAboutOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><Icon name="icon-close" size={16} /></button>
+              <button aria-label={t('close')} title={t('close')} onClick={() => setAboutOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><Icon name="icon-close" size={16} /></button>
             </div>
             <div style={{ marginBottom: 8 }}>Copyright © {new Date().getFullYear()} Michael Lechner</div>
             <div style={{ marginBottom: 8 }}>Version: {health ? `${health.status}@${health.version}` : 'unknown'}</div>

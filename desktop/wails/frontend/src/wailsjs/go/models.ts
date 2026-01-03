@@ -1,4 +1,4 @@
-export namespace app {
+export namespace config {
 	
 	export class ConnectionProfile {
 	    id: string;

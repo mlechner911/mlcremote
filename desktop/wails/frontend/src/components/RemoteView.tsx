@@ -1,4 +1,5 @@
 import React from 'react'
+import { useI18n } from '../utils/i18n'
 
 interface RemoteViewProps {
     url: string
@@ -8,6 +9,7 @@ interface RemoteViewProps {
 }
 
 export default function RemoteView({ url, profileName, profileId, onDisconnect }: RemoteViewProps) {
+    const { t } = useI18n()
     // Append profileId to URL if present
     const targetSrc = `/ide/index.html?api=${encodeURIComponent(url)}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
 
@@ -21,12 +23,13 @@ export default function RemoteView({ url, profileName, profileId, onDisconnect }
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                borderBottom: '1px solid #374151'
+                borderBottom: '1px solid #374151',
+                userSelect: 'none'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{ fontWeight: 'bold' }}>MLCRemote</span>
                     <span style={{ color: '#9ca3af' }}>|</span>
-                    <span style={{ color: '#e5e7eb' }}>Connected to: {profileName}</span>
+                    <span style={{ color: '#e5e7eb' }}>{t('connected_to')}: {profileName}</span>
                     <span style={{ color: '#6b7280', fontSize: '0.8em', marginLeft: 10 }}>({url})</span>
                 </div>
                 <button
@@ -38,13 +41,13 @@ export default function RemoteView({ url, profileName, profileId, onDisconnect }
                         padding: '6px 16px',
                         borderRadius: '4px',
                         cursor: 'pointer',
-                        fontWeight: 'w500',
+                        fontWeight: 500,
                         transition: 'background-color 0.2s',
                     }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
                 >
-                    Disconnect
+                    {t('disconnect')}
                 </button>
             </div>
 

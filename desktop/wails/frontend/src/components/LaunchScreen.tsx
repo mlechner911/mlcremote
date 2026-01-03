@@ -1,18 +1,22 @@
 import React, { useEffect, useState } from 'react'
 import {
     ListProfiles, SaveProfile, DeleteProfile,
-    StartTunnelWithProfile
+    StartTunnelWithProfile, DetectRemoteOS, CheckRemoteVersion
 } from '../wailsjs/go/app/App'
 import { Icon } from '../generated/icons'
 import ProfileEditor, { ConnectionProfile } from './ProfileEditor'
 import { Profile } from '../App' // Legacy Profile type if needed, but we use ConnectionProfile mostly
 
+import { useI18n } from '../utils/i18n'
+
 interface LaunchScreenProps {
     onConnected: (p: Profile) => void
     onLocked?: () => void
+    onOpenSettings?: () => void
 }
 
-export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProps) {
+export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: LaunchScreenProps) {
+    const { t } = useI18n()
     const [profiles, setProfiles] = useState<ConnectionProfile[]>([])
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [editing, setEditing] = useState(false)
@@ -52,7 +56,7 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation()
-        if (!confirm('Are you sure you want to delete this profile?')) return
+        if (!confirm(t('delete_confirm'))) return
         try {
             await DeleteProfile(id)
             refreshProfiles()
@@ -66,16 +70,19 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
         // Listen for backend connection status updates
         // @ts-ignore
         window.runtime.EventsOn("connection-status", (msg: string) => {
-            if (loading) setStatus(msg)
+            if (loading) {
+                // If msg matches a key, translate it
+                const key = `status_${msg.toLowerCase().replace(' ', '_')}` as any
+                setStatus(t(key) || msg)
+            }
         })
         return () => {
-            // Cleanup? Wails runtime doesn't always expose easy off for specific handlers without cleanup function
         }
-    }, [loading])
+    }, [loading, t])
 
     const handleConnect = async (p: ConnectionProfile) => {
         setLoading(true)
-        setStatus('Initializing connection...')
+        setStatus(t('initializing_connection'))
         setErrorWin(null)
 
         try {
@@ -108,14 +115,14 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
             const res = await StartTunnelWithProfile(pStr)
 
             if (res === 'started') {
-                setStatus('Connected! Updating metadata...')
+                setStatus(t('status_connected'))
 
                 try {
                     // Update metadata
                     // @ts-ignore
-                    const osArch = await window.runtime.Call('DetectRemoteOS', pStr)
+                    const osArch = await DetectRemoteOS(pStr)
                     // @ts-ignore
-                    const ver = await window.runtime.Call('CheckRemoteVersion', pStr)
+                    const ver = await CheckRemoteVersion(pStr)
 
                     if (osArch) {
                         const [os, arch] = osArch.split(' ')
@@ -132,7 +139,6 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
                     console.error("Failed to update metadata", e)
                 }
 
-                setStatus('Connected!')
                 onConnected({
                     user: p.user, host: p.host, localPort: p.localPort, remoteHost: 'localhost', remotePort: 8443,
                     identityFile: p.identityFile, extraArgs: p.extraArgs,
@@ -140,12 +146,12 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
                     id: p.id
                 })
             } else {
-                alert("Failed to start tunnel: " + res)
+                alert(t('status_failed') + ": " + res)
             }
 
         } catch (e: any) {
             console.error("Connection failed", e)
-            setStatus('Error: ' + (e?.message || String(e)))
+            setStatus(t('status_failed') + ': ' + (e?.message || String(e)))
         } finally {
             setLoading(false)
         }
@@ -163,10 +169,17 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
                 pointerEvents: loading ? 'none' : 'auto'
             }}>
                 <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ margin: 0 }}>Connections</h3>
-                    <button className="link icon-btn" onClick={() => { setSelectedId(null); setEditing(true) }} title="New Connection">
-                        <Icon name="icon-plus" size={16} />
-                    </button>
+                    <h3 style={{ margin: 0 }}>{t('connections')}</h3>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        {onOpenSettings && (
+                            <button className="link icon-btn" onClick={onOpenSettings} title={t('settings')}>
+                                <Icon name="icon-settings" size={16} />
+                            </button>
+                        )}
+                        <button className="link icon-btn" onClick={() => { setSelectedId(null); setEditing(true) }} title={t('new_connection')}>
+                            <Icon name="icon-plus" size={16} />
+                        </button>
+                    </div>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: 8, minHeight: 0 }}>
                     {profiles.map(p => (
@@ -188,10 +201,10 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
                             <div className="muted" style={{ fontSize: 10, minWidth: 60, textAlign: 'right' }}>
                                 {p.lastUsed > 0 ? (() => {
                                     const diff = Math.floor(Date.now() / 1000) - p.lastUsed
-                                    if (diff < 60) return 'Just now'
-                                    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-                                    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-                                    return `${Math.floor(diff / 86400)}d ago`
+                                    if (diff < 60) return t('just_now')
+                                    if (diff < 3600) return `${Math.floor(diff / 60)}${t('minutes_ago')}`
+                                    if (diff < 86400) return `${Math.floor(diff / 3600)}${t('hours_ago')}`
+                                    return `${Math.floor(diff / 86400)}${t('days_ago')}`
                                 })() : ''}
                             </div>
                             <button className="icon-btn link" style={{ opacity: 0.5 }} onClick={(e) => handleDelete(p.id!, e)}>
@@ -200,13 +213,13 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
                         </div>
                     ))}
                     {profiles.length === 0 && (
-                        <div className="muted" style={{ textAlign: 'center', padding: 20 }}>No saved connections</div>
+                        <div className="muted" style={{ textAlign: 'center', padding: 20 }}>{t('no_saved_connections')}</div>
                     )}
                 </div>
                 <div style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
                     {onLocked && (
                         <button onClick={onLocked} className="btn" style={{ width: '100%', justifyContent: 'center' }}>
-                            <span style={{ marginRight: 8, display: 'flex' }}><Icon name="icon-lock" size={14} /></span> Lock App
+                            <span style={{ marginRight: 8, display: 'flex' }}><Icon name="icon-lock" size={14} /></span> {t('lock_app')}
                         </button>
                     )}
                 </div>
@@ -243,29 +256,19 @@ export default function LaunchScreen({ onConnected, onLocked }: LaunchScreenProp
 
                             {status && <div style={{ marginBottom: 20, color: '#ff7b72', background: 'rgba(0,0,0,0.4)', padding: '4px 12px', borderRadius: 100 }}>{status}</div>}
 
-                            {errorWin && (
-                                <div style={{ background: 'rgba(58, 28, 28, 0.9)', border: '1px solid #751b1b', color: '#ffadad', padding: 16, borderRadius: 6, marginBottom: 20, maxWidth: 400, textAlign: 'left', backdropFilter: 'blur(4px)' }}>
-                                    <strong>{errorWin}</strong>
-                                    <p style={{ fontSize: 13, marginTop: 8 }}>
-                                        To allow remote connections, please download and run the
-                                        <code>MLCRemote-Service.exe</code> on the Windows host.
-                                    </p>
-                                </div>
-                            )}
-
                             <div style={{ display: 'flex', gap: 16 }}>
                                 <button className="btn primary" style={{ padding: '12px 32px', fontSize: 16, boxShadow: '0 4px 12px rgba(0,123,255,0.3)' }} onClick={() => handleConnect(selectedProfile)} disabled={loading}>
-                                    {loading ? 'Connecting...' : 'Connect'}
+                                    {loading ? t('connecting') : t('connect')}
                                 </button>
                                 <button className="btn" style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} onClick={() => setEditing(true)} disabled={loading}>
-                                    Edit
+                                    {t('edit')}
                                 </button>
                             </div>
                         </div>
                     ) : (
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="muted">
                             <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px 24px', borderRadius: 100, backdropFilter: 'blur(4px)', color: 'rgba(255,255,255,0.6)' }}>
-                                Select a connection or create a new one
+                                {t('select_or_create')}
                             </div>
                         </div>
                     )}

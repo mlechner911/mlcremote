@@ -1,6 +1,7 @@
 import React from 'react'
 import Prism from 'prismjs'
 import { langForExt, aliasForExt } from '../grammar'
+import { useTranslation } from 'react-i18next'
 // Prism language components and theme — keep these imports local to TextView
 // to avoid loading them for non-text previews.
 // @ts-ignore: allow side-effect CSS import without type declarations
@@ -61,6 +62,7 @@ function safeHighlight(text: string, ext: string) {
 }
 
 export default function TextView({ content, setContent, origContent, ext, alias, textareaId }: Props) {
+    const { t } = useTranslation()
     const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
     const preRef = React.useRef<HTMLElement | null>(null)
 
@@ -103,7 +105,7 @@ export default function TextView({ content, setContent, origContent, ext, alias,
                         preRef.current.scrollLeft = textareaRef.current.scrollLeft
                     }
                 }}
-                placeholder="Open or create a file to edit"
+                placeholder={t('open_or_create_file')}
                 spellCheck={false}
                 autoCorrect="off"
                 autoCapitalize="off"

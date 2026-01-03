@@ -4,6 +4,7 @@ import { authedFetch } from '../utils/auth'
 import { Icon, iconForMimeOrFilename, iconForExtension } from '../generated/icons'
 import { getIcon } from '../generated/icon-helpers'
 import ContextMenu, { ContextMenuItem } from './ContextMenu'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   onSelect: (path: string, isDir: boolean) => void
@@ -27,6 +28,7 @@ type Props = {
  * such as Download and (when `autoOpen` is false) a View button.
  */
 export default function FileExplorer({ onSelect, showHidden, onToggleHidden, autoOpen = true, onView, onBackendActive, onChangeRoot, canChangeRoot, selectedPath, activeDir, onDirChange, focusRequest, reloadSignal }: Props): React.ReactElement {
+  const { t } = useTranslation()
   const [path, setPath] = React.useState<string>('')
   const [entries, setEntries] = React.useState<DirEntry[]>([])
   const [loading, setLoading] = React.useState<boolean>(false)
@@ -76,11 +78,11 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
         // ignore
       }
     } catch (e: any) {
-      setError(e.message || 'failed to list')
+      setError(e.message || t('status_failed'))
     } finally {
       setLoading(false)
     }
-  }, [showHidden, onBackendActive, onDirChange])
+  }, [showHidden, onBackendActive, onDirChange, t])
 
   const currentPathRef = React.useRef<string>('')
 
@@ -116,11 +118,11 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
       for (let i = 0; i < files.length; i++) form.append('file', files[i], files[i].name)
       const q = `?path=${encodeURIComponent(targetDir)}`
       const res = await authedFetch(`/api/upload${q}`, { method: 'POST', body: form })
-      if (!res.ok) throw new Error('upload failed')
+      if (!res.ok) throw new Error(t('status_failed'))
       // reload directory after upload
       await load(targetDir)
     } catch (e: any) {
-      setError(e.message || 'upload failed')
+      setError(e.message || t('status_failed'))
     } finally {
       setUploading(false)
     }
@@ -185,16 +187,16 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
     } catch (e) {
       // ignore
     }
-  }, [focusRequest])
+  }, [focusRequest, selectedPath])
 
   const handleDelete = async (p: string) => {
     // eslint-disable-next-line no-restricted-globals
-    if (!confirm(`Are you sure you want to delete ${p}?`)) return
+    if (!confirm(t('delete_confirm', { path: p }))) return
     try {
       await deleteFile(p)
       load(path)
     } catch (e: any) {
-      alert('Delete failed: ' + e.message)
+      alert(t('status_failed') + ': ' + e.message)
     }
   }
 
@@ -209,7 +211,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
       <div className="explorer-header">
         <strong className='hidden'><Icon name={getIcon('dir')} /></strong>
         <div className="explorer-controls">
-          <button className="link icon-btn" title="Refresh" onClick={() => load(path || '')}>
+          <button className="link icon-btn" title={t('refresh')} onClick={() => load(path || '')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M23 4v6h-6"></path>
               <path d="M1 20v-6h6"></path>
@@ -218,10 +220,10 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
           </button>
           {/* Settings moved to global settings popup; kept here for accessibility if needed */}
           {canChangeRoot && typeof onChangeRoot === 'function' && (
-            <button className="link icon-btn" aria-label="Change root" title="Change root" onClick={async () => {
+            <button className="link icon-btn" aria-label={t('change_root')} title={t('change_root')} onClick={async () => {
               // ask parent app to change root (parent may open a picker)
               try {
-                const res = await Promise.resolve(onChangeRoot(''))
+                await Promise.resolve(onChangeRoot(''))
                 // parent handles selection flow; nothing more to do here
               } catch (e) {
                 // ignore
@@ -242,9 +244,9 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
         </div>
       </div>
       <div className="explorer-body" onDrop={(e) => onDrop(e, path || '')} onDragOver={(e) => onDragOver(e, path || '')} onDragLeave={onDragLeave}>
-        {loading && <div className="muted">Loading...</div>}
+        {loading && <div className="muted">{t('loading')}</div>}
         {error && <div className="error">{error}</div>}
-        {uploading && <div className="muted">Uploading...</div>}
+        {uploading && <div className="muted">{t('upload')}...</div>}
         {!loading && !error && (
           <ul className="entry-list" ref={listRef}>
             {path && path !== '/' && (
@@ -261,7 +263,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
                     {e.isBroken && <span title="Broken Link" style={{ marginLeft: 4 }}>❌</span>}
                     {e.isExternal && <span title="External Link" style={{ marginLeft: 4 }}>↗️</span>}
 
-                    {dragOver === e.path ? <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>Drop to upload</span> : null}
+                    {dragOver === e.path ? <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>{t('drop_to_upload')}</span> : null}
                   </button>
                 ) : (
                   <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
@@ -280,7 +282,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
 
                     </button>
                     {!autoOpen ? (
-                      <button className="btn" onClick={() => onView ? onView(e.path) : onSelect(e.path, false)} title="View file"><Icon name={getIcon('view')} /></button>
+                      <button className="btn" onClick={() => onView ? onView(e.path) : onSelect(e.path, false)} title={t('view_file')}><Icon name={getIcon('view')} /></button>
                     ) : null}
                   </div>
                 )}
@@ -297,7 +299,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
           onClose={() => setContextMenu(null)}
           items={[
             {
-              label: 'Open',
+              label: t('open'),
               icon: <Icon name={getIcon('view')} />,
               action: () => {
                 if (contextMenu.item.isDir) {
@@ -314,7 +316,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
               }
             },
             {
-              label: 'Download',
+              label: t('download'),
               icon: <Icon name={getIcon('download')} />,
               action: () => {
                 const link = document.createElement('a')
@@ -327,7 +329,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
               separator: true
             },
             {
-              label: 'Copy Full Path',
+              label: t('copy_full_path'),
               icon: <Icon name={getIcon('copy')} />,
               action: async () => {
                 try {
@@ -338,7 +340,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
               }
             },
             {
-              label: 'Copy Relative Path',
+              label: t('copy_relative_path'),
               icon: <Icon name={getIcon('link')} />,
               action: async () => {
                 try {
@@ -351,7 +353,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
               }
             },
             {
-              label: 'Copy Name',
+              label: t('copy_name'),
               icon: <Icon name={getIcon('text')} />,
               action: async () => {
                 try {
@@ -361,14 +363,14 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
               separator: true
             },
             {
-              label: 'Delete',
+              label: t('delete'),
               icon: <Icon name={getIcon('trash')} />,
               danger: true,
               action: () => handleDelete(contextMenu.item.path)
             }
           ].filter(i => {
             // Filter out Download for directories
-            if (i.label === 'Download' && contextMenu.item.isDir) return false
+            if (i.label === t('download') && contextMenu.item.isDir) return false
             return true
           })}
         />
@@ -376,15 +378,3 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
     </div>
   )
 }
-/* moved
-function iconForEntry(e: { name: string; path: string; isDir: boolean }) {
-  const ext = e.name.split('.').pop()?.toLowerCase() || ''
-  if (ext === 'json') return '🟦'
-  if (ext === 'yml' || ext === 'yaml') return '🟪'
-  if (ext === 'md' || ext === 'markdown') return '📘'
-  if (ext === 'go') return '🐹'
-  if (ext === 'sh' || ext === 'bash') return 'terminal'
-  if (ext === 'txt') return '📄'
-  return '📄'
-}
-*/

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Icon } from '../generated/icons'
+import { useI18n } from '../utils/i18n'
 
 // Define the shape locally until generated bindings are available/updated
 // should come from swagger at some point..
@@ -40,6 +41,7 @@ const COLORS = [
 ]
 
 export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEditorProps) {
+    const { t } = useI18n()
     const [name, setName] = useState(profile?.name || '')
     const [color, setColor] = useState(profile?.color || COLORS[0])
     const [user, setUser] = useState(profile?.user || '')
@@ -67,16 +69,16 @@ export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEdit
 
     return (
         <div style={{ padding: 24, paddingBottom: 0 }}>
-            <h2 style={{ marginTop: 0, marginBottom: 20 }}>{profile ? 'Edit Connection' : 'New Connection'}</h2>
+            <h2 style={{ marginTop: 0, marginBottom: 20 }}>{profile ? t('edit_connection') : t('new_connection')}</h2>
             <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
                 {/* Name & Color */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'end' }}>
                     <div>
-                        <label className="label">Name (Optional)</label>
+                        <label className="label">{t('name')}</label>
                         <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="My Remote Server" />
                     </div>
                     <div>
-                        <label className="label">Color</label>
+                        <label className="label">{t('color')}</label>
                         <div style={{ display: 'flex', gap: 6 }}>
                             {COLORS.map(c => (
                                 <div
@@ -97,11 +99,11 @@ export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEdit
                 {/* User & Host */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
                     <div>
-                        <label className="label">User</label>
+                        <label className="label">{t('user')}</label>
                         <input className="input" required value={user} onChange={e => setUser(e.target.value)} placeholder="root" />
                     </div>
                     <div>
-                        <label className="label">Host</label>
+                        <label className="label">{t('host')}</label>
                         <input className="input" required value={host} onChange={e => setHost(e.target.value)} placeholder="192.168.1.100" />
                     </div>
                 </div>
@@ -109,23 +111,23 @@ export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEdit
                 {/* SSH Port & Local Port */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div>
-                        <label className="label">SSH Port</label>
+                        <label className="label">{t('port')}</label>
                         <input className="input" type="number" value={port} onChange={e => setPort(Number(e.target.value))} />
                     </div>
                     <div>
-                        <label className="label">Local Tunnel Port</label>
+                        <label className="label">{t('localPort')}</label>
                         <input className="input" type="number" value={localPort} onChange={e => setLocalPort(Number(e.target.value))} />
                     </div>
                 </div>
 
                 <div>
-                    <label className="label">Identity File (Optional)</label>
+                    <label className="label">{t('identityFile')}</label>
                     <input className="input" value={identityFile} onChange={e => setIdentityFile(e.target.value)} placeholder="/path/to/private/key" />
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
-                    <button type="button" className="btn link" onClick={onCancel}>Cancel</button>
-                    <button type="submit" className="btn primary">Save Profile</button>
+                    <button type="button" className="btn link" onClick={onCancel}>{t('cancel')}</button>
+                    <button type="submit" className="btn primary">{t('save_profile')}</button>
                 </div>
             </form>
 

@@ -6,6 +6,7 @@ import { captureTokenFromURL } from './api'
 import './editor-theme.css'
 import '@xterm/xterm/css/xterm.css'
 import './styles.css'
+import './i18n'
 
 // Initialize auth/api from URL if present
 console.log('MLCRemote: captureTokenFromURL type:', typeof captureTokenFromURL)

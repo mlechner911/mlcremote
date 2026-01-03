@@ -2,10 +2,12 @@ import React from 'react'
 import { Icon, iconForMimeOrFilename, iconForExtension } from '../generated/icons'
 import { formatBytes } from '../utils/bytes'
 import { authedFetch, getToken } from '../utils/auth'
+import { useTranslation } from 'react-i18next'
 
 type TrashEntry = { originalPath: string; trashPath: string; deletedAt: string }
 
 export default function TrashView() {
+  const { t } = useTranslation()
   const [entry, setEntry] = React.useState<TrashEntry | null>(null)
   const [loading, setLoading] = React.useState<boolean>(false)
 
@@ -30,8 +32,8 @@ export default function TrashView() {
     return () => clearInterval(id)
   }, [fetchRecent])
 
-  if (loading && !entry) return <div className="muted">Loading trash…</div>
-  if (!entry) return <div className="muted">Trash is empty</div>
+  if (loading && !entry) return <div className="muted">{t('loading_trash')}</div>
+  if (!entry) return <div className="muted">{t('trash_empty')}</div>
 
   const name = entry.originalPath.split('/').pop() || entry.originalPath
   const iconName = iconForMimeOrFilename(undefined, name) || iconForExtension(name.split('.').pop() || '') || 'icon-trash'
@@ -46,15 +48,15 @@ export default function TrashView() {
         </div>
       </div>
       <div style={{ marginTop: 12 }}>
-        <div className="muted">Original path: {entry.originalPath}</div>
-        <div className="muted">Trash path: {entry.trashPath}</div>
+        <div className="muted">{t('original_path')}: {entry.originalPath}</div>
+        <div className="muted">{t('trash_path')}: {entry.trashPath}</div>
       </div>
       <div style={{ marginTop: 12 }}>
-        <button className="btn" disabled>Undo (coming)</button>
+        <button className="btn" disabled>{t('undo_coming')}</button>
         {(() => {
           const token = getToken()
-          const url = `/ api / file ? path = ${encodeURIComponent(entry.trashPath)} ` + (token ? ` & token=${encodeURIComponent(token)} ` : '')
-          return <a className="btn" style={{ marginLeft: 8 }} href={url} download={name}>Download</a>
+          const url = `/api/file?path=${encodeURIComponent(entry.trashPath)}` + (token ? `&token=${encodeURIComponent(token)}` : '')
+          return <a className="btn" style={{ marginLeft: 8 }} href={url} download={name}>{t('download')}</a>
         })()}
       </div>
     </div>

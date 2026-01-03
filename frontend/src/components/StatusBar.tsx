@@ -2,7 +2,7 @@ import React from 'react'
 import { Health } from '../api'
 import { formatBytes } from '../utils/bytes'
 import { Icon } from '../generated/icons'
-import { getIcon } from '../generated/icon-helpers'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
     health: Health | null
@@ -12,6 +12,7 @@ type Props = {
 }
 
 export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealthAt }: Props) {
+    const { t } = useTranslation()
     const [now, setNow] = React.useState<Date>(new Date())
 
     React.useEffect(() => {
@@ -34,17 +35,17 @@ export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealt
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {/* Connection Status */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} title={lastHealthAt ? `Last checked: ${new Date(lastHealthAt).toLocaleTimeString()}` : ''}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} title={lastHealthAt ? `${t('last_checked', 'Last checked')}: ${new Date(lastHealthAt).toLocaleTimeString()}` : ''}>
                     <span style={{
                         width: 8, height: 8, borderRadius: 4,
                         background: health && health.host ? '#10b981' : (isOnline ? '#f59e0b' : '#ef4444')
                     }} />
-                    <span>{health && health.host ? health.host : (isOnline ? 'Connecting...' : 'Offline')}</span>
+                    <span>{health && health.host ? health.host : (isOnline ? t('connecting') : t('offline', 'Offline'))}</span>
                 </div>
 
-                {/* Git Branch / Version (Placeholder for now, using Version) */}
-                <span className={isOnline ? 'ok' : 'err'} title={isOnline ? 'Connected' : 'Disconnected'}>
-                    <Icon name="icon-circle-filled" size={10} /> {isOnline ? 'Online' : 'Offline'}
+                {/* Online Status */}
+                <span className={isOnline ? 'ok' : 'err'} title={isOnline ? t('status_connected') : t('disconnected')}>
+                    <Icon name="icon-circle-filled" size={10} /> {isOnline ? t('online', 'Online') : t('offline', 'Offline')}
                 </span>
                 {health && (
                     <>
@@ -57,7 +58,7 @@ export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealt
                             </>
                         )}
                         <span className="sep" />
-                        <span title="Server Time">{health.server_time ? new Date(health.server_time).toLocaleTimeString() : ''}</span>
+                        <span title={t('server_time', 'Server Time')}>{health.server_time ? new Date(health.server_time).toLocaleTimeString() : ''}</span>
                     </>
                 )}
             </div>

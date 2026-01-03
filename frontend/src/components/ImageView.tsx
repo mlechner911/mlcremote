@@ -1,8 +1,10 @@
 import React from 'react'
 import { getToken } from '../utils/auth'
 import { makeUrl } from '../api'
+import { useTranslation } from 'react-i18next'
 
 export default function ImageView({ path, onDimensions }: { path: string; onDimensions?: (w: number, h: number) => void }) {
+  const { t } = useTranslation()
   const token = getToken()
   const src = makeUrl(`/api/file?path=${encodeURIComponent(path)}${token ? `&token=${encodeURIComponent(token)}` : ''}`)
   const [natural, setNatural] = React.useState<{ w: number; h: number } | null>(null)
@@ -22,7 +24,7 @@ export default function ImageView({ path, onDimensions }: { path: string; onDime
         }} />
       </div>
       <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-        <a className="link" href={src} download={path.split('/').pop()}>Download</a>
+        <a className="link" href={src} download={path.split('/').pop()}>{t('download')}</a>
         {natural ? (
           <span className="muted" style={{ marginLeft: 8 }}>{natural.w} × {natural.h}</span>
         ) : null}
