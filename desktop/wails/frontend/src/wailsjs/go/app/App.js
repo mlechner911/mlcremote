@@ -101,3 +101,7 @@ export function TunnelStatus() {
 export function VerifyMasterPassword(arg1) {
   return window['go']['app']['App']['VerifyMasterPassword'](arg1);
 }
+
+export function VerifyPassword(arg1) {
+  return window['go']['app']['App']['VerifyPassword'](arg1);
+}

@@ -1,10 +1,7 @@
 import React, { useState } from 'react'
 import { Icon } from '../generated/icons'
 import { useI18n } from '../utils/i18n'
-import { ProbeConnection, DeploySSHKey } from '../wailsjs/go/app/App'
-import PasswordDialog from './PasswordDialog'
-
-import { ProbeConnection, DeploySSHKey } from '../wailsjs/go/app/App'
+import { ProbeConnection, DeploySSHKey, VerifyPassword } from '../wailsjs/go/app/App'
 import PasswordDialog from './PasswordDialog'
 
 // Define the shape locally until generated bindings are available/updated
@@ -42,7 +39,6 @@ const COLORS = [
     '#ffc107', // yellow
     '#17a2b8', // cyan
     '#fd7e14', // orange
-    '#fd7e14', // orange
 ]
 
 export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEditorProps) {
@@ -56,6 +52,9 @@ export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEdit
     const [identityFile, setIdentityFile] = useState(profile?.identityFile || '')
     const [showPasswordDialog, setShowPasswordDialog] = useState(false)
     const [testStatus, setTestStatus] = useState('')
+    const [passwordAction, setPasswordAction] = useState<'deploy' | 'test'>('test')
+    const [passwordReason, setPasswordReason] = useState<'auth-failed' | 'no-key'>('no-key')
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -85,8 +84,11 @@ export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEdit
             if (res === 'ok') {
                 setTestStatus(t('connection_ok'))
                 setTimeout(() => setTestStatus(''), 3000)
-            } else if (res === 'auth-failed') {
-                if (window.confirm(t('auth_failed_deploy'))) {
+            } else if (res === 'auth-failed' || res === 'no-key') {
+                const msg = res === 'auth-failed' ? t('auth_failed_pwd_fallback') : t('no_key_pwd_fallback')
+                if (window.confirm(msg)) {
+                    setPasswordAction('test')
+                    setPasswordReason(res as any)
                     setShowPasswordDialog(true)
                 } else {
                     setTestStatus(t('status_failed'))
@@ -99,9 +101,47 @@ export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEdit
         }
     }
 
-    const handleDeployKey = async (password: string) => {
-        setShowPasswordDialog(false)
+    const handlePasswordConfirm = async (password: string) => {
+        if (passwordAction === 'deploy') {
+            await performDeploy(password)
+            return
+        }
+
+        // Test Password
+        setTestStatus(t('status_checking'))
+        try {
+            // @ts-ignore
+            const res = await VerifyPassword({
+                host, user, port: Number(port), password, identityFile: ''
+            })
+
+            if (res === 'ok') {
+                setShowPasswordDialog(false)
+                setTestStatus(t('connection_ok'))
+
+                // If we have a local key (auth-failed), offer to deploy
+                if (passwordReason === 'auth-failed') {
+                    setTimeout(async () => {
+                        if (window.confirm(t('add_key_question'))) {
+                            await performDeploy(password)
+                        }
+                    }, 100)
+                } else if (passwordReason === 'no-key') {
+                    // No local key found, show instructions on how to generate one
+                    alert(t('ssh_key_missing_info'))
+                }
+            } else {
+                alert(t('status_failed') + ": " + res)
+                // Keep dialog open? 
+            }
+        } catch (e: any) {
+            alert(t('status_failed') + ": " + e.message)
+        }
+    }
+
+    const performDeploy = async (password: string) => {
         setTestStatus(t('installing_key'))
+        setShowPasswordDialog(false)
         try {
             // @ts-ignore
             await DeploySSHKey({
@@ -199,6 +239,15 @@ export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEdit
                     <button type="submit" className="btn primary">{t('save_profile')}</button>
                 </div>
             </form>
+
+            {showPasswordDialog && (
+                <PasswordDialog
+                    title={passwordAction === 'deploy' ? t('deploy_key_msg') : t('password')}
+                    description={t('enter_remote_password')}
+                    onConfirm={handlePasswordConfirm}
+                    onCancel={() => setShowPasswordDialog(false)}
+                />
+            )}
 
             <style>{`
         .label { display: block; font-size: 0.85rem; color: var(--text-muted); marginBottom: 4px; }

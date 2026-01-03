@@ -52,3 +52,5 @@ export function TailRemoteLogs(arg1:string):Promise<string>;
 export function TunnelStatus():Promise<string>;
 
 export function VerifyMasterPassword(arg1:string):Promise<boolean>;
+
+export function VerifyPassword(arg1:app.SSHDeployRequest):Promise<string>;

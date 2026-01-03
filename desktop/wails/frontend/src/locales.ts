@@ -66,8 +66,13 @@ export const translations = {
         test_connection: "Test Connection",
         connection_ok: "Connection verified!",
         auth_failed_deploy: "Authentication failed. Install SSH key?",
+        auth_failed_pwd_fallback: "Key authentication failed. Test with password?",
+        no_key_pwd_fallback: "No SSH key found. Test with password?",
+        add_key_question: "Connection verified. Add local SSH key to server?",
         installing_key: "Installing SSH key...",
-        key_installed: "SSH Key installed successfully!"
+        key_installed: "SSH Key installed successfully!",
+        enter_remote_password: "Enter the password for the remote user.",
+        ssh_key_missing_info: "Connection successful!\n\nNo local SSH key was found. To enable key-based authentication:\n1. Open a terminal (PowerShell/Bash)\n2. Run: ssh-keygen -t ed25519\n3. Press Enter to accept defaults\n4. Test connection again to deploy the new key."
     },
     de: {
         app_title: "MLCRemote Desktop",
@@ -136,6 +141,9 @@ export const translations = {
         test_connection: "Verbindung testen",
         connection_ok: "Verbindung verifiziert!",
         auth_failed_deploy: "Authentifizierung fehlgeschlagen. SSH-Schlüssel installieren?",
+        auth_failed_pwd_fallback: "Schlüssel-Authentifizierung fehlgeschlagen. Mit Passwort testen?",
+        no_key_pwd_fallback: "Kein SSH-Schlüssel gefunden. Mit Passwort testen?",
+        add_key_question: "Verbindung verifiziert. Lokalen SSH-Schlüssel hinzufügen?",
         installing_key: "Installiere SSH-Schlüssel...",
         key_installed: "SSH-Schlüssel erfolgreich installiert!"
     },
@@ -206,6 +214,9 @@ export const translations = {
         test_connection: "Prueba de conexión",
         connection_ok: "¡Conexión verificada!",
         auth_failed_deploy: "Autenticación fallida. ¿Instalar clave SSH?",
+        auth_failed_pwd_fallback: "Autenticación de clave fallida. ¿Probar con contraseña?",
+        no_key_pwd_fallback: "No se encontró clave SSH. ¿Probar con contraseña?",
+        add_key_question: "Conexión verificada. ¿Agregar clave SSH local al servidor?",
         installing_key: "Instalando clave SSH...",
         key_installed: "¡Clave SSH instalada con éxito!"
     },
@@ -275,6 +286,9 @@ export const translations = {
         test_connection: "Tester la connexion",
         connection_ok: "Connexion vérifiée !",
         auth_failed_deploy: "Authentification échouée. Installer la clé SSH ?",
+        auth_failed_pwd_fallback: "Authentification par clé échouée. Tester avec le mot de passe ?",
+        no_key_pwd_fallback: "Aucune clé SSH trouvée. Tester avec le mot de passe ?",
+        add_key_question: "Connexion vérifiée. Ajouter la clé SSH locale au serveur ?",
         installing_key: "Installation de la clé SSH...",
         key_installed: "Clé SSH installée avec succès !"
     }

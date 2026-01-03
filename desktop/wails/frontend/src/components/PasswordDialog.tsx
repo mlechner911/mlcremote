@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import ReactDOM from 'react-dom'
 import { useI18n } from '../utils/i18n'
 
 interface PasswordDialogProps {
@@ -17,7 +18,7 @@ export default function PasswordDialog({ title, description, onConfirm, onCancel
         if (password) onConfirm(password)
     }
 
-    return (
+    const content = (
         <div style={{
             position: 'fixed', inset: 0, zIndex: 10000,
             background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)',
@@ -53,4 +54,6 @@ export default function PasswordDialog({ title, description, onConfirm, onCancel
             </div>
         </div>
     )
+
+    return ReactDOM.createPortal(content, document.body)
 }

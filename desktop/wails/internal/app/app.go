@@ -88,6 +88,10 @@ func (a *App) ProbeConnection(req SSHDeployRequest) (string, error) {
 	return a.SSH.ProbePublicKey(req.Host, req.User, req.Port, req.IdentityFile)
 }
 
+func (a *App) VerifyPassword(req SSHDeployRequest) (string, error) {
+	return a.SSH.VerifyPassword(req.Host, req.User, req.Port, req.Password)
+}
+
 // HealthCheck checks whether the backend at the given URL responds to /health
 func (a *App) HealthCheck(url string, timeoutSeconds int) (string, error) {
 	client := http.Client{Timeout: time.Duration(timeoutSeconds) * time.Second}

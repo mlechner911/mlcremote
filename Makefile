@@ -165,16 +165,24 @@ else
 	@echo "Created $$ZIPNAME"
 endif
 
+
+# Define delete command
+ifeq ($(OS),Windows_NT)
+	RM_RF = powershell -noprofile -command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
+else
+	RM_RF = rm -rf
+endif
+
 clean:
 	@rm -f $(BIN_DIR)/dev-server
-	@rm -rf $(STATIC_DIR)
-	@rm -rf build/dist
+	@$(RM_RF) $(STATIC_DIR)
+	@$(RM_RF) build/dist
 	@echo "Cleaned build artifacts"
 
 .PHONY: dist
-dist: icons-gen backend frontend
+dist: icons backend frontend
 	@echo "Packaging distribution into build/dist"
-	@rm -rf build/dist
+	@$(RM_RF) build/dist
 	@mkdir -p build/dist/bin
 	@mkdir -p build/dist/frontend
 	@cp -r $(BIN_DIR)/dev-server build/dist/bin/ || true
