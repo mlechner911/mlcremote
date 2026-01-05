@@ -38,9 +38,10 @@ func main() {
 	openapi := flag.String("openapi", "", "path to OpenAPI YAML spec (optional)")
 	noAuth := flag.Bool("no-auth", false, "disable authentication (DANGEROUS)")
 	showVersion := flag.Bool("version", false, "print version and exit")
+	tokenFlag := flag.String("token", "", "auth token (if empty and no-auth is false, one will be generated)")
 	flag.Parse()
 
-	version := "1.0.0"
+	version := "1.0.1"
 	if *showVersion {
 		fmt.Println(version)
 		os.Exit(0)
@@ -51,8 +52,8 @@ func main() {
 		*root = os.Getenv("HOME")
 	}
 
-	token := ""
-	if !*noAuth {
+	token := *tokenFlag
+	if token == "" && !*noAuth {
 		token = generateToken()
 	}
 

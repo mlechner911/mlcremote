@@ -16,8 +16,8 @@ func (a *App) DetectRemoteOS(profileJSON string) (string, error) {
 }
 
 // DeployAgent ensures the correct binary and assets are on the remote host
-func (a *App) DeployAgent(profileJSON string, osArch string) (string, error) {
-	return a.Backend.DeployAgent(profileJSON, osArch)
+func (a *App) DeployAgent(profileJSON string, osArch string, token string) (string, error) {
+	return a.Backend.DeployAgent(profileJSON, osArch, token)
 }
 
 // IsServerRunning checks if the backend is already active on the remote host
@@ -25,7 +25,7 @@ func (a *App) IsServerRunning(profileJSON string, osString string) (bool, error)
 	return a.Backend.IsServerRunning(profileJSON, osString)
 }
 
-// InstallBackend is legacy/stub
+// InstallBackend is legacy/stub for backward compatibility
 func (a *App) InstallBackend(profileJSON string) (string, error) {
 	return "deprecated", nil
 }
@@ -40,7 +40,7 @@ func (a *App) GetRemoteFileTree(profileJSON string) (string, error) {
 	return a.Backend.GetRemoteFileTree(profileJSON)
 }
 
-// TailRemoteLogs returns the last 50 lines of the systemd service logs
+// TailRemoteLogs returns the last 50 lines of the systemd service logs (or log file)
 func (a *App) TailRemoteLogs(profileJSON string) (string, error) {
 	return a.Backend.TailRemoteLogs(profileJSON)
 }

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import {
     ListProfiles, SaveProfile, DeleteProfile,
-    StartTunnelWithProfile, HasMasterPassword, DetectRemoteOS, CheckRemoteVersion, DeploySSHKey
+    StartTunnelWithProfile, HasMasterPassword, DetectRemoteOS, CheckRemoteVersion, DeploySSHKey,
+    IsPremium, SetupManagedIdentity, GetManagedIdentityPath
 } from '../wailsjs/go/app/App'
+import { useConnectionTester } from '../hooks/useConnectionTester'
 import { Icon } from '../generated/icons'
 import ProfileEditor, { ConnectionProfile } from './ProfileEditor'
 import { Profile } from '../App' // Legacy Profile type if needed, but we use ConnectionProfile mostly
@@ -11,7 +13,7 @@ import PasswordDialog from './PasswordDialog'
 import AboutDialog from './AboutDialog'
 
 interface LaunchScreenProps {
-    onConnected: (p: Profile) => void
+    onConnected: (p: Profile, token?: string) => void
     onLocked: () => void
     onOpenSettings: () => void
 }
@@ -22,19 +24,32 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [editing, setEditing] = useState(false)
     const [loading, setLoading] = useState(false)
+    const { testStatus, setTestStatus, isTesting, testConnection } = useConnectionTester()
     const [status, setStatus] = useState('')
     const [errorWin, setErrorWin] = useState<string | null>(null) // For Windows install prompt
     const [hasPassword, setHasPassword] = useState(false)
     const [promptDeploy, setPromptDeploy] = useState<ConnectionProfile | null>(null)
     const [deployLoading, setDeployLoading] = useState(false)
     const [showAbout, setShowAbout] = useState(false)
+    const [isPremium, setIsPremium] = useState(false)
+    const [promptManaged, setPromptManaged] = useState<ConnectionProfile | null>(null) // Prompt for managed identity
+    const [managedPath, setManagedPath] = useState('')
+
+    const normalizePath = (p: string) => p.replace(/\\/g, '/').toLowerCase()
 
     // Load profiles on mount
     const refreshProfiles = async () => {
         try {
             const list = await ListProfiles()
             const hasPass = await HasMasterPassword()
+            const premium = await IsPremium()
             setHasPassword(hasPass)
+            setIsPremium(premium)
+
+            if (premium) {
+                GetManagedIdentityPath().then(setManagedPath).catch(console.error)
+            }
+
             // sort by lastUsed desc
             list.sort((a: ConnectionProfile, b: ConnectionProfile) => b.lastUsed - a.lastUsed)
             setProfiles(list)
@@ -121,8 +136,13 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
             // Unified Flow: StartTunnelWithProfile handles all logic (Detect -> Deploy -> Connect)
             const res = await StartTunnelWithProfile(pStr)
 
-            if (res === 'started') {
+            if (res === 'started' || res.startsWith('started:')) {
                 setStatus(t('status_connected'))
+
+                let token = undefined;
+                if (res.startsWith('started:')) {
+                    token = res.substring(8);
+                }
 
                 try {
                     // Update metadata
@@ -151,7 +171,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                     identityFile: p.identityFile, extraArgs: p.extraArgs,
                     remoteOS: p.remoteOS, remoteArch: p.remoteArch, remoteVersion: p.remoteVersion,
                     id: p.id, color: p.color
-                })
+                }, token)
             } else {
                 // Check if it's an auth error
                 if (res.toLowerCase().includes('permission denied') || res.toLowerCase().includes('publickey')) {
@@ -167,7 +187,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
 
         } catch (e: any) {
             console.error("Connection failed", e)
-            const msg = (e?.message || String(e)).toLowerCase()
+            const msg = (e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)).toLowerCase()
             if (msg.includes('permission denied') || msg.includes('publickey')) {
                 setPromptDeploy(p)
                 setStatus('')
@@ -178,7 +198,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 alert(t('error_unreachable'))
                 setStatus('')
             } else {
-                setStatus(t('status_failed') + ': ' + (e?.message || String(e)))
+                setStatus(t('status_failed') + ': ' + (e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)))
             }
         } finally {
             setLoading(false)
@@ -201,13 +221,55 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
             setPromptDeploy(null)
             handleConnect(p)
         } catch (e: any) {
-            alert(t('status_failed') + ": " + (e.message || e))
+            alert(t('status_failed') + ": " + (e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)))
+        } finally {
+            setDeployLoading(false)
+        }
+    }
+
+    const onSetupManagedIdentity = async (password: string) => {
+        if (!promptManaged) return
+        setDeployLoading(true)
+        try {
+            // @ts-ignore
+            const privateKeyPath = await SetupManagedIdentity({
+                host: promptManaged.host,
+                user: promptManaged.user,
+                port: promptManaged.port || 22,
+                password: password,
+                identityFile: "" // Not relevant for this call
+            })
+
+            // Success! Update profile to use this identity and clear password
+            // We'll update the profile object in memory and save it
+            // NOTE: We might want to save it as "Managed Identity" (or path)
+            promptManaged.identityFile = privateKeyPath
+            // We should ensure we don't save the password if we had one (we don't save passwords anyway)
+
+            // Save updated profile
+            const validP = { ...promptManaged, id: promptManaged.id || "" }
+            // @ts-ignore
+            await SaveProfile(validP)
+
+            // Clear prompt first
+            setPromptManaged(null)
+
+            // Refresh list
+            refreshProfiles()
+
+            // Auto connect with new key
+            handleConnect(promptManaged)
+
+        } catch (e: any) {
+            alert(t('status_failed') + ": " + (e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)))
         } finally {
             setDeployLoading(false)
         }
     }
 
     const selectedProfile = profiles.find(p => p.id === selectedId)
+
+    const isManaged = selectedProfile && normalizePath(selectedProfile.identityFile || '') === normalizePath(managedPath || '') && managedPath !== ''
 
     return (
         <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-root)', color: 'var(--text-primary)', cursor: loading ? 'wait' : 'default' }}>
@@ -219,7 +281,10 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 pointerEvents: loading ? 'none' : 'auto'
             }}>
                 <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ margin: 0 }}>{t('connections')}</h3>
+                    <h3 style={{ margin: 0 }}>
+                        {t('connections')}
+                        {isPremium && <span style={{ fontSize: 10, color: '#f7b955', marginLeft: 8, border: '1px solid #f7b955', borderRadius: 4, padding: '1px 4px' }}>PRO</span>}
+                    </h3>
                     <div style={{ display: 'flex', gap: 8 }}>
                         <button className="link icon-btn" onClick={() => setShowAbout(true)} title={t('about')}>
                             <Icon name="icon-info" size={16} />
@@ -294,6 +359,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                                     profile={selectedProfile}
                                     onSave={handleSave}
                                     onCancel={() => { setEditing(false); if (profiles.length > 0) setSelectedId(profiles[0].id!) }}
+                                    isPremium={isPremium}
                                 />
                             </div>
                         </div>
@@ -305,9 +371,47 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                                 </div>
                             </div>
                             <h1 style={{ margin: '0 0 8px 0', textShadow: '0 2px 4px rgba(0,0,0,0.5)', color: '#fff' }}>{selectedProfile.name}</h1>
-                            <div className="muted" style={{ fontSize: 16, marginBottom: 32, color: 'rgba(255,255,255,0.7)' }}>{selectedProfile.user}@{selectedProfile.host}</div>
+                            <div className="muted" style={{ fontSize: 16, marginBottom: 32, color: 'rgba(255,255,255,0.7)' }}>
+                                {selectedProfile.user}@{selectedProfile.host}
+                                {isManaged && (
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 12, background: 'rgba(56, 139, 253, 0.2)', color: '#58a6ff', padding: '2px 8px', borderRadius: 10, fontSize: 11, border: '1px solid rgba(56, 139, 253, 0.3)' }}>
+                                        <Icon name="icon-lock" size={10} />
+                                        <span>Managed</span>
+                                    </div>
+                                )}
+                            </div>
 
-                            {status && <div style={{ marginBottom: 20, color: '#ff7b72', background: 'rgba(0,0,0,0.4)', padding: '4px 12px', borderRadius: 100 }}>{status}</div>}
+                            {status && (
+                                <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <div style={{ color: '#ff7b72', background: 'rgba(0,0,0,0.4)', padding: '4px 12px', borderRadius: 100 }}>
+                                        {status === t('status_connecting') ? <span style={{ color: 'var(--text-primary)' }}>{status}</span> : status}
+                                    </div>
+
+                                    {(status.includes(t('status_failed')) || status.includes('Failed') || status.includes('Error')) && (
+                                        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            <button
+                                                onClick={async () => {
+                                                    // @ts-ignore
+                                                    const selectedProfileId = selectedId; // Fix connection tester usage
+                                                    if (selectedProfileId) {
+                                                        const p = profiles.find(pr => pr.id === selectedProfileId)
+                                                        if (p) await testConnection(p)
+                                                    }
+                                                }}
+                                                className="btn link"
+                                                style={{ color: 'var(--accent)', fontSize: '0.9rem', padding: 0, textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none' }}
+                                            >
+                                                {isTesting ? t('status_checking') : t('test_connection')}
+                                            </button>
+                                            {testStatus && (
+                                                <div style={{ fontSize: '0.8rem', marginTop: 4, color: testStatus.includes(t('connection_ok')) ? '#7ee787' : 'var(--text-muted)' }}>
+                                                    {testStatus}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             <div style={{ display: 'flex', gap: 16 }}>
                                 <button className="btn primary" style={{ padding: '12px 32px', fontSize: 16, boxShadow: '0 4px 12px rgba(0,123,255,0.3)' }} onClick={() => handleConnect(selectedProfile)} disabled={loading}>
@@ -334,6 +438,20 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                     description={t('deploy_key_msg')}
                     onConfirm={onDeployKey}
                     onCancel={() => setPromptDeploy(null)}
+                    loading={deployLoading}
+                    isPremium={isPremium}
+                    onUseManagedIdentity={() => {
+                        setPromptManaged(promptDeploy)
+                        setPromptDeploy(null)
+                    }}
+                />
+            )}
+            {promptManaged && (
+                <PasswordDialog
+                    title={t('setup_secure_access')}
+                    description={t('setup_managed_key_msg') || "Enter your SSH password one last time. We will generate a secure key and configure the server for password-less access."}
+                    onConfirm={onSetupManagedIdentity}
+                    onCancel={() => setPromptManaged(null)}
                     loading={deployLoading}
                 />
             )}

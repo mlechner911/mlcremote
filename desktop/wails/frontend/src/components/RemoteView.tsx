@@ -6,10 +6,12 @@ interface RemoteViewProps {
     profileName: string
     profileId?: string
     profileColor?: string
+    user?: string
+    localPort?: number
     onDisconnect: () => void
 }
 
-export default function RemoteView({ url, profileName, profileId, profileColor, onDisconnect }: RemoteViewProps) {
+export default function RemoteView({ url, profileName, profileId, profileColor, user, localPort, onDisconnect }: RemoteViewProps) {
     const { t } = useI18n()
     // Append profileId to URL if present
     const targetSrc = `/ide/index.html?api=${encodeURIComponent(url)}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
@@ -37,8 +39,13 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                     )}
                     <span style={{ fontWeight: 'bold' }}>MLCRemote</span>
                     <span style={{ color: '#9ca3af' }}>|</span>
-                    <span style={{ color: '#e5e7eb' }}>{t('connected_to')}: {profileName}</span>
-                    <span style={{ color: '#6b7280', fontSize: '0.8em', marginLeft: 10 }}>({url})</span>
+                    <span style={{ color: '#e5e7eb' }}>
+                        {user ? `${t('user')}: ${user}` : `User: ${profileName.split('@')[0]}`}
+                    </span>
+                    <span style={{ color: '#9ca3af' }}>|</span>
+                    <span style={{ color: '#e5e7eb' }}>
+                        Tunnel Port: {localPort || 8443}
+                    </span>
                 </div>
                 <button
                     onClick={onDisconnect}

@@ -23,6 +23,18 @@ export function makeUrl(endpoint: string) {
   if (!apiBaseUrl) return endpoint
   if (typeof endpoint !== 'string') return endpoint // safety
   if (endpoint.startsWith('http')) return endpoint
+
+  // If apiBaseUrl has query params (like token), we need to handle them carefully
+  // instead of simple concatenation which results in malformed URLs
+  if (apiBaseUrl.includes('?')) {
+    const [base, query] = apiBaseUrl.split('?')
+    const url = `${base.replace(/\/$/, '')}${endpoint}`
+    if (url.includes('?')) {
+      return `${url}&${query}`
+    }
+    return `${url}?${query}`
+  }
+
   return `${apiBaseUrl}${endpoint}`
 }
 

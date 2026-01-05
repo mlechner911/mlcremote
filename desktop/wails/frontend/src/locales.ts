@@ -71,8 +71,18 @@ export const translations = {
         add_key_question: "Connection verified. Add local SSH key to server?",
         installing_key: "Installing SSH key...",
         key_installed: "SSH Key installed successfully!",
-        enter_remote_password: "Enter the password for the remote user.",
-        ssh_key_missing_info: "Connection successful!\n\nNo local SSH key was found. To enable key-based authentication:\n1. Open a terminal (PowerShell/Bash)\n2. Run: ssh-keygen -t ed25519\n3. Press Enter to accept defaults\n4. Test connection again to deploy the new key."
+        auth_method: "Authentication Method",
+        auth_agent: "System Agent / Default",
+        auth_managed: "Managed Identity",
+        auth_custom: "Custom Key File",
+        managed_key_info: "Using secure, app-managed identity.",
+        browse: "Browse...",
+        premium_managed: "Managed Identity (Premium)",
+        enter_remote_password: "Enter password for remote user.",
+        ssh_key_missing_info: "Connection successful!\n\nNo local SSH key found. To enable key auth:\n1. Open a terminal (PowerShell/Bash)\n2. Run: ssh-keygen -t ed25519\n3. Press Enter to accept defaults\n4. Test connection again to deploy the new key.",
+        setup_secure_access: "Setup Secure Access",
+        setup_managed_key_msg: "Enter your remote password. We will generate a secure identity and configure the server for password-less access.",
+        premium_managed_key_desc: "Switch to a secure, app-managed SSH key instead of using a password."
     },
     de: {
         app_title: "MLCRemote Desktop",
@@ -145,7 +155,19 @@ export const translations = {
         no_key_pwd_fallback: "Kein SSH-Schlüssel gefunden. Mit Passwort testen?",
         add_key_question: "Verbindung verifiziert. Lokalen SSH-Schlüssel hinzufügen?",
         installing_key: "Installiere SSH-Schlüssel...",
-        key_installed: "SSH-Schlüssel erfolgreich installiert!"
+        key_installed: "SSH-Schlüssel erfolgreich installiert!",
+        enter_remote_password: "Geben Sie das Passwort für den Remote-Benutzer ein.",
+        ssh_key_missing_info: "Verbindung erfolgreich!\n\nEs wurde kein lokaler SSH-Schlüssel gefunden. So aktivieren Sie die schlüsselbasierte Authentifizierung:\n1. Öffnen Sie ein Terminal (PowerShell/Bash)\n2. Führen Sie aus: ssh-keygen -t ed25519\n3. Drücken Sie die Eingabetaste, um die Standardwerte zu akzeptieren\n4. Testen Sie die Verbindung erneut, um den neuen Schlüssel bereitzustellen.",
+        auth_method: "Authentifizierungsmethode",
+        auth_agent: "System-Agent / Standard",
+        auth_managed: "Verwaltete Identität",
+        auth_custom: "Benutzerdefinierte Schlüsseldatei",
+        managed_key_info: "Verwendet sichere, von der App verwaltete Identität.",
+        browse: "Durchsuchen...",
+        premium_managed: "Verwaltete Identität (Premium)",
+        setup_secure_access: "Sicheren Zugang einrichten",
+        setup_managed_key_msg: "Geben Sie Ihr Remote-Passwort ein. Wir erstellen eine sichere Identität und konfigurieren den Server für passwortlosen Zugriff.",
+        premium_managed_key_desc: "Wechseln Sie zu einem sicheren, von der App verwalteten SSH-Schlüssel, anstatt ein Passwort zu verwenden."
     },
     es: {
         app_title: "MLCRemote Desktop",
@@ -218,7 +240,19 @@ export const translations = {
         no_key_pwd_fallback: "No se encontró clave SSH. ¿Probar con contraseña?",
         add_key_question: "Conexión verificada. ¿Agregar clave SSH local al servidor?",
         installing_key: "Instalando clave SSH...",
-        key_installed: "¡Clave SSH instalada con éxito!"
+        key_installed: "¡Clave SSH instalada con éxito!",
+        enter_remote_password: "Ingresa la contraseña para el usuario remoto.",
+        ssh_key_missing_info: "Conexión exitosa!\n\nNo se encontró clave SSH local. Para habilitar la autenticación por clave:\n1. Abre una terminal (PowerShell/Bash)\n2. Ejecuta: ssh-keygen -t ed25519\n3. Presiona Enter para aceptar los valores predeterminados\n4. Prueba la conexión de nuevo para desplegar la nueva clave.",
+        auth_method: "Método de Autenticación",
+        auth_agent: "Agente del Sistema / Predeterminado",
+        auth_managed: "Identidad Gestionada",
+        auth_custom: "Archivo de Clave Personalizado",
+        managed_key_info: "Usando identidad segura administrada por la app.",
+        browse: "Examinar...",
+        premium_managed: "Identidad Gestionada (Premium)",
+        setup_secure_access: "Configurar acceso seguro",
+        setup_managed_key_msg: "Ingrese su contraseña remota. Generaremos una identidad segura y configuraremos el servidor para el acceso sin contraseña.",
+        premium_managed_key_desc: "Cambie a una clave SSH segura y administrada por la aplicación en lugar de usar una contraseña."
     },
     fr: {
         app_title: "MLCRemote Desktop",
@@ -280,6 +314,7 @@ export const translations = {
         connected_to: "Connecté à",
         deploy_key_msg: "Clé SSH introuvable sur le serveur distant. Entrez le mot de passe pour l'installer.",
         error_unknown_host: "Serveur introuvable. Veuillez vérifier le nom d'hôte ou vos paramètres DNS.",
+        error_unreachable: "Impossible de se connecter au serveur distant. Veuillez vous assurer que le serveur est accessible et vérifier l'adresse IP.",
         remove_password: "Supprimer le mot de passe",
         remove_password_confirm: "Êtes-vous sûr de vouloir supprimer le mot de passe maître ? Vos profils ne seront plus protégés.",
         password_removed: "Mot de passe supprimé",
@@ -290,7 +325,19 @@ export const translations = {
         no_key_pwd_fallback: "Aucune clé SSH trouvée. Tester avec le mot de passe ?",
         add_key_question: "Connexion vérifiée. Ajouter la clé SSH locale au serveur ?",
         installing_key: "Installation de la clé SSH...",
-        key_installed: "Clé SSH installée avec succès !"
+        key_installed: "Clé SSH installée avec succès !",
+        enter_remote_password: "Entrez le mot de passe pour l'utilisateur distant.",
+        ssh_key_missing_info: "Connexion réussie !\n\nAucune clé SSH locale n'a été trouvée. Pour activer l'authentification par clé :\n1. Ouvrez un terminal (PowerShell/Bash)\n2. Exécutez : ssh-keygen -t ed25519\n3. Appuyez sur Entrée pour accepter les valeurs par défaut\n4. Testez à nouveau la connexion pour déployer la nouvelle clé.",
+        auth_method: "Méthode d'authentification",
+        auth_agent: "Agent système / Par défaut",
+        auth_managed: "Identité Gérée",
+        auth_custom: "Fichier de clé personnalisé",
+        managed_key_info: "Utilise une identité sécurisée gérée par l'application.",
+        browse: "Parcourir...",
+        premium_managed: "Identité Gérée (Premium)",
+        setup_secure_access: "Configurer l'accès sécurisé",
+        setup_managed_key_msg: "Entrez votre mot de passe distant. Nous générerons une identité sécurisée et configurerons le serveur pour un accès sans mot de passe.",
+        premium_managed_key_desc: "Passez à une clé SSH sécurisée gérée par l'application au lieu d'utiliser un mot de passe."
     }
 };
 

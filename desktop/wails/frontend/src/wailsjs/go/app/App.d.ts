@@ -11,11 +11,15 @@ export function DeduplicateProfiles():Promise<number>;
 
 export function DeleteProfile(arg1:string):Promise<boolean>;
 
-export function DeployAgent(arg1:string,arg2:string):Promise<string>;
+export function DeployAgent(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function DeploySSHKey(arg1:app.SSHDeployRequest):Promise<void>;
 
 export function DetectRemoteOS(arg1:string):Promise<string>;
+
+export function GetManagedIdentity():Promise<string>;
+
+export function GetManagedIdentityPath():Promise<string>;
 
 export function GetProfile(arg1:string):Promise<config.ConnectionProfile>;
 
@@ -23,15 +27,19 @@ export function GetRemoteFileTree(arg1:string):Promise<string>;
 
 export function HasMasterPassword():Promise<boolean>;
 
-export function HealthCheck(arg1:string,arg2:number):Promise<string>;
+export function HealthCheck(arg1:string,arg2:string,arg3:number):Promise<string>;
 
 export function InstallBackend(arg1:string):Promise<string>;
+
+export function IsPremium():Promise<boolean>;
 
 export function IsServerRunning(arg1:string,arg2:string):Promise<boolean>;
 
 export function KillPort(arg1:number):Promise<void>;
 
 export function ListProfiles():Promise<Array<config.ConnectionProfile>>;
+
+export function PickIdentityFile():Promise<string>;
 
 export function ProbeConnection(arg1:app.SSHDeployRequest):Promise<string>;
 
@@ -40,6 +48,8 @@ export function SaveIdentityFile(arg1:string,arg2:string):Promise<string>;
 export function SaveProfile(arg1:config.ConnectionProfile):Promise<string>;
 
 export function SetMasterPassword(arg1:string):Promise<void>;
+
+export function SetupManagedIdentity(arg1:app.SSHDeployRequest):Promise<string>;
 
 export function StartTunnel(arg1:string):Promise<string>;
 

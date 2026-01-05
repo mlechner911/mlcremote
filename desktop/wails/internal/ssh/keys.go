@@ -70,7 +70,8 @@ func containsAuthError(err string) bool {
 	return strings.Contains(err, "unable to authenticate")
 }
 
-// FindDefaultIdentity looks for common SSH keys
+// FindDefaultIdentity looks for common SSH keys (RSA, Ed25519) in the user's .ssh directory.
+// It returns the path to the first valid key found, or an empty string if none exist.
 func (m *Manager) FindDefaultIdentity() string {
 	home, err := os.UserHomeDir()
 	if err != nil {

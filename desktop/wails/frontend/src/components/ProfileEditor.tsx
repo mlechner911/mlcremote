@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Icon } from '../generated/icons'
 import { useI18n } from '../utils/i18n'
-import { ProbeConnection, DeploySSHKey, VerifyPassword } from '../wailsjs/go/app/App'
+import { ProbeConnection, DeploySSHKey, VerifyPassword, GetManagedIdentityPath, PickIdentityFile } from '../wailsjs/go/app/App'
 import PasswordDialog from './PasswordDialog'
+import { useConnectionTester } from '../hooks/useConnectionTester'
 
 // Define the shape locally until generated bindings are available/updated
 // should come from swagger at some point..
@@ -29,6 +30,7 @@ interface ProfileEditorProps {
     profile?: ConnectionProfile
     onSave: (p: ConnectionProfile) => void
     onCancel: () => void
+    isPremium?: boolean
 }
 
 const COLORS = [
@@ -41,7 +43,7 @@ const COLORS = [
     '#fd7e14', // orange
 ]
 
-export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEditorProps) {
+export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: ProfileEditorProps) {
     const { t } = useI18n()
     const [name, setName] = useState(profile?.name || '')
     const [color, setColor] = useState(profile?.color || COLORS[0])
@@ -49,10 +51,58 @@ export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEdit
     const [host, setHost] = useState(profile?.host || '')
     const [port, setPort] = useState(profile?.port || 22)
     const [localPort, setLocalPort] = useState(profile?.localPort || 8443)
+
+    // Auth Type Logic
     const [identityFile, setIdentityFile] = useState(profile?.identityFile || '')
+    const [authType, setAuthType] = useState<'agent' | 'custom' | 'managed'>('agent')
+    const [managedPath, setManagedPath] = useState('')
+    const [isVerified, setIsVerified] = useState(false)
+
+    const normalizePath = (p: string) => p.replace(/\\/g, '/').toLowerCase()
+
+    useEffect(() => {
+        // Determine initial auth type
+        if (!profile?.identityFile) {
+            setAuthType('agent')
+        } else {
+            // Check if it matches managed path? For now default to custom if set, 
+            // unless we can verify it's the managed one.
+            setAuthType('custom')
+        }
+
+        // Fetch managed path if premium
+        if (isPremium) {
+            GetManagedIdentityPath().then(path => {
+                setManagedPath(path)
+                const normPath = normalizePath(path)
+                const normId = normalizePath(profile?.identityFile || '')
+
+                if (normId && (normId === normPath)) {
+                    setAuthType('managed')
+                } else if (normId) {
+                    // Check if it's strictly equal to managed path (case insensitive normalized)
+                }
+            }).catch(console.error)
+        }
+    }, [isPremium, profile])
+
+    const handleAuthTypeChange = (type: 'agent' | 'custom' | 'managed') => {
+        setAuthType(type)
+        if (type === 'agent') {
+            setIdentityFile('')
+        } else if (type === 'managed') {
+            setIdentityFile(managedPath)
+        } else {
+            // custom, keep existing or empty
+            if (identityFile === managedPath) setIdentityFile('')
+        }
+    }
+
     const [showPasswordDialog, setShowPasswordDialog] = useState(false)
-    const [testStatus, setTestStatus] = useState('')
     const [passwordAction, setPasswordAction] = useState<'deploy' | 'test'>('test')
+
+    // Use the new hook
+    const { testStatus, setTestStatus, isTesting, testConnection } = useConnectionTester()
     const [passwordReason, setPasswordReason] = useState<'auth-failed' | 'no-key'>('no-key')
 
 
@@ -74,30 +124,23 @@ export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEdit
     }
 
     const handleTestConnection = async () => {
-        setTestStatus(t('status_checking'))
-        try {
-            // @ts-ignore
-            const res = await ProbeConnection({
-                host, user, port: Number(port), identityFile, password: ''
-            })
+        const res = await testConnection({
+            host, user, port: Number(port), identityFile
+        })
 
-            if (res === 'ok') {
-                setTestStatus(t('connection_ok'))
-                setTimeout(() => setTestStatus(''), 3000)
-            } else if (res === 'auth-failed' || res === 'no-key') {
-                const msg = res === 'auth-failed' ? t('auth_failed_pwd_fallback') : t('no_key_pwd_fallback')
-                if (window.confirm(msg)) {
-                    setPasswordAction('test')
-                    setPasswordReason(res as any)
-                    setShowPasswordDialog(true)
-                } else {
-                    setTestStatus(t('status_failed'))
-                }
-            } else {
-                setTestStatus(`${t('status_failed')}: ${res}`)
+        if (res === 'ok') {
+            setIsVerified(true)
+        } else {
+            setIsVerified(false)
+        }
+
+        if (res === 'auth-failed' || res === 'no-key') {
+            const msg = res === 'auth-failed' ? t('auth_failed_pwd_fallback') : t('no_key_pwd_fallback')
+            if (window.confirm(msg)) {
+                setPasswordAction('test')
+                setPasswordReason(res as any)
+                setShowPasswordDialog(true)
             }
-        } catch (e: any) {
-            setTestStatus(`${t('status_failed')}: ${e.message || e}`)
         }
     }
 
@@ -116,6 +159,7 @@ export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEdit
             })
 
             if (res === 'ok') {
+                setIsVerified(true)
                 setShowPasswordDialog(false)
                 setTestStatus(t('connection_ok'))
 
@@ -135,7 +179,7 @@ export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEdit
                 // Keep dialog open? 
             }
         } catch (e: any) {
-            alert(t('status_failed') + ": " + e.message)
+            alert(t('status_failed') + ": " + (e.message || e))
         }
     }
 
@@ -228,8 +272,55 @@ export default function ProfileEditor({ profile, onSave, onCancel }: ProfileEdit
                 </div>
 
                 <div>
-                    <label className="label">{t('identityFile')}</label>
-                    <input className="input" value={identityFile} onChange={e => setIdentityFile(e.target.value)} placeholder="/path/to/private/key" />
+                    <label className="label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {t('auth_method')}
+                        {isVerified && <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>✓</span>}
+                    </label>
+                    <select
+                        className="input"
+                        value={authType}
+                        onChange={e => handleAuthTypeChange(e.target.value as any)}
+                        style={{ width: '100%', marginBottom: 12 }}
+                    >
+                        <option value="agent">{t('auth_agent')}</option>
+                        <option value="custom">{t('auth_custom')}</option>
+                        {isPremium && <option value="managed">{t('premium_managed')}</option>}
+                    </select>
+
+                    {authType === 'managed' && (
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
+                            {t('managed_key_info')}
+                        </div>
+                    )}
+
+                    {authType === 'custom' && (
+                        <div>
+                            <label className="label">{t('identityFile')}</label>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <input
+                                    className="input"
+                                    value={identityFile}
+                                    onChange={e => setIdentityFile(e.target.value)}
+                                    placeholder="/path/to/private/key"
+                                    style={{ flex: 1 }}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn secondary"
+                                    onClick={async () => {
+                                        try {
+                                            const file = await PickIdentityFile()
+                                            if (file) setIdentityFile(file)
+                                        } catch (e) {
+                                            console.error(e)
+                                        }
+                                    }}
+                                >
+                                    {t('browse')}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12, alignItems: 'center' }}>

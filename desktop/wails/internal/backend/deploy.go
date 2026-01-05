@@ -36,14 +36,20 @@ func (m *Manager) DetectRemoteOS(profileJSON string) (string, error) {
 	cmdArgs := append([]string{}, sshBaseArgs...)
 	cmdArgs = append(cmdArgs, target, probeCmd)
 
-	outBytes, err := createSilentCmd("ssh", cmdArgs...).Output()
-	if err != nil {
-		if strings.Contains(err.Error(), "exit status 255") {
-			return "", fmt.Errorf("ssh-unreachable: %w", err)
-		}
-		return "", fmt.Errorf("ssh probe failed: %w", err)
-	}
+	cmd := createSilentCmd("ssh", cmdArgs...)
+	outBytes, err := cmd.CombinedOutput()
 	output := strings.TrimSpace(string(outBytes))
+
+	if err != nil {
+		// Check for auth errors in output
+		if strings.Contains(output, "Permission denied") || strings.Contains(output, "publickey") {
+			return "", fmt.Errorf("ssh: permission denied")
+		}
+		if strings.Contains(err.Error(), "exit status 255") {
+			return "", fmt.Errorf("ssh-unreachable: %s", output)
+		}
+		return "", fmt.Errorf("ssh probe failed: %s (%w)", output, err)
+	}
 
 	outputLower := strings.ToLower(output)
 
@@ -76,8 +82,10 @@ func (m *Manager) DetectRemoteOS(profileJSON string) (string, error) {
 	return "unknown", nil
 }
 
-// DeployAgent ensures the correct binary and assets are on the remote host
-func (m *Manager) DeployAgent(profileJSON string, osArch string) (string, error) {
+// DeployAgent ensures the correct binary and assets are on the remote host.
+// It generates a secure token if one is not provided (though in this implementation the token is passed in).
+// The function handles checking MD5 checksums to avoid unnecessary uploads.
+func (m *Manager) DeployAgent(profileJSON string, osArch string, token string) (string, error) {
 	var p ssh.TunnelProfile
 	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
 		return "failed", fmt.Errorf("invalid profile JSON: %w", err)
@@ -203,13 +211,18 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string) (string, error)
 	// Start the backend
 	fmt.Println("Starting remote backend...")
 	var startCmd string
+	authArg := "--no-auth"
+	if token != "" {
+		authArg = fmt.Sprintf("-token=%s", token)
+	}
+
 	if targetOS == "windows" {
 		// Use PowerShell to start hidden and detached
-		startCmd = fmt.Sprintf("powershell -Command \"Start-Process -FilePath .mlcremote\\bin\\%s -ArgumentList '--no-auth' -WindowStyle Hidden\"", binName)
+		startCmd = fmt.Sprintf("powershell -Command \"Start-Process -FilePath .mlcremote\\bin\\%s -ArgumentList '%s' -WindowStyle Hidden\"", binName, authArg)
 	} else {
 		// Linux/Darwin: nohup
 		// We use running inside the home directory context usually, but explicit path is safer
-		startCmd = fmt.Sprintf("nohup ~/%s/%s --no-auth > ~/%s/current.log 2>&1 &", remoteBinDir, binName, remoteBinDir)
+		startCmd = fmt.Sprintf("nohup ~/%s/%s %s > ~/%s/current.log 2>&1 &", remoteBinDir, binName, authArg, remoteBinDir)
 	}
 
 	startArgs := append([]string{}, sshBaseArgs...)

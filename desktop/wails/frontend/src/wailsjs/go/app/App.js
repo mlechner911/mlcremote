@@ -18,8 +18,8 @@ export function DeleteProfile(arg1) {
   return window['go']['app']['App']['DeleteProfile'](arg1);
 }
 
-export function DeployAgent(arg1, arg2) {
-  return window['go']['app']['App']['DeployAgent'](arg1, arg2);
+export function DeployAgent(arg1, arg2, arg3) {
+  return window['go']['app']['App']['DeployAgent'](arg1, arg2, arg3);
 }
 
 export function DeploySSHKey(arg1) {
@@ -28,6 +28,14 @@ export function DeploySSHKey(arg1) {
 
 export function DetectRemoteOS(arg1) {
   return window['go']['app']['App']['DetectRemoteOS'](arg1);
+}
+
+export function GetManagedIdentity() {
+  return window['go']['app']['App']['GetManagedIdentity']();
+}
+
+export function GetManagedIdentityPath() {
+  return window['go']['app']['App']['GetManagedIdentityPath']();
 }
 
 export function GetProfile(arg1) {
@@ -42,12 +50,16 @@ export function HasMasterPassword() {
   return window['go']['app']['App']['HasMasterPassword']();
 }
 
-export function HealthCheck(arg1, arg2) {
-  return window['go']['app']['App']['HealthCheck'](arg1, arg2);
+export function HealthCheck(arg1, arg2, arg3) {
+  return window['go']['app']['App']['HealthCheck'](arg1, arg2, arg3);
 }
 
 export function InstallBackend(arg1) {
   return window['go']['app']['App']['InstallBackend'](arg1);
+}
+
+export function IsPremium() {
+  return window['go']['app']['App']['IsPremium']();
 }
 
 export function IsServerRunning(arg1, arg2) {
@@ -60,6 +72,10 @@ export function KillPort(arg1) {
 
 export function ListProfiles() {
   return window['go']['app']['App']['ListProfiles']();
+}
+
+export function PickIdentityFile() {
+  return window['go']['app']['App']['PickIdentityFile']();
 }
 
 export function ProbeConnection(arg1) {
@@ -76,6 +92,10 @@ export function SaveProfile(arg1) {
 
 export function SetMasterPassword(arg1) {
   return window['go']['app']['App']['SetMasterPassword'](arg1);
+}
+
+export function SetupManagedIdentity(arg1) {
+  return window['go']['app']['App']['SetupManagedIdentity'](arg1);
 }
 
 export function StartTunnel(arg1) {

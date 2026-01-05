@@ -1,0 +1,152 @@
+# MLCRemote User Guide
+
+Welcome to the **MLCRemote** User Guide. This document provides everything you need to know to install, configure, and use MLCRemote for your remote development workflows.
+
+## Table of Contents
+1. [Introduction](#introduction)
+2. [Installation](#installation)
+3. [Getting Started](#getting-started)
+   - [Connecting to a Server](#connecting-to-a-server)
+   - [Authentication Methods](#authentication-methods)
+4. [Features](#features)
+   - [File Explorer](#file-explorer)
+   - [Integrated Terminal](#integrated-terminal)
+   - [Profile Management](#profile-management)
+   - [Split View](#split-view)
+5. [Troubleshooting](#troubleshooting)
+6. [FAQ](#faq)
+
+---
+
+## Introduction
+
+**MLCRemote** is a lightweight, native desktop application designed for **System Administrators** and **DevOps Engineers**. It simplifies remote server management by wrapping a fast editor in a native window, perfect for quick configuration changes, log analysis, and system updates.
+
+**Key Benefits:**
+- **Zero-Setup**: No manual installation required on the server.
+- **Secure**: All traffic is encrypted via SSH tunnels.
+- **Native Experience**: Fast, responsive desktop UI with OS integration.
+- **Admin Focused**: Ideal for editing `/etc/` config files, checking `systemd` logs, or running maintenance scripts.
+
+## Installation
+
+### Windows
+1. Download the latest `MLCRemote-Windows-x64.zip` from the Releases page.
+2. Extract the contents to a folder of your choice (e.g., `C:\Apps\MLCRemote`).
+3. Double-click `MLCRemote.exe` to launch the application.
+   > **Note**: You may see a SmartScreen warning safely ignore it by clicking "More Info" -> "Run Anyway" (as the binary is not signed).
+
+### macOS / Linux
+Currently, MLCRemote must be built from source for these platforms.
+1. Ensure you have Go 1.21+ and Node.js 18+ installed.
+2. Clone the repository and run:
+   ```bash
+   make debug
+   ```
+   *Official binaries for macOS and Linux are coming soon.*
+
+---
+
+## Getting Started
+
+### Connecting to a Server
+
+When you first launch MLCRemote, you will see the **Launch Screen**.
+
+1. Click the **New Connection** (+) button in the sidebar.
+2. Fill in the connection details:
+   - **Name**: A friendly name for this server (e.g., "Production VPS").
+   - **Host**: The IP address or domain name (e.g., `192.168.1.50`).
+   - **User**: The SSH username (e.g., `root` or `ubuntu`).
+   - **Port**: SSH port (Default: `22`).
+3. (Optional) Choose a **Color** to identify this profile easiest.
+4. Click **Save**.
+5. Select the profile from the list and click **Connect**.
+
+The application will:
+1. Establish a secure SSH connection.
+2. Check if the MLCRemote backend is installed on the server.
+3. Automatically deploy/update the backend if needed.
+4. Open the remote environment.
+
+### Authentication Methods
+
+MLCRemote supports three primary authentication methods:
+
+1.  **Managed Identity (Premium)**:
+    *   The most secure and convenient option. MLCRemote generates and manages a dedicated Ed25519 SSH key for you.
+    *   **Setup**: Enter your password once, and the app will automatically configure the server for password-less access.
+    *   **Indicator**: A blue "Managed" badge appears on the launch screen for these connections.
+
+2.  **System Agent / Default**:
+    *   Uses your system's SSH agent or default key locations (e.g., `~/.ssh/id_rsa`, `~/.ssh/id_ed25519`).
+    *   Recommended if you already have SSH keys configured.
+
+3.  **Custom Key File**:
+    *   Select a specific private key file (`.pem`, `id_rsa`, etc.) from your computer.
+
+4.  **Password Fallback**:
+    *   If key authentication fails or is not configured, you will be prompted for the SSH password.
+    *   **Feature**: You can easily upgrade to a Managed Identity or deploy your local key directly from the password prompt.
+
+---
+
+## Features
+
+### File Explorer
+The **File Explorer** (left pane) allows you to manage remote files.
+- **Navigation**: Click folders to navigate. use the Breadcrumbs at the top to jump back.
+- **Editing**: Click a file to open it in the Editor.
+- **Context Menu**: Right-click any item to:
+  - **Download**: Save the file to your local machine.
+  - **Copy Path**: Copy the full remote path.
+  - **Delete**: Remove the file/folder (moved to Trash).
+- **Upload**: Drag and drop files from your computer into the Explorer area to upload them.
+
+### Integrated Terminal
+Access the server's command line directly.
+- **Tabs**: Open multiple terminal tabs for different tasks.
+- **Resize**: The terminal automatically resizes to fit the window.
+- **Copy/Paste**: Standard shortcuts (`Ctrl+Shift+C/V` or `Cmd+C/V`) and UI buttons are supported.
+
+### Profile Management
+- **Metadata**: The app automatically detects and saves the remote OS (e.g., "Ubuntu 22.04") and the last connection time.
+- **Sort**: Profiles are automatically sorted by "Last Used".
+- **Edit/Delete**: Use the icons in the sidebar to manage your saved profiles.
+
+### Split View
+Increase productivity by viewing files and terminals side-by-side.
+- Click the **Split Icon** (columns icon) in the editor toolbar.
+- You can drag the divider to resize panes.
+- **Use Case**: View a live log stream (`tail -f /var/log/syslog`) in one pane while tweaking a config file (e.g., `nginx.conf`) in the other.
+
+---
+
+## Troubleshooting
+
+### "Connection Refused"
+- Ensure the server is online.
+- Verify the SSH port is correct (default 22).
+- Check your local firewall settings.
+
+### "Agent Deployment Failed"
+- Ensure the user has permission to write to their home directory (`~/`).
+- If the server has limited disk space, free up some space.
+- Windows Servers: Ensure PowerShell is available.
+
+### "WebSocket Error"
+- Make sure you are using the latest version of the desktop app.
+- This often indicates a version mismatch between the local app and the remote backend. The app should auto-update the backend, but you can force it by deleting `~/.mlcremote` on the server.
+
+---
+
+## FAQ
+
+**Q: Is my master password sent to the server?**
+A: **No.** The App Lock (Master Password) is purely local to encrypt your connection profiles on your computer.
+
+**Q: Where are my profiles stored?**
+A: Only on your local machine in the application data directory.
+
+**Q: Can multiple users connect to the same server?**
+A: **Yes.** MLCRemote now supports multi-user sessions with secure token authentication. Each user gets their own secure tunnel.

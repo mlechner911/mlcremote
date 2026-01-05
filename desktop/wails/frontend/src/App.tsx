@@ -100,10 +100,14 @@ function AppContent() {
     checkLock()
   }, [])
 
-  const handleConnected = (p: Profile) => {
+  const handleConnected = (p: Profile, token?: string) => {
     setProfileName(`${p.user}@${p.host}`)
     setProfileColor(p.color || '')
-    setRemoteUrl(`http://localhost:${p.localPort || 8443}`)
+    let url = `http://localhost:${p.localPort || 8443}`
+    if (token) {
+      url += `?token=${encodeURIComponent(token)}`
+    }
+    setRemoteUrl(url)
     setView('remote')
   }
 

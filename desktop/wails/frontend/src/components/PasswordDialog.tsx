@@ -8,9 +8,11 @@ interface PasswordDialogProps {
     onConfirm: (password: string) => void
     onCancel: () => void
     loading?: boolean
+    isPremium?: boolean
+    onUseManagedIdentity?: () => void
 }
 
-export default function PasswordDialog({ title, description, onConfirm, onCancel, loading }: PasswordDialogProps) {
+export default function PasswordDialog({ title, description, onConfirm, onCancel, loading, isPremium, onUseManagedIdentity }: PasswordDialogProps) {
     const { t } = useI18n()
     const [password, setPassword] = useState('')
 
@@ -44,6 +46,20 @@ export default function PasswordDialog({ title, description, onConfirm, onCancel
                         color: 'inherit', marginBottom: 20
                     }}
                 />
+
+                {isPremium && onUseManagedIdentity && (
+                    <div style={{ marginBottom: 20, padding: 12, background: 'rgba(56, 139, 253, 0.15)', borderRadius: 6, border: '1px solid rgba(56, 139, 253, 0.4)' }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#58a6ff', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            Premium Feature
+                        </div>
+                        <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8 }}>
+                            {t('premium_managed_key_desc') || "Switch to a secure, app-managed SSH key instead of using a password."}
+                        </div>
+                        <button className="btn" style={{ width: '100%', fontSize: 12, background: 'rgba(56, 139, 253, 0.2)', color: '#58a6ff', borderColor: 'transparent' }} onClick={onUseManagedIdentity}>
+                            {t('setup_secure_access') || "Setup Secure Access"}
+                        </button>
+                    </div>
+                )}
 
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                     <button className="btn" onClick={onCancel} disabled={loading}>{t('cancel')}</button>

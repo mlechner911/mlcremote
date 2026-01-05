@@ -1,15 +1,23 @@
 import React from 'react'
 import { useI18n } from '../utils/i18n'
-import { SetMasterPassword, HasMasterPassword } from '../wailsjs/go/app/App'
+import { SetMasterPassword, HasMasterPassword, IsPremium, GetManagedIdentity } from '../wailsjs/go/app/App'
 
 export default function SettingsDialog({ onClose }: { onClose: () => void }) {
   const { lang, setLang, t } = useI18n()
   const [newPassword, setNewPassword] = React.useState('')
   const [saveStatus, setSaveStatus] = React.useState('')
   const [hasPassword, setHasPassword] = React.useState(false)
+  const [isPremium, setIsPremium] = React.useState(false)
+  const [managedKey, setManagedKey] = React.useState('')
 
   React.useEffect(() => {
     HasMasterPassword().then(setHasPassword)
+    IsPremium().then(p => {
+      setIsPremium(p)
+      if (p) {
+        GetManagedIdentity().then(setManagedKey)
+      }
+    })
   }, [])
 
 
@@ -133,6 +141,44 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
+        {isPremium && (
+          <div style={{ margin: '20px 0', borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+            <label style={{ display: 'block', marginBottom: 8, fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', color: '#f7b955', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
+              Managed Identity
+              <span style={{ fontSize: 9, border: '1px solid #f7b955', borderRadius: 4, padding: '0 4px' }}>PRO</span>
+            </label>
+            <div style={{ position: 'relative' }}>
+              <textarea
+                readOnly
+                value={managedKey || "Loading..."}
+                style={{
+                  width: '100%', height: 60, padding: 8, borderRadius: 6,
+                  background: 'var(--bg-panel)', border: '1px solid var(--border)',
+                  color: 'var(--text-muted)', fontSize: 11, resize: 'none',
+                  fontFamily: 'monospace'
+                }}
+              />
+              <button
+                onClick={() => {
+                  if (managedKey) {
+                    navigator.clipboard.writeText(managedKey)
+                    setSaveStatus("Copied to clipboard!")
+                    setTimeout(() => setSaveStatus(''), 2000)
+                  }
+                }}
+                style={{
+                  position: 'absolute', bottom: 8, right: 8,
+                  fontSize: 10, padding: '2px 8px', background: 'var(--bg-root)', border: '1px solid var(--border)', borderRadius: 4,
+                  cursor: 'pointer', color: 'var(--text-primary)'
+                }}>
+                Copy
+              </button>
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, textAlign: 'left' }}>
+              This is your distinct public key for secure access.
+            </div>
+          </div>
+        )}
 
       </div>
 

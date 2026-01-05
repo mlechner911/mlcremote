@@ -80,33 +80,57 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
 
     resolveCwd(path).then((cwd) => {
       const token = localStorage.getItem('mlcremote_token')
-      const q = token ? `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(cwd)}&token=${encodeURIComponent(token)}` : `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(cwd)}`
-      authedFetch(`/api/terminal/new${q}`).then(r => r.json()).then(j => {
-        sessionId = j.id
-        const token = localStorage.getItem('mlcremote_token')
-        const q = token ? `?session=${encodeURIComponent(sessionId!)}&token=${encodeURIComponent(token)}` : `?session=${encodeURIComponent(sessionId!)}`
 
-        let wsUrl = location.origin.replace(/^http/, 'ws')
-        const apiBase = getApiBaseUrl()
-        if (apiBase) {
-          wsUrl = apiBase.replace(/^http/, 'ws')
+      const constructWsUrl = (baseUrl: string, endpoint: string, params: Record<string, string>) => {
+        let urlObj: URL;
+        try {
+          urlObj = new URL(baseUrl);
+        } catch (e) {
+          urlObj = new URL(baseUrl, location.origin);
         }
 
-        const socket = new WebSocket(`${wsUrl}/ws/terminal${q}`)
-        attachWS(socket, t('terminal_connected_session', { id: sessionId }))
+        // Convert http to ws
+        if (urlObj.protocol === 'https:') urlObj.protocol = 'wss:';
+        else if (urlObj.protocol === 'http:') urlObj.protocol = 'ws:';
+
+        // Append endpoint to existing path (handling slashes)
+        const existingPath = urlObj.pathname.endsWith('/') ? urlObj.pathname.slice(0, -1) : urlObj.pathname;
+        const endpointPath = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
+        urlObj.pathname = existingPath + endpointPath;
+
+        // Merge params
+        Object.entries(params).forEach(([k, v]) => {
+          urlObj.searchParams.set(k, v);
+        });
+
+        return urlObj.toString();
+      }
+
+      const apiBase = getApiBaseUrl() || location.origin;
+      const wsEndpoint = '/ws/terminal';
+      const commonParams: Record<string, string> = {
+        shell: shell,
+        cwd: cwd
+      };
+      if (token) commonParams.token = token;
+
+      const fetchParams = new URLSearchParams(commonParams);
+
+      // Now that makeUrl handles query params in apiBase correctly, we can just use authedFetch naturally
+      authedFetch(`/api/terminal/new?${fetchParams.toString()}`).then(r => r.json()).then(j => {
+        sessionId = j.id
+        const wsParams = { ...commonParams, session: sessionId };
+        const wsUrl = constructWsUrl(apiBase, wsEndpoint, wsParams);
+
+        const socket = new WebSocket(wsUrl);
+        attachWS(socket, t('terminal_connected_session', { id: sessionId }));
       }).catch(() => {
         // fallback to ephemeral connection
-        const token = localStorage.getItem('mlcremote_token')
-        const q = token ? `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(path)}&token=${encodeURIComponent(token)}` : `?shell=${encodeURIComponent(shell)}&cwd=${encodeURIComponent(path)}`
+        const wsParams = { ...commonParams };
+        const wsUrl = constructWsUrl(apiBase, wsEndpoint, wsParams);
 
-        let wsUrl = location.origin.replace(/^http/, 'ws')
-        const apiBase = getApiBaseUrl()
-        if (apiBase) {
-          wsUrl = apiBase.replace(/^http/, 'ws')
-        }
-
-        const socket = new WebSocket(`${wsUrl}/ws/terminal${q}`)
-        attachWS(socket, t('terminal_connected_ephemeral'))
+        const socket = new WebSocket(wsUrl);
+        attachWS(socket, t('terminal_connected_ephemeral'));
       })
     })
 

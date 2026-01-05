@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/config"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/ssh"
 )
@@ -51,7 +52,10 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	// Let's stick to the flow: Backend methods return info, Front end saves it.
 
 	// 4. Deploy Agent
-	if res, err := a.Backend.DeployAgent(profileJSON, osArch); err != nil {
+	// Generate a secure session token
+	token := uuid.New().String()
+
+	if res, err := a.Backend.DeployAgent(profileJSON, osArch, token); err != nil {
 		return res, err
 	}
 
@@ -80,14 +84,14 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	time.Sleep(500 * time.Millisecond) // Wait for tunnel to establish
 	// Check backend health
 	for i := 0; i < 5; i++ {
-		status, _ := a.HealthCheck(fmt.Sprintf("http://localhost:%d", cp.LocalPort), 1)
+		status, _ := a.HealthCheck(fmt.Sprintf("http://localhost:%d", cp.LocalPort), token, 1)
 		if status == "ok" {
-			return "started", nil
+			return fmt.Sprintf("started:%s", token), nil
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	return "started", nil // Return started anyway, frontend verifies connectivity
+	return fmt.Sprintf("started:%s", token), nil // Return started anyway, frontend verifies connectivity
 }
 
 // StopTunnel stops the running ssh tunnel process and waits for it to exit
