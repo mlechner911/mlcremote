@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -55,16 +56,36 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	// Generate a secure session token
 	token := uuid.New().String()
 
-	if res, err := a.Backend.DeployAgent(profileJSON, osArch, token); err != nil {
-		return res, err
+	deployRes, err := a.Backend.DeployAgent(profileJSON, osArch, token)
+	if err != nil {
+		return deployRes, err
+	}
+	if strings.HasPrefix(deployRes, "deployed:") {
+		token = strings.TrimPrefix(deployRes, "deployed:")
 	}
 
-	// 5. Start Tunnel via SSH Service
+	// 6. Start Tunnel via SSH Service
+	// Check if LocalPort is available, if not find a free one
+	targetPort := cp.LocalPort
+	if targetPort == 0 {
+		targetPort = 8443
+	}
+
+	// Try to find a free port starting from targetPort
+	for i := 0; i < 100; i++ {
+		ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", targetPort))
+		if err == nil {
+			ln.Close()
+			break
+		}
+		targetPort++
+	}
+
 	// specific mapping to SSH TunnelProfile
 	tp := ssh.TunnelProfile{
 		User:         cp.User,
 		Host:         cp.Host,
-		LocalPort:    cp.LocalPort,
+		LocalPort:    targetPort,
 		RemoteHost:   "localhost", // Agent binds to localhost
 		RemotePort:   8443,
 		IdentityFile: cp.IdentityFile,
@@ -79,19 +100,19 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		return res, err
 	}
 
-	// 6. Wait for Healthy (optional, but good UX)
+	// 7. Wait for Healthy (optional, but good UX)
 	// We can check /health through the tunnel
 	time.Sleep(500 * time.Millisecond) // Wait for tunnel to establish
 	// Check backend health
 	for i := 0; i < 5; i++ {
-		status, _ := a.HealthCheck(fmt.Sprintf("http://localhost:%d", cp.LocalPort), token, 1)
+		status, _ := a.HealthCheck(fmt.Sprintf("http://localhost:%d", targetPort), token, 1)
 		if status == "ok" {
-			return fmt.Sprintf("started:%s", token), nil
+			return fmt.Sprintf("started:%d:%s", targetPort, token), nil
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	return fmt.Sprintf("started:%s", token), nil // Return started anyway, frontend verifies connectivity
+	return fmt.Sprintf("started:%d:%s", targetPort, token), nil // Return started anyway, frontend verifies connectivity
 }
 
 // StopTunnel stops the running ssh tunnel process and waits for it to exit

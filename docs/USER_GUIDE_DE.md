@@ -149,4 +149,10 @@ A: **Nein.** Die App-Sperre (Master-Passwort) dient rein lokal zur Verschlüssel
 A: Nur auf Ihrem lokalen Computer im Anwendungsdatenverzeichnis.
 
 **F: Können mehrere Benutzer eine Verbindung zum selben Server herstellen?**
-A: **Ja.** MLCRemote unterstützt jetzt Mehrbenutzersitzungen mit sicherer Token-Authentifizierung. Jeder Benutzer erhält seinen eigenen sicheren Tunnel.
+A: **Ja.** MLCRemote unterstützt jetzt Mehrbenutzersitzungen mit sicherer Token-Authentifizierung.
+
+**F: Kann ich mehrere Instanzen von MLCRemote ausführen?**
+A: **Ja.** Sie können mehrere Fenster öffnen (indem Sie die App mehrmals starten), um sich gleichzeitig mit verschiedenen Servern oder demselben Server zu verbinden. Jede Instanz verwendet ihren eigenen sicheren, konfliktfreien Tunnel.
+
+**F: Warum werde ich nach meinem Passwort gefragt?**
+A: MLCRemote bittet Sie **nur einmal** pro neuem Server um Ihr SSH-Passwort, um Ihren öffentlichen Schlüssel oder Ihre verwaltete Identität sicher zu installieren. Nachfolgende Verbindungen erfolgen ohne Passworteingabe. Wir speichern Ihr SSH-Passwort nicht.

@@ -149,4 +149,10 @@ A: **No.** The App Lock (Master Password) is purely local to encrypt your connec
 A: Only on your local machine in the application data directory.
 
 **Q: Can multiple users connect to the same server?**
-A: **Yes.** MLCRemote now supports multi-user sessions with secure token authentication. Each user gets their own secure tunnel.
+A: **Yes.** MLCRemote now supports multi-user sessions with secure token authentication.
+
+**Q: Can I run multiple instances of MLCRemote?**
+A: **Yes.** You can open multiple windows (by launching the app multiple times) to connect to different servers or the same server simultaneously. Each instance uses its own secure, conflict-free tunnel.
+
+**Q: Why does it ask for my password?**
+A: MLCRemote asks for your SSH password **only once** for each new server to securely install your public key or Managed Identity. Subsequent connections are password-less. We do not store your SSH password.

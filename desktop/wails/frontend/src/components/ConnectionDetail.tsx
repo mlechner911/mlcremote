@@ -1,0 +1,76 @@
+import React from 'react'
+import { Icon } from '../generated/icons'
+import { useI18n } from '../utils/i18n'
+import { ConnectionProfile } from './ProfileEditor'
+
+interface ConnectionDetailProps {
+    profile: ConnectionProfile
+    status: string
+    isManaged: boolean
+    loading: boolean
+    onConnect: () => void
+    onEdit: () => void
+    onTest: () => void
+    isTesting: boolean
+    testStatus: string | null
+}
+
+export default function ConnectionDetail({
+    profile, status, isManaged, loading, onConnect, onEdit, onTest, isTesting, testStatus
+}: ConnectionDetailProps) {
+    const { t } = useI18n()
+
+    return (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center' }}>
+            <div style={{ marginBottom: 32, transform: 'scale(1.5)' }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: profile.color, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', color: 'white', border: '2px solid rgba(255,255,255,0.1)' }}>
+                    <Icon name="icon-server" size={32} />
+                </div>
+            </div>
+            <h1 style={{ margin: '0 0 8px 0', textShadow: '0 2px 4px rgba(0,0,0,0.5)', color: '#fff' }}>{profile.name}</h1>
+            <div className="muted" style={{ fontSize: 16, marginBottom: 32, color: 'rgba(255,255,255,0.7)' }}>
+                {profile.user}@{profile.host}
+                {isManaged && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 12, background: 'rgba(56, 139, 253, 0.2)', color: '#58a6ff', padding: '2px 8px', borderRadius: 10, fontSize: 11, border: '1px solid rgba(56, 139, 253, 0.3)' }}>
+                        <Icon name="icon-lock" size={10} />
+                        <span>Managed</span>
+                    </div>
+                )}
+            </div>
+
+            {status && (
+                <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ color: '#ff7b72', background: 'rgba(0,0,0,0.4)', padding: '4px 12px', borderRadius: 100 }}>
+                        {status === t('status_connecting') ? <span style={{ color: 'var(--text-primary)' }}>{status}</span> : status}
+                    </div>
+
+                    {(status.includes(t('status_failed')) || status.includes('Failed') || status.includes('Error')) && (
+                        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <button
+                                onClick={onTest}
+                                className="btn link"
+                                style={{ color: 'var(--accent)', fontSize: '0.9rem', padding: 0, textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none' }}
+                            >
+                                {isTesting ? t('status_checking') : t('test_connection')}
+                            </button>
+                            {testStatus && (
+                                <div style={{ fontSize: '0.8rem', marginTop: 4, color: testStatus.includes(t('connection_ok')) ? '#7ee787' : 'var(--text-muted)' }}>
+                                    {testStatus}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 16 }}>
+                <button className="btn primary" style={{ padding: '12px 32px', fontSize: 16, boxShadow: '0 4px 12px rgba(0,123,255,0.3)' }} onClick={onConnect} disabled={loading}>
+                    {loading ? t('connecting') : t('connect')}
+                </button>
+                <button className="btn" style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} onClick={onEdit} disabled={loading}>
+                    {t('edit')}
+                </button>
+            </div>
+        </div>
+    )
+}

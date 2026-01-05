@@ -167,6 +167,22 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string) (
 		}
 	}
 
+	// Check if already running
+	if running, _ := m.IsServerRunning(profileJSON, fmt.Sprintf("%s/%s", targetOS, targetArch)); running {
+		// Try to read existing token
+		tokenCmd := fmt.Sprintf("cat ~/%s/token", ".mlcremote")
+		tokenArgs := append([]string{}, sshBaseArgs...)
+		tokenArgs = append(tokenArgs, target, tokenCmd)
+		if out, err := createSilentCmd("ssh", tokenArgs...).Output(); err == nil {
+			existingToken := strings.TrimSpace(string(out))
+			if existingToken != "" {
+				fmt.Println("Backend already running, reusing session.")
+				return fmt.Sprintf("deployed:%s", existingToken), nil
+			}
+		}
+		// If running but cannot read token, we proceed to restart
+	}
+
 	// Upload Logic
 	scpArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
 	if p.IdentityFile != "" {
@@ -208,6 +224,15 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string) (
 		_ = createSilentCmd("ssh", chmodArgs...).Run()
 	}
 
+	// Save token to remote file for future sessions
+	if token != "" {
+		tokenPath := filepath.Join(tmpDir, "token")
+		_ = ioutil.WriteFile(tokenPath, []byte(token), 0600)
+		scpTokenArgs := append([]string{}, scpArgs...)
+		scpTokenArgs = append(scpTokenArgs, tokenPath, fmt.Sprintf("%s:~/.mlcremote/token", target))
+		_ = createSilentCmd("scp", scpTokenArgs...).Run()
+	}
+
 	// Start the backend
 	fmt.Println("Starting remote backend...")
 	var startCmd string
@@ -235,7 +260,7 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string) (
 		time.Sleep(1 * time.Second)
 	}
 
-	return "deployed", nil
+	return fmt.Sprintf("deployed:%s", token), nil
 }
 
 // SaveIdentityFile writes a base64-encoded private key payload to a temp file and returns the path.

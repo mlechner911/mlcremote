@@ -143,7 +143,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
 
         {isPremium && (
           <div style={{ margin: '20px 0', borderTop: '1px solid var(--border)', paddingTop: 20 }}>
-            <label style={{ display: 'block', marginBottom: 8, fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', color: '#f7b955', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <label style={{ marginBottom: 8, fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', color: '#f7b955', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
               Managed Identity
               <span style={{ fontSize: 9, border: '1px solid #f7b955', borderRadius: 4, padding: '0 4px' }}>PRO</span>
             </label>
