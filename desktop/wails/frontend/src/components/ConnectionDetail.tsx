@@ -23,7 +23,7 @@ export default function ConnectionDetail({
     return (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center' }}>
             <div style={{ marginBottom: 32, transform: 'scale(1.5)' }}>
-                <div style={{ width: 64, height: 64, borderRadius: '50%', background: profile.color, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', color: 'white', border: '2px solid rgba(255,255,255,0.1)' }}>
+                <div className={loading ? 'pulse-ring' : ''} style={{ width: 64, height: 64, borderRadius: '50%', background: profile.color, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', color: 'white', border: '2px solid rgba(255,255,255,0.1)' }}>
                     <Icon name="icon-server" size={32} />
                 </div>
             </div>
@@ -41,7 +41,7 @@ export default function ConnectionDetail({
             {status && (
                 <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <div style={{ color: '#ff7b72', background: 'rgba(0,0,0,0.4)', padding: '4px 12px', borderRadius: 100 }}>
-                        {status === t('status_connecting') ? <span style={{ color: 'var(--text-primary)' }}>{status}</span> : status}
+                        {status === t('connecting') ? <span style={{ color: 'var(--text-primary)' }}>{status}</span> : status}
                     </div>
 
                     {(status.includes(t('status_failed')) || status.includes('Failed') || status.includes('Error')) && (

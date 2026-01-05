@@ -69,6 +69,17 @@ Die Anwendung wird:
 3. Das Backend automatisch bereitstellen/aktualisieren, falls erforderlich.
 4. Die Remote-Umgebung öffnen.
 
+### Sitzungsverwaltung
+
+Wenn MLCRemote eine bestehende Backend-Sitzung auf dem Server erkennt, werden Ihnen folgende Optionen angeboten:
+
+*   **Sitzung beitreten** (Join Session): Verbinden Sie sich mit der laufenden Sitzung. Nützlich, wenn Sie die App versehentlich geschlossen haben.
+*   **Sitzung neu starten** (Restart Session): Beendet das bestehende Backend und startet ein neues. Verwenden Sie dies, wenn das Backend nicht reagiert.
+*   **Neue Instanz starten** (Start New Instance): Startet eine *parallele* Backend-Instanz auf einem anderen Port. Verwenden Sie dies, um mehrere unabhängige Sitzungen gleichzeitig auf demselben Server auszuführen.
+
+**Sitzung teilen (Token Sharing)**:
+Sobald Sie verbunden sind, können Sie auf die Schaltfläche **Sitzung teilen** (Schlüssel-Symbol) in der oberen Kopfzeile klicken, um das sichere Sitzungstoken zu kopieren. Sie können dieses Token mit Kollegen teilen, die SSH-Zugriff auf den Server haben, damit diese sich mit Ihrer Sitzung verbinden können.
+
 ### Authentifizierungsmethoden
 
 MLCRemote unterstützt drei primäre Authentifizierungsmethoden:

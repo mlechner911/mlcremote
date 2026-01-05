@@ -23,6 +23,29 @@ export namespace app {
 
 }
 
+export namespace backend {
+	
+	export class SessionInfo {
+	    running: boolean;
+	    version: string;
+	    updated: string;
+	    token: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.running = source["running"];
+	        this.version = source["version"];
+	        this.updated = source["updated"];
+	        this.token = source["token"];
+	    }
+	}
+
+}
+
 export namespace config {
 	
 	export class ConnectionProfile {
@@ -40,6 +63,7 @@ export namespace config {
 	    remoteOS: string;
 	    remoteArch: string;
 	    remoteVersion: string;
+	    mode: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ConnectionProfile(source);
@@ -61,6 +85,7 @@ export namespace config {
 	        this.remoteOS = source["remoteOS"];
 	        this.remoteArch = source["remoteArch"];
 	        this.remoteVersion = source["remoteVersion"];
+	        this.mode = source["mode"];
 	    }
 	}
 

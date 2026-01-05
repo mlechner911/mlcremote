@@ -89,8 +89,44 @@ button {
     background-clip: content-box;
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: #4f4f4f;
-    border: 2px solid transparent;
-    background-clip: content-box;
+/* Animations */
+@keyframes pulse-ring {
+    0% {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 0 0 rgba(255, 255, 255, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 0 15px rgba(255, 255, 255, 0);
+    }
+
+    100% {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 0 0 rgba(255, 255, 255, 0);
+    }
+}
+
+.pulse-ring {
+    animation: pulse-ring 2s infinite;
+}
+
+/* Form Elements */
+.label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.input {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg-root);
+    color: var(--text-primary);
+    box-sizing: border-box;
+}
+
+.input:focus {
+    border-color: var(--accent);
+    outline: none;
 }

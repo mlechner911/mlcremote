@@ -69,6 +69,17 @@ The application will:
 3. Automatically deploy/update the backend if needed.
 4. Open the remote environment.
 
+### Session Management
+
+If MLCRemote detects an existing backend session on the server, you will be presented with the following options:
+
+*   **Join Session**: Connect to the running session. Useful if you accidentally closed the app.
+*   **Restart Session**: Terminates the existing backend and starts a fresh one. Use this if the backend is unresponsive.
+*   **Start New Instance**: Starts a *parallel* backend instance on a different port. Use this to run multiple independent sessions on the same server simultaneously.
+
+**Token Sharing**:
+Once connected, you can click the **Share Session** button (Key icon) in the top header to copy the secure session token. You can share this with colleagues who have SSH access to the server so they can connect to your session.
+
 ### Authentication Methods
 
 MLCRemote supports three primary authentication methods:

@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -83,9 +84,9 @@ func (m *Manager) DetectRemoteOS(profileJSON string) (string, error) {
 }
 
 // DeployAgent ensures the correct binary and assets are on the remote host.
-// It generates a secure token if one is not provided (though in this implementation the token is passed in).
+// It generates a secure session token if one is not provided (though in this implementation the token is passed in).
 // The function handles checking MD5 checksums to avoid unnecessary uploads.
-func (m *Manager) DeployAgent(profileJSON string, osArch string, token string) (string, error) {
+func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, forceNew bool) (string, error) {
 	var p ssh.TunnelProfile
 	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
 		return "failed", fmt.Errorf("invalid profile JSON: %w", err)
@@ -167,20 +168,23 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string) (
 		}
 	}
 
-	// Check if already running
-	if running, _ := m.IsServerRunning(profileJSON, fmt.Sprintf("%s/%s", targetOS, targetArch)); running {
-		// Try to read existing token
-		tokenCmd := fmt.Sprintf("cat ~/%s/token", ".mlcremote")
-		tokenArgs := append([]string{}, sshBaseArgs...)
-		tokenArgs = append(tokenArgs, target, tokenCmd)
-		if out, err := createSilentCmd("ssh", tokenArgs...).Output(); err == nil {
-			existingToken := strings.TrimSpace(string(out))
-			if existingToken != "" {
-				fmt.Println("Backend already running, reusing session.")
-				return fmt.Sprintf("deployed:%s", existingToken), nil
+	// Check if already running (ONLY if not forcing new)
+	if !forceNew {
+		if running, _ := m.IsServerRunning(profileJSON, fmt.Sprintf("%s/%s", targetOS, targetArch)); running {
+			// Try to read existing token
+			tokenCmd := fmt.Sprintf("cat ~/%s/token", ".mlcremote")
+			tokenArgs := append([]string{}, sshBaseArgs...)
+			tokenArgs = append(tokenArgs, target, tokenCmd)
+			if out, err := createSilentCmd("ssh", tokenArgs...).Output(); err == nil {
+				existingToken := strings.TrimSpace(string(out))
+				if existingToken != "" {
+					fmt.Println("Backend already running, reusing session.")
+					// Assume default port 8443 for existing sessions (unless we read port from somewhere else, but default is 8443)
+					return fmt.Sprintf("deployed:8443:%s", existingToken), nil
+				}
 			}
+			// If running but cannot read token, we proceed to restart (overwrite)
 		}
-		// If running but cannot read token, we proceed to restart
 	}
 
 	// Upload Logic
@@ -189,15 +193,17 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string) (
 		scpArgs = append(scpArgs, "-i", p.IdentityFile)
 	}
 
-	killCmd := fmt.Sprintf("systemctl --user stop %s 2>/dev/null; pkill -f %s || true", ServiceName, binName)
-	if targetOS == "windows" {
-		killCmd = fmt.Sprintf("taskkill /IM %s /F || echo OK", binName)
+	// Kill Logic (ONLY if not forcing new)
+	if !forceNew {
+		killCmd := fmt.Sprintf("systemctl --user stop %s 2>/dev/null; pkill -f %s || true", ServiceName, binName)
+		if targetOS == "windows" {
+			killCmd = fmt.Sprintf("taskkill /IM %s /F || echo OK", binName)
+		}
+		killArgs := append([]string{}, sshBaseArgs...)
+		killArgs = append(killArgs, target, killCmd)
+		_ = createSilentCmd("ssh", killArgs...).Run()
+		time.Sleep(500 * time.Millisecond)
 	}
-	killArgs := append([]string{}, sshBaseArgs...)
-	killArgs = append(killArgs, target, killCmd)
-	_ = createSilentCmd("ssh", killArgs...).Run()
-
-	time.Sleep(500 * time.Millisecond)
 
 	if !skipBinary {
 		scpBinArgs := append([]string{}, scpArgs...)
@@ -224,8 +230,10 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string) (
 		_ = createSilentCmd("ssh", chmodArgs...).Run()
 	}
 
-	// Save token to remote file for future sessions
-	if token != "" {
+	// Save token to remote file for future sessions (ONLY if default session)
+	// If forceNew, we don't overwrite the default token file, or we accept this new one becomes default?
+	// Let's protect the default session if we are parallel.
+	if token != "" && !forceNew {
 		tokenPath := filepath.Join(tmpDir, "token")
 		_ = ioutil.WriteFile(tokenPath, []byte(token), 0600)
 		scpTokenArgs := append([]string{}, scpArgs...)
@@ -241,13 +249,26 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string) (
 		authArg = fmt.Sprintf("-token=%s", token)
 	}
 
+	// Port configuration
+	targetPort := 8443
+	portArg := "-port=8443"
+	if forceNew {
+		targetPort = 0 // Will resolve later
+		portArg = "-port=0"
+	}
+
+	// Log file
+	logFile := "current.log"
+	if forceNew {
+		logFile = fmt.Sprintf("session-%d.log", time.Now().Unix())
+	}
+
 	if targetOS == "windows" {
 		// Use PowerShell to start hidden and detached
-		startCmd = fmt.Sprintf("powershell -Command \"Start-Process -FilePath .mlcremote\\bin\\%s -ArgumentList '%s' -WindowStyle Hidden\"", binName, authArg)
+		startCmd = fmt.Sprintf("powershell -Command \"Start-Process -FilePath .mlcremote\\bin\\%s -ArgumentList '%s %s' -RedirectStandardOutput .mlcremote\\%s -RedirectStandardError .mlcremote\\%s -WindowStyle Hidden\"", binName, authArg, portArg, logFile, logFile)
 	} else {
 		// Linux/Darwin: nohup
-		// We use running inside the home directory context usually, but explicit path is safer
-		startCmd = fmt.Sprintf("nohup ~/%s/%s %s > ~/%s/current.log 2>&1 &", remoteBinDir, binName, authArg, remoteBinDir)
+		startCmd = fmt.Sprintf("nohup ~/%s/%s %s %s > ~/%s/%s 2>&1 &", remoteBinDir, binName, authArg, portArg, remoteBinDir, logFile)
 	}
 
 	startArgs := append([]string{}, sshBaseArgs...)
@@ -256,11 +277,80 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string) (
 		fmt.Printf("Warning: failed to start backend: %v\n", err)
 	} else {
 		fmt.Println("Backend started.")
-		// Give it a moment to bind port
+		// give it a moment to startup
 		time.Sleep(1 * time.Second)
 	}
 
-	return fmt.Sprintf("deployed:%s", token), nil
+	// If dynamic port, read log to find it
+	if forceNew {
+		// Grep logic
+		// Access URL: http://...:PORT
+		// Linux: grep -o "Access URL.*" ~/.mlcremote/LOG
+		// Windows: Select-String ...
+		fmt.Println("Resolving dynamic port from logs...")
+
+		// Attempt parsing for up to 5 seconds
+		resolvedPort := 0
+		for i := 0; i < 5; i++ {
+			time.Sleep(1 * time.Second)
+
+			var grepCmd string
+			if targetOS == "windows" {
+				grepCmd = fmt.Sprintf("powershell -Command \"Select-String -Path .mlcremote\\%s -Pattern 'Access URL'\"", logFile)
+			} else {
+				grepCmd = fmt.Sprintf("grep 'Access URL' ~/%s/%s", remoteBinDir, logFile)
+			}
+
+			grepArgs := append([]string{}, sshBaseArgs...)
+			grepArgs = append(grepArgs, target, grepCmd)
+
+			if out, err := createSilentCmd("ssh", grepArgs...).Output(); err == nil {
+				output := string(out)
+				// Format: Access URL: http://HOST:PORT/?token=...
+				// Simple parse: find ":PORT"
+				// Or regex
+				// Let's assume standard log format.
+				// Extract digits after http://HOST:
+				// Splitting by ":" might be easier. "http" ":" "//HOST" ":" "PORT/..."
+
+				// Example: http://localhost:54321/?token=...
+				// Example: http://localhost:54321/
+
+				if idx := strings.LastIndex(output, ":"); idx != -1 {
+					// This finds the last colon, which might be in token or query? No, token is hex.
+					// URL might have query params.
+					// "http://localhost:54321/?token=..." -> Last colon is before port if token has no colons.
+					// But token is hex, no colons.
+					// ipv6? we bind to localhost/127.0.0.1 or 0.0.0.0.
+
+					// Better strategy: Use regex if I could import regexp in this context, yes I can.
+					// Just extract string between last colon and slash?
+					// "http://localhost:54321/"
+
+					// Let's just iterate parts
+					parts := strings.Split(output, ":")
+					// http, //localhost, 54321/?token=...
+					if len(parts) >= 3 {
+						portPart := parts[len(parts)-1] // "54321/?token=..." or "54321\r\n"
+						// Clean up
+						portPart = strings.Split(portPart, "/")[0]
+						portPart = strings.TrimSpace(portPart)
+						if p, err := strconv.Atoi(portPart); err == nil && p > 0 {
+							resolvedPort = p
+							break
+						}
+					}
+				}
+			}
+		}
+
+		if resolvedPort > 0 {
+			return fmt.Sprintf("deployed:%d:%s", resolvedPort, token), nil
+		}
+		return "setup-failed", fmt.Errorf("failed to resolve dynamic port from logs")
+	}
+
+	return fmt.Sprintf("deployed:%d:%s", targetPort, token), nil
 }
 
 // SaveIdentityFile writes a base64-encoded private key payload to a temp file and returns the path.
@@ -278,4 +368,51 @@ func (m *Manager) SaveIdentityFile(b64 string, filename string) (string, error) 
 		return "", err
 	}
 	return path, nil
+}
+
+// KillRemoteSession terminates the running backend on the remote host
+func (m *Manager) KillRemoteSession(profileJSON string) error {
+	var p ssh.TunnelProfile
+	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
+		return fmt.Errorf("invalid profile JSON: %w", err)
+	}
+
+	// Detect OS to know how to kill
+	osArch, err := m.DetectRemoteOS(profileJSON)
+	if err != nil {
+		return err // Cannot proceed if we can't talk to host
+	}
+
+	target := fmt.Sprintf("%s@%s", p.User, p.Host)
+	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
+	if p.IdentityFile != "" {
+		sshBaseArgs = append(sshBaseArgs, "-i", p.IdentityFile)
+	}
+	if len(p.ExtraArgs) > 0 {
+		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
+	}
+
+	targetOS := "linux"
+	if strings.Contains(osArch, "/") {
+		targetOS = strings.Split(osArch, "/")[0]
+	}
+
+	binName := "dev-server"
+	if targetOS == "windows" {
+		binName = "dev-server.exe"
+	}
+
+	// Kill Logic
+	killCmd := fmt.Sprintf("systemctl --user stop %s 2>/dev/null; pkill -f %s || true", ServiceName, binName)
+	if targetOS == "windows" {
+		killCmd = fmt.Sprintf("taskkill /IM %s /F || echo OK", binName)
+	}
+	killArgs := append([]string{}, sshBaseArgs...)
+	killArgs = append(killArgs, target, killCmd)
+
+	output, err := createSilentCmd("ssh", killArgs...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to kill process: %s (%w)", string(output), err)
+	}
+	return nil
 }

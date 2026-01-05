@@ -46,6 +46,10 @@ export function GetRemoteFileTree(arg1) {
   return window['go']['app']['App']['GetRemoteFileTree'](arg1);
 }
 
+export function GetRemoteSession(arg1) {
+  return window['go']['app']['App']['GetRemoteSession'](arg1);
+}
+
 export function HasMasterPassword() {
   return window['go']['app']['App']['HasMasterPassword']();
 }
@@ -68,6 +72,10 @@ export function IsServerRunning(arg1, arg2) {
 
 export function KillPort(arg1) {
   return window['go']['app']['App']['KillPort'](arg1);
+}
+
+export function KillRemoteSession(arg1) {
+  return window['go']['app']['App']['KillRemoteSession'](arg1);
 }
 
 export function ListProfiles() {

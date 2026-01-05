@@ -17,7 +17,7 @@ func (a *App) DetectRemoteOS(profileJSON string) (string, error) {
 
 // DeployAgent ensures the correct binary and assets are on the remote host
 func (a *App) DeployAgent(profileJSON string, osArch string, token string) (string, error) {
-	return a.Backend.DeployAgent(profileJSON, osArch, token)
+	return a.Backend.DeployAgent(profileJSON, osArch, token, false)
 }
 
 // IsServerRunning checks if the backend is already active on the remote host

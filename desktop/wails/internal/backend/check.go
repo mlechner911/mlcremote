@@ -163,3 +163,64 @@ func (m *Manager) TailRemoteLogs(profileJSON string) (string, error) {
 	}
 	return string(out), nil
 }
+
+// SessionInfo contains details about the running remote backend
+type SessionInfo struct {
+	Running bool   `json:"running"`
+	Version string `json:"version"`
+	Updated string `json:"updated"`
+	Token   string `json:"token"`
+}
+
+// GetRemoteSession checks if the backend is running and retrieves version/token info
+func (m *Manager) GetRemoteSession(profileJSON string) (*SessionInfo, error) {
+	var p ssh.TunnelProfile
+	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
+		return nil, fmt.Errorf("invalid profile JSON: %w", err)
+	}
+
+	target := fmt.Sprintf("%s@%s", p.User, p.Host)
+	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
+	if p.IdentityFile != "" {
+		sshBaseArgs = append(sshBaseArgs, "-i", p.IdentityFile)
+	}
+	if len(p.ExtraArgs) > 0 {
+		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
+	}
+
+	info := &SessionInfo{Running: false}
+
+	// 1. Check process
+	// pgrep for Linux/Mac, tasklist for Windows.
+	// We chain them to support either OS without knowing it yet (simplification).
+	checkCmd := fmt.Sprintf("pgrep -f \"%s.*--no-auth\" || (tasklist /FI \"IMAGENAME eq %s\" | findstr %s)", RemoteBinaryName, RemoteBinaryName, RemoteBinaryName)
+
+	// We run check first. If it fails, running is false.
+	checkArgs := append([]string{}, sshBaseArgs...)
+	checkArgs = append(checkArgs, target, checkCmd)
+
+	if err := createSilentCmd("ssh", checkArgs...).Run(); err != nil {
+		return info, nil // Not running
+	}
+	info.Running = true
+
+	// 2. Read install.json for version
+	catCmd := "cat .mlcremote/install.json 2>/dev/null || type .mlcremote\\install.json 2>NUL"
+	args := append([]string{}, sshBaseArgs...)
+	args = append(args, target, catCmd)
+
+	if out, err := createSilentCmd("ssh", args...).Output(); err == nil {
+		// Ignore error if unmarshall fails
+		_ = json.Unmarshal(out, &info)
+	}
+
+	// 3. Read token
+	tokenCmd := "cat .mlcremote/token 2>/dev/null || type .mlcremote\\token 2>NUL"
+	tokenArgs := append([]string{}, sshBaseArgs...)
+	tokenArgs = append(tokenArgs, target, tokenCmd)
+	if out, err := createSilentCmd("ssh", tokenArgs...).Output(); err == nil {
+		info.Token = strings.TrimSpace(string(out))
+	}
+
+	return info, nil
+}

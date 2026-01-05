@@ -25,6 +25,7 @@ type TunnelProfile struct {
 	IdentityFile string   `json:"identityFile"`
 	Password     string   `json:"password"`
 	ExtraArgs    []string `json:"extraArgs"`
+	Mode         string   `json:"mode"` // "default" or "parallel"
 }
 
 type Manager struct {

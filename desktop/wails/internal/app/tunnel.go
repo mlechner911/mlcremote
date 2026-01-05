@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -56,12 +57,26 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	// Generate a secure session token
 	token := uuid.New().String()
 
-	deployRes, err := a.Backend.DeployAgent(profileJSON, osArch, token)
+	forceNew := cp.Mode == "parallel"
+	deployRes, err := a.Backend.DeployAgent(profileJSON, osArch, token, forceNew)
 	if err != nil {
 		return deployRes, err
 	}
+
+	remotePort := 8443
 	if strings.HasPrefix(deployRes, "deployed:") {
-		token = strings.TrimPrefix(deployRes, "deployed:")
+		remainder := strings.TrimPrefix(deployRes, "deployed:")
+		if strings.Contains(remainder, ":") {
+			// deployed:PORT:TOKEN
+			parts := strings.SplitN(remainder, ":", 2)
+			if p, err := strconv.Atoi(parts[0]); err == nil && p > 0 {
+				remotePort = p
+			}
+			token = parts[1]
+		} else {
+			// Legacy/Standard: deployed:TOKEN
+			token = remainder
+		}
 	}
 
 	// 6. Start Tunnel via SSH Service
@@ -70,6 +85,9 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	if targetPort == 0 {
 		targetPort = 8443
 	}
+
+	// If parallel mode, ensure we don't conflict with default local port 8443 if user didn't specify strict port
+	// But dynamic scanning below handles it.
 
 	// Try to find a free port starting from targetPort
 	for i := 0; i < 100; i++ {
@@ -87,9 +105,10 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		Host:         cp.Host,
 		LocalPort:    targetPort,
 		RemoteHost:   "localhost", // Agent binds to localhost
-		RemotePort:   8443,
+		RemotePort:   remotePort,
 		IdentityFile: cp.IdentityFile,
 		ExtraArgs:    cp.ExtraArgs,
+		Mode:         cp.Mode,
 	}
 	if cp.Port != 0 && cp.Port != 22 {
 		tp.ExtraArgs = append(tp.ExtraArgs, "-p", fmt.Sprintf("%d", cp.Port))

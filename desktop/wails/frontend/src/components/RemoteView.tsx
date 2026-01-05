@@ -1,4 +1,4 @@
-import React from 'react'
+import { Icon } from '../generated/icons'
 import { useI18n } from '../utils/i18n'
 
 interface RemoteViewProps {
@@ -15,6 +15,21 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
     const { t } = useI18n()
     // Append profileId to URL if present
     const targetSrc = `/ide/index.html?api=${encodeURIComponent(url)}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
+
+    const handleShare = () => {
+        try {
+            // URL is like http://localhost:PORT?token=XXX
+            const token = new URLSearchParams(new URL(url).search).get('token')
+            if (token) {
+                navigator.clipboard.writeText(token)
+                alert(t('session_key_copied'))
+            } else {
+                alert("No token found in session.")
+            }
+        } catch (e) {
+            console.error("Failed to share", e)
+        }
+    }
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -47,23 +62,45 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                         Tunnel Port: {localPort || 8443}
                     </span>
                 </div>
-                <button
-                    onClick={onDisconnect}
-                    style={{
-                        backgroundColor: '#ef4444', // red-500
-                        color: 'white',
-                        border: 'none',
-                        padding: '6px 16px',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontWeight: 500,
-                        transition: 'background-color 0.2s',
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
-                >
-                    {t('disconnect')}
-                </button>
+                <div style={{ display: 'flex', gap: 12 }}>
+                    <button
+                        onClick={handleShare}
+                        style={{
+                            backgroundColor: 'rgba(255,255,255,0.1)',
+                            color: 'white',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            padding: '6px 16px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            transition: 'background-color 0.2s',
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                        title={t('share_session')}
+                    >
+                        <Icon name="icon-key" size={14} />
+                        <span style={{ fontSize: '0.9rem' }}>{t('share_session')}</span>
+                    </button>
+                    <button
+                        onClick={onDisconnect}
+                        style={{
+                            backgroundColor: '#ef4444', // red-500
+                            color: 'white',
+                            border: 'none',
+                            padding: '6px 16px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                            transition: 'background-color 0.2s',
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                    >
+                        {t('disconnect')}
+                    </button>
+                </div>
             </div>
 
             {/* Iframe Content */}

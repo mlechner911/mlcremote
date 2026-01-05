@@ -77,7 +77,17 @@ export const translations = {
         auth_custom: "Custom Key File",
         managed_key_info: "Using secure, app-managed identity.",
         browse: "Browse...",
-        premium_managed: "Managed Identity (Premium)",
+        // Session
+        session_found: "Existing Session Found",
+        session_found_desc: "A backend instance is already running on this server. You can join the existing session or start a new one.",
+        restart_session: "Restart Session",
+        start_parallel: "Start New Instance",
+        join_session: "Join Session",
+        share_session: "Share Session",
+        session_key_copied: "Session Key copied to clipboard!",
+
+        // Premium
+        premium_managed: "Managed Identity (Beta)",
         enter_remote_password: "Enter password for remote user.",
         ssh_key_missing_info: "Connection successful!\n\nNo local SSH key found. To enable key auth:\n1. Open a terminal (PowerShell/Bash)\n2. Run: ssh-keygen -t ed25519\n3. Press Enter to accept defaults\n4. Test connection again to deploy the new key.",
         setup_secure_access: "Setup Secure Access",

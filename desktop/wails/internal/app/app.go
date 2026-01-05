@@ -212,3 +212,13 @@ func (a *App) HealthCheck(url string, token string, timeoutSeconds int) (string,
 	}
 	return "not-ok", nil
 }
+
+// GetRemoteSession retrieves information about the existing backend session on the remote host
+func (a *App) GetRemoteSession(profileJSON string) (*backend.SessionInfo, error) {
+	return a.Backend.GetRemoteSession(profileJSON)
+}
+
+// KillRemoteSession terminates the existing backend session
+func (a *App) KillRemoteSession(profileJSON string) error {
+	return a.Backend.KillRemoteSession(profileJSON)
+}

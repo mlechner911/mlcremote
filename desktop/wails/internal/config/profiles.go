@@ -27,6 +27,7 @@ type ConnectionProfile struct {
 	RemoteOS      string   `json:"remoteOS"`      // e.g. Linux, Darwin, Windows
 	RemoteArch    string   `json:"remoteArch"`    // e.g. amd64, arm64
 	RemoteVersion string   `json:"remoteVersion"` // e.g. 1.0.0
+	Mode          string   `json:"mode"`          // "default" or "parallel"
 }
 
 const profilesFileName = "profiles.json"

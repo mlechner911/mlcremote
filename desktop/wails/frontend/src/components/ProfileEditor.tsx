@@ -4,6 +4,7 @@ import { useI18n } from '../utils/i18n'
 import { ProbeConnection, DeploySSHKey, VerifyPassword, GetManagedIdentityPath, PickIdentityFile } from '../wailsjs/go/app/App'
 import PasswordDialog from './PasswordDialog'
 import { useConnectionTester } from '../hooks/useConnectionTester'
+import ColorPicker, { DEFAULT_COLORS } from './ColorPicker'
 
 // Define the shape locally until generated bindings are available/updated
 // should come from swagger at some point..
@@ -22,6 +23,7 @@ export interface ConnectionProfile {
     remoteOS?: string
     remoteArch?: string
     remoteVersion?: string
+    mode?: string
 }
 
 type int = number
@@ -33,20 +35,15 @@ interface ProfileEditorProps {
     isPremium?: boolean
 }
 
-const COLORS = [
-    '#007bff', // blue
-    '#6f42c1', // purple
-    '#28a745', // green
-    '#dc3545', // red
-    '#ffc107', // yellow
-    '#17a2b8', // cyan
-    '#fd7e14', // orange
-]
+
+
+// Define the shape locally until generated bindings are available/updated
+
 
 export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: ProfileEditorProps) {
     const { t } = useI18n()
     const [name, setName] = useState(profile?.name || '')
-    const [color, setColor] = useState(profile?.color || COLORS[0])
+    const [color, setColor] = useState(profile?.color || DEFAULT_COLORS[0])
     const [user, setUser] = useState(profile?.user || '')
     const [host, setHost] = useState(profile?.host || '')
     const [port, setPort] = useState(profile?.port || 22)
@@ -210,40 +207,7 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
                     </div>
                     <div>
                         <label className="label">{t('color')}</label>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                            {COLORS.map(c => (
-                                <div
-                                    key={c}
-                                    onClick={() => setColor(c)}
-                                    style={{
-                                        width: 20, height: 20, borderRadius: '50%', background: c,
-                                        cursor: 'pointer',
-                                        border: color === c ? '2px solid white' : '2px solid transparent',
-                                        outline: color === c ? '1px solid var(--accent)' : 'none'
-                                    }}
-                                />
-                            ))}
-
-                            {/* Custom Picker */}
-                            <div style={{ position: 'relative', width: 20, height: 20 }}>
-                                <input
-                                    type="color"
-                                    value={COLORS.includes(color) ? '#ffffff' : color}
-                                    onChange={e => setColor(e.target.value)}
-                                    style={{
-                                        position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer',
-                                        width: '100%', height: '100%', padding: 0, margin: 0
-                                    }}
-                                />
-                                <div style={{
-                                    width: 20, height: 20, borderRadius: '50%',
-                                    background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)',
-                                    border: !COLORS.includes(color) ? '2px solid white' : '2px solid transparent',
-                                    outline: !COLORS.includes(color) ? '1px solid var(--accent)' : 'none',
-                                    pointerEvents: 'none'
-                                }} />
-                            </div>
-                        </div>
+                        <ColorPicker value={color} onChange={setColor} />
                     </div>
                 </div>
 
@@ -339,15 +303,6 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
                     onCancel={() => setShowPasswordDialog(false)}
                 />
             )}
-
-            <style>{`
-        .label { display: block; font-size: 0.85rem; color: var(--text-muted); marginBottom: 4px; }
-        .input { 
-          width: 100%; padding: 8px 10px; borderRadius: 4px;
-          border: 1px solid var(--border); background: var(--bg-root); color: var(--text-primary);
-        }
-        .input:focus { border-color: var(--accent); outline: none; }
-      `}</style>
         </div>
     )
 }

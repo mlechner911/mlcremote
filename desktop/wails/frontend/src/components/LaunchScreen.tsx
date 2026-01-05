@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react'
 import {
     ListProfiles, SaveProfile, DeleteProfile,
     StartTunnelWithProfile, HasMasterPassword, DetectRemoteOS, CheckRemoteVersion, DeploySSHKey,
-    IsPremium, SetupManagedIdentity, GetManagedIdentityPath
+    IsPremium, SetupManagedIdentity, GetManagedIdentityPath, GetRemoteSession, KillRemoteSession
 } from '../wailsjs/go/app/App'
 import { useConnectionTester } from '../hooks/useConnectionTester'
 import ProfileEditor, { ConnectionProfile } from './ProfileEditor'
+import SessionDialog, { SessionInfo } from './SessionDialog'
 import { Profile } from '../App' // Legacy Profile type if needed, but we use ConnectionProfile mostly
 import { useI18n } from '../utils/i18n'
 import PasswordDialog from './PasswordDialog'
@@ -35,6 +36,8 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
     const [isPremium, setIsPremium] = useState(false)
     const [promptManaged, setPromptManaged] = useState<ConnectionProfile | null>(null) // Prompt for managed identity
     const [managedPath, setManagedPath] = useState('')
+    const [promptSession, setPromptSession] = useState<{ p: ConnectionProfile, info: SessionInfo } | null>(null)
+
 
     const normalizePath = (p: string) => p.replace(/\\/g, '/').toLowerCase()
 
@@ -103,7 +106,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
         }
     }, [loading, t])
 
-    const handleConnect = async (p: ConnectionProfile) => {
+    const performConnect = async (p: ConnectionProfile) => {
         setLoading(true)
         setStatus(t('initializing_connection'))
         setErrorWin(null)
@@ -214,6 +217,34 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
         } finally {
             setLoading(false)
         }
+    }
+
+    const handleConnect = async (p: ConnectionProfile) => {
+        // First check for existing session
+        setLoading(true)
+        setStatus(t('status_checking'))
+        try {
+            const backendProfile = {
+                user: p.user, host: p.host, localPort: p.localPort, remoteHost: 'localhost', remotePort: 8443,
+                identityFile: p.identityFile, extraArgs: [...(p.extraArgs || [])]
+            }
+            if (p.port && p.port !== 22) backendProfile.extraArgs.push('-p', String(p.port))
+
+            // @ts-ignore
+            const info = await GetRemoteSession(JSON.stringify(backendProfile))
+
+            if (info && info.running && info.token) {
+                // Session found!
+                setPromptSession({ p, info })
+                setLoading(false)
+                return
+            }
+        } catch (e) {
+            console.error("Failed to check session, proceeding to connect", e)
+        }
+
+        // If no session or error, just connect
+        performConnect(p)
     }
 
     const onDeployKey = async (password: string) => {
@@ -342,6 +373,46 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 </div>
             </div>
             {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
+            {promptSession && (
+                <SessionDialog
+                    info={promptSession.info}
+                    onJoin={() => {
+                        const p = promptSession.p
+                        setPromptSession(null)
+                        performConnect(p)
+                    }}
+                    onRestart={async () => {
+                        const p = promptSession.p
+                        setPromptSession(null)
+                        setLoading(true)
+                        setStatus(t('restart_session'))
+                        try {
+                            const backendProfile = {
+                                user: p.user, host: p.host, localPort: p.localPort, remoteHost: 'localhost', remotePort: 8443,
+                                identityFile: p.identityFile, extraArgs: [...(p.extraArgs || [])]
+                            }
+                            if (p.port && p.port !== 22) backendProfile.extraArgs.push('-p', String(p.port))
+
+                            // @ts-ignore
+                            await KillRemoteSession(JSON.stringify(backendProfile))
+                            // Now connect
+                            performConnect(p)
+                        } catch (e: any) {
+                            const msg = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)
+                            alert(t('status_failed') + ": " + msg)
+                            setLoading(false)
+                        }
+                    }}
+                    onStartParallel={() => {
+                        const p = promptSession.p
+                        // Force parallel mode
+                        const parallelP = { ...p, mode: 'parallel' }
+                        performConnect(parallelP)
+                        setPromptSession(null)
+                    }}
+                    onCancel={() => { setPromptSession(null); setLoading(false) }}
+                />
+            )}
             {promptDeploy && (
                 <PasswordDialog
                     title={t('password')}
