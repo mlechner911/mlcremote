@@ -203,3 +203,37 @@ export async function deleteFile(path: string): Promise<void> {
         throw new Error('delete failed')
     }
 }
+// ... (existing code)
+
+/**
+ * User configurable settings.
+ */
+export type Settings = {
+    allowDelete: boolean
+    defaultShell: string
+    // User preferences
+    theme?: string
+    autoOpen?: boolean
+    showHidden?: boolean
+    showLogs?: boolean
+    hideMemoryUsage?: boolean
+    maxEditorSize?: number
+    language?: string
+    mode?: string
+}
+
+export async function getSettings(): Promise<Settings> {
+    const r = await authedFetch('/api/settings')
+    if (!r.ok) throw new Error('Failed to load settings')
+    return r.json()
+}
+
+export async function saveSettings(s: Partial<Settings>): Promise<Settings> {
+    const r = await authedFetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(s)
+    })
+    if (!r.ok) throw new Error('Failed to save settings')
+    return r.json()
+}

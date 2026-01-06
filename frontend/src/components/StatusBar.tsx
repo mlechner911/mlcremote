@@ -72,16 +72,31 @@ export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealt
                         const used = total - free
                         const pct = Math.round((used / total) * 100)
                         return (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} title={`System Memory: ${formatBytes(used)} / ${formatBytes(total)}`}>
-                                <span>Mem:</span>
-                                <div style={{ width: 50, height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} title={`System Memory: ${formatBytes(used)} / ${formatBytes(total)} (${pct}%)`}>
+                                <div style={{
+                                    width: 32, height: 14,
+                                    background: 'var(--bg-panel)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 3,
+                                    position: 'relative',
+                                    overflow: 'hidden'
+                                }}>
                                     <div style={{
                                         width: `${pct}%`,
                                         height: '100%',
-                                        background: pct > 80 ? '#ef4444' : '#10b981'
+                                        background: pct > 85 ? '#ef4444' : (pct > 60 ? '#f59e0b' : '#3b82f6'),
+                                        transition: 'width 0.5s ease'
                                     }} />
+                                    {/* Mini text overlay */}
+                                    <div style={{
+                                        position: 'absolute', inset: 0,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 9, fontWeight: 700, color: 'var(--text)',
+                                        textShadow: '0 0 2px var(--bg)'
+                                    }}>
+                                        {pct}%
+                                    </div>
                                 </div>
-                                <span>{pct}%</span>
                             </div>
                         )
                     })()

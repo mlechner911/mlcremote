@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Health } from './api'
-import { statPath } from './api'
+import { statPath, saveSettings, getSettings } from './api'
 import { useAuth } from './context/AuthContext'
 import FileExplorer from './components/FileExplorer'
 import SettingsPopup from './components/SettingsPopup'
@@ -31,7 +31,7 @@ import SplitPane from './components/SplitPane'
 import type { LayoutNode, PaneId, PaneState } from './types/layout'
 
 export default function App() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const {
     health, isOnline, lastHealthAt, refreshHealth,
@@ -93,8 +93,8 @@ export default function App() {
 
   const [evictedTabs, setEvictedTabs] = React.useState<string[]>([])
   const [binaryPath, setBinaryPath] = React.useState<string | null>(null)
-  const [autoOpen, setAutoOpenState] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('autoOpen', boolSerializer, true))
-  const setAutoOpen = (v: boolean) => { setAutoOpenState(v); defaultStore.set('autoOpen', v, boolSerializer) }
+  const [autoOpen, setAutoOpenState] = React.useState<boolean>(true)
+  const setAutoOpen = (v: boolean) => { setAutoOpenState(v); saveSettings({ autoOpen: v }).catch(console.error) }
   const maxTabs = 8
   // openFile ensures we don't exceed maxTabs by closing the oldest when necessary
   /**
@@ -125,17 +125,18 @@ export default function App() {
     })
   }
   const [shellCwds, setShellCwds] = React.useState<Record<string, string>>({})
-  const [showHidden, setShowHiddenState] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('showHidden', boolSerializer, false))
-  const setShowHidden = (v: boolean) => { setShowHiddenState(v); defaultStore.set('showHidden', v, boolSerializer) }
+  const [showHidden, setShowHiddenState] = React.useState<boolean>(false)
+  const setShowHidden = (v: boolean) => { setShowHiddenState(v); saveSettings({ showHidden: v }).catch(console.error) }
   const [canChangeRoot, setCanChangeRoot] = React.useState<boolean>(false)
-  const [showLogs, setShowLogs] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('showLogs', boolSerializer, false))
+  const [showLogs, setShowLogs] = React.useState<boolean>(false)
   const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
   const [settingsOpen, setSettingsOpen] = React.useState<boolean>(false)
-  const [hideMemoryUsage, setHideMemoryUsage] = React.useState<boolean>(() => defaultStore.getOrDefault<boolean>('hideMemoryUsage', boolSerializer, false))
+  const [hideMemoryUsage, setHideMemoryUsage] = React.useState<boolean>(false)
   const [serverInfoOpen, setServerInfoOpen] = React.useState<boolean>(false)
   const [settings, setSettings] = React.useState<{ allowDelete: boolean; defaultShell: string } | null>(null)
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
-  const [theme, setTheme] = React.useState<'dark' | 'light'>(() => defaultStore.getOrDefault<'dark' | 'light'>('theme', strSerializer as any, 'dark'))
+  const [theme, setTheme] = React.useState<'dark' | 'light'>('dark')
+  const [maxEditorSize, setMaxEditorSize] = React.useState<number>(0) // 0 means not yet loaded or default
   const [now, setNow] = React.useState<Date>(new Date())
   const [messageBox, setMessageBox] = React.useState<{ title: string; message: string } | null>(null)
 
@@ -165,12 +166,36 @@ export default function App() {
   }, [])
 
   // fetch runtime settings once on mount
+  // fetch runtime settings once on mount and apply user prefs
   React.useEffect(() => {
-    fetch('/api/settings')
-      .then(r => r.json())
-      .then(j => {
-        setSettings(j)
-        if (j && typeof j.allowChangeRoot !== 'undefined') setCanChangeRoot(!!j.allowChangeRoot)
+    getSettings()
+      .then(s => {
+        setSettings({ allowDelete: s.allowDelete, defaultShell: s.defaultShell })
+        if (typeof s.allowDelete !== 'undefined') setCanChangeRoot(!!s.allowDelete) // Using allowDelete/ChangeRoot logic overlap? Actually allowChangeRoot was returned before.
+        // Apply user prefs
+        if (s.theme) setTheme(s.theme as any)
+        if (typeof s.autoOpen !== 'undefined') setAutoOpenState(s.autoOpen)
+        if (typeof s.showHidden !== 'undefined') setShowHiddenState(s.showHidden)
+        if (typeof s.showLogs !== 'undefined') setShowLogs(s.showLogs)
+        if (typeof s.hideMemoryUsage !== 'undefined') setHideMemoryUsage(s.hideMemoryUsage)
+        if (s.maxEditorSize) {
+          setMaxEditorSize(s.maxEditorSize)
+          localStorage.setItem('mlc_max_editor_size', s.maxEditorSize.toString())
+        }
+
+        // Language Sync Logic: Desktop Launcher (URL param) overrides Server Settings
+        const params = new URLSearchParams(window.location.search)
+        const urlLang = params.get('lang')
+
+        if (urlLang && urlLang !== s.language) {
+          console.log(`[i18n] Syncing language from Desktop (${urlLang}) -> Server`)
+          // Update server settings and apply
+          saveSettings({ language: urlLang }).catch(console.error)
+          if (i18n.language !== urlLang) i18n.changeLanguage(urlLang)
+        } else if (s.language && i18n.language !== s.language) {
+          // Fallback to server setting
+          i18n.changeLanguage(s.language)
+        }
       })
       .catch(() => setSettings({ allowDelete: false, defaultShell: 'bash' }))
 
@@ -600,10 +625,21 @@ export default function App() {
             onToggleAutoOpen={(v) => setAutoOpen(v)}
             onToggleShowHidden={(v) => setShowHidden(v)}
             showLogs={showLogs}
-            onToggleLogs={(v) => { setShowLogs(v); defaultStore.set('showLogs', v, boolSerializer) }}
+            onToggleLogs={(v) => { setShowLogs(v); saveSettings({ showLogs: v }).catch(console.error) }}
             hideMemoryUsage={hideMemoryUsage}
-            onToggleHideMemoryUsage={(v) => { setHideMemoryUsage(v); defaultStore.set('hideMemoryUsage', v, boolSerializer) }}
+            onToggleHideMemoryUsage={(v) => { setHideMemoryUsage(v); saveSettings({ hideMemoryUsage: v }).catch(console.error) }}
             onClose={() => setSettingsOpen(false)}
+            onLanguageChange={(l) => {
+              if (l !== i18n.language) {
+                i18n.changeLanguage(l)
+                saveSettings({ language: l }).catch(console.error)
+              }
+            }}
+            maxEditorSize={maxEditorSize}
+            onMaxFileSizeChange={(sz) => {
+              setMaxEditorSize(sz)
+              saveSettings({ maxEditorSize: sz }).catch(console.error)
+            }}
           />
         )}
       </header>

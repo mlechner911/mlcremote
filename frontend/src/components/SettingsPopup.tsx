@@ -13,14 +13,18 @@ type Props = {
   hideMemoryUsage: boolean
   onToggleHideMemoryUsage: (v: boolean) => void
   onClose: () => void
+  onLanguageChange?: (lang: string) => void
+  maxEditorSize?: number
+  onMaxFileSizeChange?: (size: number) => void
 }
 
-export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, onToggleShowHidden, showLogs, onToggleLogs, hideMemoryUsage, onToggleHideMemoryUsage, onClose }: Props) {
+export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, onToggleShowHidden, showLogs, onToggleLogs, hideMemoryUsage, onToggleHideMemoryUsage, onClose, onLanguageChange, maxEditorSize, onMaxFileSizeChange }: Props) {
   const { t, i18n } = useTranslation()
   const [localHideMemoryUsage, setLocalHideMemoryUsage] = React.useState<boolean>(hideMemoryUsage)
 
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng)
+    onLanguageChange?.(lng)
   }
 
   const languages = [
@@ -109,12 +113,13 @@ export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, 
               min="0.1"
               step="0.5"
               style={{ width: 60, background: 'var(--bg-panel)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '2px 4px' }}
-              value={(parseInt(localStorage.getItem('mlc_max_editor_size') || '1048576') / 1024 / 1024).toFixed(1)}
+              value={((maxEditorSize || parseInt(localStorage.getItem('mlc_max_editor_size') || '1048576')) / 1024 / 1024).toFixed(1)}
               onChange={(e) => {
                 const mb = parseFloat(e.target.value)
                 if (mb > 0) {
-                  localStorage.setItem('mlc_max_editor_size', Math.floor(mb * 1024 * 1024).toString())
-                  // Force re-render not strictly needed as Editor reads on mount/reload, but valid input
+                  const bytes = Math.floor(mb * 1024 * 1024)
+                  localStorage.setItem('mlc_max_editor_size', bytes.toString())
+                  onMaxFileSizeChange?.(bytes)
                 }
               }}
             />
