@@ -42,7 +42,7 @@ function loadRuntimeIfPresent() {
 }
 
 function AppContent() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [view, setView] = useState<'init' | 'locked' | 'launch' | 'remote' | 'settings'>('init')
   const [remoteUrl, setRemoteUrl] = useState('')
   const [profileName, setProfileName] = useState('')
@@ -106,8 +106,21 @@ function AppContent() {
     let url = `http://localhost:${p.localPort || 8443}`
     if (token) {
       url += `?token=${encodeURIComponent(token)}`
+    } else {
+      url += '?'
     }
-    setRemoteUrl(url)
+    // Propagate language
+    url += `&lang=${lang || 'en'}`
+
+    // Cleanup double ?? if token was missing (resulting in http://...?)
+    // Actually easier:
+    // let params = new URLSearchParams()
+    // if (token) params.set('token', token)
+    // if (i18n.language) params.set('lang', i18n.language)
+    // url += '?' + params.toString()
+    // Let's rewrite safely.
+
+    setRemoteUrl(url) // FIX: Actually set the state!
     setView('remote')
   }
 

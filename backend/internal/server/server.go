@@ -221,14 +221,22 @@ func (s *Server) Routes() {
 // Start starts the HTTP server on the given port bound to localhost.
 
 // Start starts the HTTP server on the given port bound to configured host.
-func (s *Server) Start(port int) error {
+func (s *Server) Start(port int) (int, error) {
 	addr := fmt.Sprintf("%s:%d", s.Host, port)
 	log.Printf("starting server on http://%s, root=%s", addr, s.Root)
 	// create listener first so we can return binding errors synchronously
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return err
+		return 0, err
 	}
+
+	// Get actual port (in case 0 was used)
+	actualPort := port
+	if tcpAddr, ok := ln.Addr().(*net.TCPAddr); ok {
+		actualPort = tcpAddr.Port
+	}
+
+	addr = fmt.Sprintf("%s:%d", s.Host, actualPort)
 	log.Printf("[INFO] server listening on http://%s", addr)
 	s.listener = ln
 
@@ -241,7 +249,7 @@ func (s *Server) Start(port int) error {
 			log.Printf("server error: %v", err)
 		}
 	}()
-	return nil
+	return actualPort, nil
 }
 
 // Shutdown gracefully shuts down the HTTP server and closes terminal sessions.

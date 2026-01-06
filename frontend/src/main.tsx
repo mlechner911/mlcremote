@@ -6,11 +6,25 @@ import { captureTokenFromURL } from './api'
 import './editor-theme.css'
 import '@xterm/xterm/css/xterm.css'
 import './styles.css'
-import './i18n'
+import i18n from './i18n'
 
 // Initialize auth/api from URL if present
 console.log('MLCRemote: captureTokenFromURL type:', typeof captureTokenFromURL)
 try {
+	// Parse logic
+	const params = new URLSearchParams(window.location.search)
+	const api = params.get('api')
+	if (api) {
+		try {
+			const apiObj = new URL(api)
+			const lang = apiObj.searchParams.get('lang')
+			if (lang) {
+				console.log('MLCRemote: Setting language to', lang)
+				i18n.changeLanguage(lang)
+			}
+		} catch (e) { console.error('Failed to parse api url for lang', e) }
+	}
+
 	if (typeof captureTokenFromURL === 'function') {
 		captureTokenFromURL()
 	} else {

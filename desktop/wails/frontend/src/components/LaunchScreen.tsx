@@ -120,7 +120,8 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 remoteHost: 'localhost',
                 remotePort: 8443,
                 identityFile: p.identityFile,
-                extraArgs: [...(p.extraArgs || [])]
+                extraArgs: [...(p.extraArgs || [])],
+                mode: p.mode
             }
 
             // Handle non-standard SSH port via extra args

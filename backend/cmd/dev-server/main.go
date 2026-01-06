@@ -67,11 +67,18 @@ func main() {
 	if *host != "127.0.0.1" && *host != "localhost" {
 		log.Printf("[WARNING] Server is listening on EXTERNAL interface (%s). Only do this in a container!", *host)
 	}
+	// Start server (returns actual port)
+	actualPort, err := s.Start(*port)
+	if err != nil {
+		log.Fatalf("server error: %v", err)
+	}
+
 	displayHost := *host
 	if displayHost == "0.0.0.0" {
 		displayHost = "localhost"
 	}
-	displayAddr := fmt.Sprintf("%s:%d", displayHost, *port)
+	// Use actualPort for display
+	displayAddr := fmt.Sprintf("%s:%d", displayHost, actualPort)
 
 	if token != "" {
 		log.Printf("Security: Authentication ENABLED")
@@ -81,18 +88,15 @@ func main() {
 		log.Printf("Access URL: http://%s/", displayAddr)
 	}
 
-	if err := s.Start(*port); err != nil {
-		log.Fatalf("server error: %v", err)
-	}
 	// log binary size
 	if exe, err := os.Executable(); err == nil {
 		if fi, err := os.Stat(exe); err == nil {
-			log.Printf("Server started on http://localhost:%d, binary=%s size=%d bytes", *port, filepath.Base(exe), fi.Size())
+			log.Printf("Server started on http://localhost:%d, binary=%s size=%d bytes", actualPort, filepath.Base(exe), fi.Size())
 		} else {
-			log.Printf("Server started on http://localhost:%d", *port)
+			log.Printf("Server started on http://localhost:%d", actualPort)
 		}
 	} else {
-		log.Printf("Server started on http://localhost:%d", *port)
+		log.Printf("Server started on http://localhost:%d", actualPort)
 	}
 	// wait for interrupt (Ctrl-C) or termination signal
 	sig := make(chan os.Signal, 1)

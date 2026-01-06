@@ -6,7 +6,7 @@ export function langForExt(ext: string) {
     case 'jsx': return L.jsx
     case 'tsx': return L.tsx
     case 'java': return L.java
-    case 'ini': return L.ini
+    case 'ini': case 'gitconfig': case 'editorconfig': case 'conf': case 'config': return L.ini
     case 'js': return L.javascript
     case 'ts': return L.typescript
     case 'go': return L.go
@@ -38,7 +38,7 @@ export function aliasForExt(ext: string) {
     case 'json': return 'json'
     case 'yaml': case 'yml': return 'yaml'
     case 'toml': return 'toml'
-    case 'ini': return 'ini'
+    case 'ini': case 'gitconfig': case 'editorconfig': case 'conf': case 'config': return 'ini'
     case 'md': case 'markdown': return 'markdown'
     case 'c': case 'h': return 'c'
     case 'cpp': case 'cxx': case 'c++': case 'hpp': return 'cpp'

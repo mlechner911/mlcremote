@@ -70,5 +70,8 @@
     "close_left": "Links schließen",
     "restore": "Wiederherstellen",
     "scroll_left": "nach links scrollen",
-    "scroll_right": "nach rechts scrollen"
+    "scroll_right": "nach rechts scrollen",
+    "editor_settings": "Editor-Einstellungen",
+    "max_file_size": "Max. Dateigröße (MB)",
+    "max_file_size_tooltip": "Dateien, die größer sind, werden schreibgeschützt geöffnet."
 }

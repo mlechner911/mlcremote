@@ -74,6 +74,14 @@ func FileTypeHandler(root string) http.HandlerFunc {
 		// heuristics for text-like types
 		isText := strings.HasPrefix(mimeType, "text/") || strings.Contains(mimeType, "json") || strings.Contains(mimeType, "xml") || strings.Contains(mimeType, "javascript") || strings.Contains(mimeType, "yaml") || strings.Contains(mimeType, "toml")
 
+		// Force text for known extensions if detection failed (e.g. empty files, dotfiles)
+		if !isText {
+			switch ext {
+			case "md", "txt", "json", "js", "ts", "tsx", "css", "html", "go", "py", "java", "c", "cpp", "h", "sh", "bat", "ps1", "yaml", "yml", "toml", "ini", "bashrc", "zshrc", "profile", "gitconfig", "editorconfig", "conf", "config", "xml":
+				isText = true
+			}
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(fileTypeResp{Mime: mimeType, IsText: isText, Ext: ext})
 	}

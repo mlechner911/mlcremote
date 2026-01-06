@@ -101,7 +101,15 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
     }
   }, [path, t])
 
-  const editableThreshold = 10 * 1024 * 1024 // 10 MB
+  // Read max size from settings (default 1MB)
+  const getMaxSize = () => {
+    try {
+      const s = localStorage.getItem('mlc_max_editor_size')
+      if (s) return parseInt(s, 10)
+    } catch { }
+    return 1024 * 1024 // 1MB default (was 10MB)
+  }
+  const editableThreshold = getMaxSize()
 
   const loadSection = async (offset: number, length = 64 * 1024) => {
     if (!path) return

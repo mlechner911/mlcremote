@@ -88,7 +88,31 @@ export function captureTokenFromURL() {
 
         const api = params.get('api')
         if (api) {
-            setApiBaseUrl(api)
+            info(`[Debug] Found API param: ${api}`)
+            try {
+                const apiObj = new URL(api)
+                // Set base URL without query params and without trailing slash
+                let base = apiObj.origin + apiObj.pathname
+                if (base.endsWith('/')) {
+                    base = base.slice(0, -1)
+                }
+                // DEBUG: Alert the resolved base URL
+                // window.alert(`MLCRemote Debug: API Base set to ${base}`)
+                info(`[Debug] Setting Base URL: ${base}`)
+                setApiBaseUrl(base)
+
+                // Extract token from api url params
+                const apiToken = apiObj.searchParams.get('token')
+                if (apiToken) {
+                    setToken(apiToken)
+                }
+            } catch (e) {
+                // if parsing fails, fallback to raw string (though likely broken if it had params)
+                console.error("Failed to parse API URL", e)
+                setApiBaseUrl(api)
+            }
+        } else {
+            info('[Debug] No API param found')
         }
 
         return !!t

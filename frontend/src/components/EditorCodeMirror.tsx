@@ -20,19 +20,19 @@ export default function EditorCodeMirror({ path, onSaved }: Props) {
   // lazy-load CodeMirror wrapper + theme once
   React.useEffect(() => {
     let mounted = true
-    ;(async () => {
+      ; (async () => {
         console.log('Loading CodeMirror...')
-      try {
-        const cmMod = await import('@uiw/react-codemirror')
-        const themeMod = await import('@codemirror/theme-one-dark')
-        if (!mounted) return
-        const isLight = document.documentElement.classList.contains('theme-light')
-        setCM(() => cmMod.default)
-        setTheme(() => isLight ? null : themeMod.oneDark)
-      } catch (e) {
-        console.warn('Failed to load CodeMirror:', e)
-      }
-    })()
+        try {
+          const cmMod = await import('@uiw/react-codemirror')
+          const themeMod = await import('@codemirror/theme-one-dark')
+          if (!mounted) return
+          const isLight = document.documentElement.classList.contains('theme-light')
+          setCM(() => cmMod.default)
+          setTheme(() => isLight ? null : themeMod.oneDark)
+        } catch (e) {
+          console.warn('Failed to load CodeMirror:', e)
+        }
+      })()
     return () => { mounted = false }
   }, [])
 
@@ -65,87 +65,87 @@ export default function EditorCodeMirror({ path, onSaved }: Props) {
     if (!CM || !path) return
     let mounted = true
     const ext = extFromPath(path)
-    ;(async () => {
-      try {
-        let extModule: any = null
-        switch (ext) {
-          case 'py': {
-            const m = await import('@codemirror/lang-python')
-            extModule = m.python()
-            break
+      ; (async () => {
+        try {
+          let extModule: any = null
+          switch (ext) {
+            case 'py': {
+              const m = await import('@codemirror/lang-python')
+              extModule = m.python()
+              break
+            }
+            case 'go': {
+              const m = await import('@codemirror/lang-go')
+              extModule = m.go()
+              break
+            }
+            case 'php': {
+              const m = await import('@codemirror/lang-php')
+              extModule = m.php()
+              break
+            }
+            case 'json': {
+              const m = await import('@codemirror/lang-json')
+              extModule = m.json()
+              break
+            }
+            case 'md': case 'markdown': {
+              const m = await import('@codemirror/lang-markdown')
+              extModule = m.markdown()
+              break
+            }
+            case 'yml': case 'yaml': {
+              const m = await import('@codemirror/lang-yaml')
+              extModule = m.yaml()
+              break
+            }
+            case 'sh': case 'bash': {
+              const m = await import('@codemirror/lang-shell')
+              extModule = m.shell()
+              break
+            }
+            case 'js': case 'jsx': case 'mjs': case 'cjs': {
+              const m = await import('@codemirror/lang-javascript')
+              extModule = m.javascript()
+              break
+            }
+            case 'css': {
+              const m = await import('@codemirror/lang-css')
+              extModule = m.css()
+              break
+            }
+            case 'scss': case 'sass': {
+              const m = await import('@codemirror/lang-css')
+              // scss/sass use the postcss/css support in CodeMirror
+              extModule = m.css()
+              break
+            }
+            case 'xml': case 'xsl': case 'xslt': case 'html': case 'htm': {
+              const m = await import('@codemirror/lang-xml')
+              extModule = m.xml()
+              break
+            }
+            case 'c': {
+              const m = await import('@codemirror/lang-cpp')
+              extModule = m.c()
+              break
+            }
+            case 'cpp': case 'cc': case 'cxx': case 'h': case 'hpp': {
+              const m = await import('@codemirror/lang-cpp')
+              extModule = m.cpp()
+              break
+            }
+            default: {
+              // fallback: no language extension
+              extModule = null
+            }
           }
-          case 'go': {
-            const m = await import('@codemirror/lang-go')
-            extModule = m.go()
-            break
-          }
-          case 'php': {
-            const m = await import('@codemirror/lang-php')
-            extModule = m.php()
-            break
-          }
-          case 'json': {
-            const m = await import('@codemirror/lang-json')
-            extModule = m.json()
-            break
-          }
-          case 'md': case 'markdown': {
-            const m = await import('@codemirror/lang-markdown')
-            extModule = m.markdown()
-            break
-          }
-          case 'yml': case 'yaml': {
-            const m = await import('@codemirror/lang-yaml')
-            extModule = m.yaml()
-            break
-          }
-          case 'sh': case 'bash': {
-            const m = await import('@codemirror/lang-shell')
-            extModule = m.shell()
-            break
-          }
-          case 'js': case 'jsx': {
-            const m = await import('@codemirror/lang-javascript')
-            extModule = m.javascript()
-            break
-          }
-          case 'css': {
-            const m = await import('@codemirror/lang-css')
-            extModule = m.css()
-            break
-          }
-          case 'scss': case 'sass': {
-            const m = await import('@codemirror/lang-css')
-            // scss/sass use the postcss/css support in CodeMirror
-            extModule = m.css()
-            break
-          }
-          case 'xml': case 'xsl': case 'xslt': case 'html': case 'htm': {
-            const m = await import('@codemirror/lang-xml')
-            extModule = m.xml()
-            break
-          }
-          case 'c': {
-            const m = await import('@codemirror/lang-cpp')
-            extModule = m.c()
-            break
-          }
-          case 'cpp': case 'cc': case 'cxx': case 'h': case 'hpp': {
-            const m = await import('@codemirror/lang-cpp')
-            extModule = m.cpp()
-            break
-          }
-          default: {
-            // fallback: no language extension
-            extModule = null
-          }
+          if (mounted) setLangExt(extModule)
+        } catch (e) {
+          console.warn('Failed to load language extension', e)
+          if (mounted) setLangExt(null)
         }
-        if (mounted) setLangExt(extModule)
-      } catch (e) {
-        console.warn('Failed to load language extension', e)
-        if (mounted) setLangExt(null)
-      }
-    })()
+      })()
     return () => { mounted = false }
   }, [CM, path])
 

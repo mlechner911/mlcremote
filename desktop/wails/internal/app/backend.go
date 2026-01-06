@@ -1,5 +1,7 @@
 package app
 
+// Service wrapper for backend functionality
+
 // CheckBackend checks if the dev-server binary exists on the remote host
 func (a *App) CheckBackend(profileJSON string) (bool, error) {
 	return a.Backend.CheckBackend(profileJSON)

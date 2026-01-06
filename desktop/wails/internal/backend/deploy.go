@@ -206,6 +206,12 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 	}
 
 	if !skipBinary {
+		// If binary is running, SCP might fail with "Text file busy".
+		// We remove it first to unlink the inode.
+		rmArgs := append([]string{}, sshBaseArgs...)
+		rmArgs = append(rmArgs, target, fmt.Sprintf("rm -f ~/%s/%s", remoteBinDir, binName))
+		_ = createSilentCmd("ssh", rmArgs...).Run()
+
 		scpBinArgs := append([]string{}, scpArgs...)
 		scpBinArgs = append(scpBinArgs, binPath, fmt.Sprintf("%s:~/%s/%s", target, remoteBinDir, binName))
 		if out, err := createSilentCmd("scp", scpBinArgs...).CombinedOutput(); err != nil {
@@ -213,6 +219,8 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 		}
 	}
 
+	// Upload Frontend
+	// We skip upload because we rely on local assets via manual update
 	fmt.Println("Frontend upload skipped (using local desktop view).")
 
 	// Meta file
@@ -265,11 +273,15 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 
 	if targetOS == "windows" {
 		// Use PowerShell to start hidden and detached
-		startCmd = fmt.Sprintf("powershell -Command \"Start-Process -FilePath .mlcremote\\bin\\%s -ArgumentList '%s %s' -RedirectStandardOutput .mlcremote\\%s -RedirectStandardError .mlcremote\\%s -WindowStyle Hidden\"", binName, authArg, portArg, logFile, logFile)
+		// Note: ArgumentList expects comma-separated strings for multiple args: "arg1", "arg2"
+		startCmd = fmt.Sprintf("powershell -Command \"Start-Process -FilePath .mlcremote\\bin\\%s -ArgumentList '%s', '%s' -RedirectStandardOutput .mlcremote\\%s -RedirectStandardError .mlcremote\\%s -WindowStyle Hidden\"", binName, authArg, portArg, logFile, logFile)
 	} else {
 		// Linux/Darwin: nohup
 		startCmd = fmt.Sprintf("nohup ~/%s/%s %s %s > ~/%s/%s 2>&1 &", remoteBinDir, binName, authArg, portArg, remoteBinDir, logFile)
 	}
+
+	fmt.Printf("[DEBUG] DeployAgent: Starting backend with command: %s\n", startCmd)
+	fmt.Printf("[DEBUG] DeployAgent: AuthArg='%s' PortArg='%s'\n", authArg, portArg)
 
 	startArgs := append([]string{}, sshBaseArgs...)
 	startArgs = append(startArgs, target, startCmd)
@@ -347,7 +359,14 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 		if resolvedPort > 0 {
 			return fmt.Sprintf("deployed:%d:%s", resolvedPort, token), nil
 		}
-		return "setup-failed", fmt.Errorf("failed to resolve dynamic port from logs")
+
+		// Debug: Read whole log to see what happened
+		catCmd := fmt.Sprintf("cat ~/%s/%s || type .mlcremote\\%s", remoteBinDir, logFile, logFile)
+		catArgs := append([]string{}, sshBaseArgs...)
+		catArgs = append(catArgs, target, catCmd)
+		logContent, _ := createSilentCmd("ssh", catArgs...).Output()
+
+		return "setup-failed", fmt.Errorf("failed to resolve dynamic port from logs. Log content: %s", string(logContent))
 	}
 
 	return fmt.Sprintf("deployed:%d:%s", targetPort, token), nil

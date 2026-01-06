@@ -97,6 +97,29 @@ export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, 
             <input type="checkbox" checked={localHideMemoryUsage} onChange={e => { setLocalHideMemoryUsage(e.target.checked); onToggleHideMemoryUsage(e.target.checked) }} /> {t('hide_memory_usage', 'Hide memory usage gauge')}
           </label>
         </div>
+
+        <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+          <strong style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('editor_settings', 'Editor Settings')}</strong>
+          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <label style={{ fontSize: 13 }} title={t('max_file_size_tooltip', 'Files larger than this (MB) will open in read-only mode')}>
+              {t('max_file_size', 'Max File Size (MB)')}
+            </label>
+            <input
+              type="number"
+              min="0.1"
+              step="0.5"
+              style={{ width: 60, background: 'var(--bg-panel)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '2px 4px' }}
+              value={(parseInt(localStorage.getItem('mlc_max_editor_size') || '1048576') / 1024 / 1024).toFixed(1)}
+              onChange={(e) => {
+                const mb = parseFloat(e.target.value)
+                if (mb > 0) {
+                  localStorage.setItem('mlc_max_editor_size', Math.floor(mb * 1024 * 1024).toString())
+                  // Force re-render not strictly needed as Editor reads on mount/reload, but valid input
+                }
+              }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   )

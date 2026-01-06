@@ -73,7 +73,10 @@ export const TextHandler: FileHandler = {
         if (opts.path) {
             const lower = opts.path.toLowerCase()
             // explicit list of known text types incase probe missing
-            return lower.endsWith('.md') || lower.endsWith('.txt') || lower.endsWith('.json') || lower.endsWith('.js') || lower.endsWith('.ts') || lower.endsWith('.tsx') || lower.endsWith('.css') || lower.endsWith('.html') || lower.endsWith('.go') || lower.endsWith('.py') || lower.endsWith('.java') || lower.endsWith('.c') || lower.endsWith('.cpp') || lower.endsWith('.h') || lower.endsWith('.sh') || lower.endsWith('.bat') || lower.endsWith('.ps1') || lower.endsWith('.yaml') || lower.endsWith('.yml') || lower.endsWith('.toml') || lower.endsWith('.ini')
+            if (lower.endsWith('.md') || lower.endsWith('.txt') || lower.endsWith('.json') || lower.endsWith('.js') || lower.endsWith('.ts') || lower.endsWith('.tsx') || lower.endsWith('.css') || lower.endsWith('.html') || lower.endsWith('.go') || lower.endsWith('.py') || lower.endsWith('.java') || lower.endsWith('.c') || lower.endsWith('.cpp') || lower.endsWith('.h') || lower.endsWith('.sh') || lower.endsWith('.bat') || lower.endsWith('.ps1') || lower.endsWith('.yaml') || lower.endsWith('.yml') || lower.endsWith('.toml') || lower.endsWith('.ini')) return true
+
+            // dotfiles and configs
+            if (lower.endsWith('.bashrc') || lower.endsWith('.zshrc') || lower.endsWith('.profile') || lower.endsWith('.bash_history') || lower.endsWith('.gitconfig') || lower.endsWith('.editorconfig') || lower.endsWith('.conf') || lower.endsWith('.config') || lower.endsWith('.xml')) return true
         }
         return false
     },

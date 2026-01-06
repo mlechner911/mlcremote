@@ -167,3 +167,7 @@ A: **Yes.** You can open multiple windows (by launching the app multiple times) 
 
 **Q: Why does it ask for my password?**
 A: MLCRemote asks for your SSH password **only once** for each new server to securely install your public key or Managed Identity. Subsequent connections are password-less. We do not store your SSH password.
+
+### Language Support
+-   **Localization**: The app is available in **English**, **German**, **Spanish**, and **French**.
+-   **Auto-Sync**: When you connect to a remote session, the remote IDE will automatically match your desktop language setting! 🌍

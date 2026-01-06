@@ -70,5 +70,8 @@
     "close_left": "Close Left",
     "restore": "Restore",
     "scroll_left": "scroll left",
-    "scroll_right": "scroll right"
+    "scroll_right": "scroll right",
+    "editor_settings": "Editor Settings",
+    "max_file_size": "Max File Size (MB)",
+    "max_file_size_tooltip": "Files larger than this will open in read-only mode."
 }

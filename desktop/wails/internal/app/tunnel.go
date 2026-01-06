@@ -30,6 +30,8 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	if err := json.Unmarshal([]byte(profileJSON), &cp); err != nil {
 		return "failed", fmt.Errorf("invalid profile JSON: %w", err)
 	}
+	fmt.Printf("[DEBUG] StartTunnel: Raw JSON: %s\n", profileJSON)
+	fmt.Printf("[DEBUG] StartTunnel: Parsed Mode: '%s'\n", cp.Mode)
 
 	// 2. Save/Update Profile (LastUsed)
 	// We might want to ensure ID is set if missing, but LaunchScreen usually handles it.
