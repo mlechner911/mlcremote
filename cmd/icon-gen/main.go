@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -18,304 +19,318 @@ import (
 // frontend/src/generated/icons-sprite.svg and frontend/src/generated/icons.tsx
 
 type Manifest struct {
-    Version  int `yaml:"version"`
-    Defaults struct {
-        SpritePrefix string `yaml:"sprite_prefix"`
-    } `yaml:"defaults"`
-    Icons []struct {
-        ID         string   `yaml:"id"`
-        Name       string   `yaml:"name"`
-        File       string   `yaml:"file"`
-        Mime       string   `yaml:"mime"`
-        Extensions []string `yaml:"extensions"`
-    } `yaml:"icons"`
+	Version  int `yaml:"version"`
+	Defaults struct {
+		SpritePrefix string `yaml:"sprite_prefix"`
+	} `yaml:"defaults"`
+	Icons []struct {
+		ID         string   `yaml:"id"`
+		Name       string   `yaml:"name"`
+		File       string   `yaml:"file"`
+		Mime       string   `yaml:"mime"`
+		Extensions []string `yaml:"extensions"`
+	} `yaml:"icons"`
 }
 
 func usageAndExit(msg string) {
-    if msg != "" {
-        fmt.Fprintln(os.Stderr, msg)
-    }
-    fmt.Fprintln(os.Stderr, "Usage: icon-gen --manifest icons/icons.yml --raw icons/raw --out frontend/src/generated")
-    os.Exit(2)
+	if msg != "" {
+		fmt.Fprintln(os.Stderr, msg)
+	}
+	fmt.Fprintln(os.Stderr, "Usage: icon-gen --manifest icons/icons.yml --raw icons/raw --out frontend/src/generated")
+	os.Exit(2)
 }
 
 func main() {
-    manifestPath := flag.String("manifest", "icons/icons.yml", "path to manifest YAML")
-    rawDir := flag.String("raw", "icons/raw", "raw svg directory")
-    outDir := flag.String("out", "frontend/src/generated", "output directory")
-    prefix := flag.String("prefix", "icon", "sprite id prefix (overrides manifest if set)")
-    flag.Parse()
+	manifestPath := flag.String("manifest", "icons/icons.yml", "path to manifest YAML")
+	rawDir := flag.String("raw", "icons/raw", "raw svg directory")
+	outDir := flag.String("out", "frontend/src/generated", "output directory")
+	prefix := flag.String("prefix", "icon", "sprite id prefix (overrides manifest if set)")
+	flag.Parse()
 
-    if *manifestPath == "" || *rawDir == "" || *outDir == "" {
-        usageAndExit("missing required args")
-    }
+	if *manifestPath == "" || *rawDir == "" || *outDir == "" {
+		usageAndExit("missing required args")
+	}
 
-    data, err := os.ReadFile(*manifestPath)
-    if err != nil {
-        panic(err)
-    }
+	data, err := os.ReadFile(*manifestPath)
+	if err != nil {
+		panic(err)
+	}
 
-    var m Manifest
-    if err := yaml.Unmarshal(data, &m); err != nil {
-        panic(err)
-    }
+	var m Manifest
+	if err := yaml.Unmarshal(data, &m); err != nil {
+		panic(err)
+	}
 
-    sprefix := m.Defaults.SpritePrefix
-    if *prefix != "" {
-        sprefix = *prefix
-    }
-    if sprefix == "" {
-        sprefix = "icon"
-    }
+	sprefix := m.Defaults.SpritePrefix
+	if *prefix != "" {
+		sprefix = *prefix
+	}
+	if sprefix == "" {
+		sprefix = "icon"
+	}
 
-    // Build sprite
-    var spriteBuf bytes.Buffer
-    spriteBuf.WriteString("<svg xmlns=\"http://www.w3.org/2000/svg\" style=\"display:none\">\n")
+	// Build sprite
+	var spriteBuf bytes.Buffer
+	spriteBuf.WriteString("<svg xmlns=\"http://www.w3.org/2000/svg\" style=\"display:none\">\n")
 
-    // Map of extension -> id
-    extMap := make(map[string]string)
-    // Map of mime -> id
-    mimeMap := make(map[string]string)
+	// Map of extension -> id
+	extMap := make(map[string]string)
+	// Map of mime -> id
+	mimeMap := make(map[string]string)
 
-    for _, ic := range m.Icons {
-        id := ic.ID
-        if id == "" {
-            id = strings.TrimSuffix(filepath.Base(ic.File), filepath.Ext(ic.File))
-        }
-        symbolID := fmt.Sprintf("%s-%s", sprefix, id)
+	for _, ic := range m.Icons {
+		id := ic.ID
+		if id == "" {
+			id = strings.TrimSuffix(filepath.Base(ic.File), filepath.Ext(ic.File))
+		}
+		symbolID := fmt.Sprintf("%s-%s", sprefix, id)
 
-        rawPath := filepath.Join(filepath.Dir(*manifestPath), ic.File)
-        // If file path is absolute or contains rawDir, join accordingly
-        if !filepath.IsAbs(rawPath) {
-            rawPath = filepath.Clean(rawPath)
-        }
+		rawPath := filepath.Join(filepath.Dir(*manifestPath), ic.File)
+		// If file path is absolute or contains rawDir, join accordingly
+		if !filepath.IsAbs(rawPath) {
+			rawPath = filepath.Clean(rawPath)
+		}
 
-        content, err := os.ReadFile(rawPath)
-        if err != nil {
-            // try rawDir/id
-            alt := filepath.Join(*rawDir, filepath.Base(ic.File))
-            content, err = os.ReadFile(alt)
-            if err != nil {
-                fmt.Fprintf(os.Stderr, "warning: cannot read %s (manifest file %s): %v\n", ic.File, rawPath, err)
-                continue
-            }
-        }
+		content, err := os.ReadFile(rawPath)
+		if err != nil {
+			// try rawDir/id
+			alt := filepath.Join(*rawDir, filepath.Base(ic.File))
+			content, err = os.ReadFile(alt)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "warning: cannot read %s (manifest file %s): %v\n", ic.File, rawPath, err)
+				continue
+			}
+		}
 
-        // Strip xml header if present and wrap content in <symbol>
-        inner := string(content)
-        inner = stripXMLHeader(inner)
-        // Ensure viewBox present; naive check
-        if !strings.Contains(inner, "viewBox=") {
-            // attempt to add a default viewBox
-            inner = strings.Replace(inner, "<svg", "<svg viewBox=\"0 0 24 24\"", 1)
-        }
+		// Strip xml header if present and wrap content in <symbol>
+		inner := string(content)
+		inner = stripXMLHeader(inner)
+		// Ensure viewBox present; naive check
 
-        // Replace outer <svg ...> with <symbol id=...>
-        sym := svgToSymbol(inner, symbolID)
-        spriteBuf.WriteString(sym)
+		// Replace outer <svg ...> with <symbol id=...>
+		sym := svgToSymbol(inner, symbolID)
+		spriteBuf.WriteString(sym)
 
-        for _, ex := range ic.Extensions {
-            if ex == "" {
-                continue
-            }
-            extMap[ex] = symbolID
-        }
-        if ic.Mime != "" {
-            mimeMap[ic.Mime] = symbolID
-        }
-    }
+		for _, ex := range ic.Extensions {
+			if ex == "" {
+				continue
+			}
+			extMap[ex] = symbolID
+		}
+		if ic.Mime != "" {
+			mimeMap[ic.Mime] = symbolID
+		}
+	}
 
-    spriteBuf.WriteString("</svg>\n")
+	spriteBuf.WriteString("</svg>\n")
 
-    // Ensure outDir exists
-    if err := os.MkdirAll(*outDir, 0o755); err != nil {
-        panic(err)
-    }
+	// Ensure outDir exists
+	if err := os.MkdirAll(*outDir, 0o755); err != nil {
+		panic(err)
+	}
 
-    // Prepend generated header to sprite
-    header := generateHeader("icons-sprite.svg")
-    spriteBytes := append([]byte(header), spriteBuf.Bytes()...)
+	// Prepend generated header to sprite
+	header := generateHeader("icons-sprite.svg")
+	spriteBytes := append([]byte(header), spriteBuf.Bytes()...)
 
-    spritePath := filepath.Join(*outDir, "icons-sprite.svg")
-    if err := os.WriteFile(spritePath, spriteBytes, 0o644); err != nil {
-        panic(err)
-    }
+	spritePath := filepath.Join(*outDir, "icons-sprite.svg")
+	if err := os.WriteFile(spritePath, spriteBytes, 0o644); err != nil {
+		panic(err)
+	}
 
-    // Emit types file (separate) then TSX wrapper
-    typesPath := filepath.Join(*outDir, "icons-types.ts")
-    tf, err := os.Create(typesPath)
-    if err != nil {
-        panic(err)
-    }
-    defer tf.Close()
-    fmt.Fprint(tf, generateHeader("icons-types.ts"))
-    writeTypesFile(tf, extMap, mimeMap)
+	// Emit types file (separate) then TSX wrapper
+	typesPath := filepath.Join(*outDir, "icons-types.ts")
+	tf, err := os.Create(typesPath)
+	if err != nil {
+		panic(err)
+	}
+	defer tf.Close()
+	fmt.Fprint(tf, generateHeader("icons-types.ts"))
+	writeTypesFile(tf, extMap, mimeMap)
 
-    tsxPath := filepath.Join(*outDir, "icons.tsx")
-    f, err := os.Create(tsxPath)
-    if err != nil {
-        panic(err)
-    }
-    defer f.Close()
+	tsxPath := filepath.Join(*outDir, "icons.tsx")
+	f, err := os.Create(tsxPath)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
 
-    // write header then wrapper
-    fmt.Fprint(f, generateHeader("icons.tsx"))
-    writeTSXWrapper(f, sprefix, extMap, mimeMap)
+	// write header then wrapper
+	fmt.Fprint(f, generateHeader("icons.tsx"))
+	writeTSXWrapper(f, sprefix, extMap, mimeMap)
 
-    fmt.Println("Generated:", spritePath, tsxPath)
+	fmt.Println("Generated:", spritePath, tsxPath)
 }
 
 func writeTypesFile(w io.Writer, extMap map[string]string, mimeMap map[string]string) {
-    fmt.Fprintln(w, "// Generated file: icons-types.ts")
-    fmt.Fprintln(w, "// Do not edit — generated by cmd/icon-gen")
-    fmt.Fprintln(w, "\n")
+	fmt.Fprintln(w, "// Generated file: icons-types.ts")
+	fmt.Fprintln(w, "// Do not edit — generated by cmd/icon-gen")
+	fmt.Fprintln(w, "\n")
 
-    // Icon extension keys
-    fmt.Fprintln(w, "export type IconExtKey =")
-    first := true
-    // sort keys for deterministic output
-    var keys []string
-    for k := range extMap {
-        keys = append(keys, k)
-    }
-    // simple alphabetical sort
-    sort.Strings(keys)
-    for _, k := range keys {
-        if !first {
-            fmt.Fprintln(w, "|")
-        }
-        fmt.Fprintf(w, "  '%s'", k)
-        first = false
-    }
-    fmt.Fprintln(w, "\n\n")
+	// Icon extension keys
+	fmt.Fprintln(w, "export type IconExtKey =")
+	first := true
+	// sort keys for deterministic output
+	var keys []string
+	for k := range extMap {
+		keys = append(keys, k)
+	}
+	// simple alphabetical sort
+	sort.Strings(keys)
+	for _, k := range keys {
+		if !first {
+			fmt.Fprintln(w, "|")
+		}
+		fmt.Fprintf(w, "  '%s'", k)
+		first = false
+	}
+	fmt.Fprintln(w, "\n\n")
 
-    // Mime keys
-    fmt.Fprintln(w, "export type IconMimeKey =")
-    first = true
-    var mkeys []string
-    for k := range mimeMap {
-        mkeys = append(mkeys, k)
-    }
-    sort.Strings(mkeys)
-    for _, k := range mkeys {
-        if !first { fmt.Fprintln(w, "|") }
-        fmt.Fprintf(w, "  '%s'", k)
-        first = false
-    }
-    fmt.Fprintln(w, "\n")
+	// Mime keys
+	fmt.Fprintln(w, "export type IconMimeKey =")
+	first = true
+	var mkeys []string
+	for k := range mimeMap {
+		mkeys = append(mkeys, k)
+	}
+	sort.Strings(mkeys)
+	for _, k := range mkeys {
+		if !first {
+			fmt.Fprintln(w, "|")
+		}
+		fmt.Fprintf(w, "  '%s'", k)
+		first = false
+	}
+	fmt.Fprintln(w, "\n")
 }
 
 func svgToSymbol(svg string, id string) string {
-    // naive: replace <svg ...> with <symbol id="id" ...>
-    r := svg
-    r = strings.TrimSpace(r)
-    if strings.HasPrefix(r, "<svg") {
-        // find closing '>' of opening svg tag
-        i := strings.Index(r, ">")
-        if i >= 0 {
-            open := r[:i+1]
-            rest := r[i+1:]
-            // replace tag name
-            open = strings.Replace(open, "<svg", fmt.Sprintf("<symbol id=\"%s\"", id), 1)
-            // ensure symbol has role and aria-hidden
-            if !strings.Contains(open, "role=") {
-                open = strings.Replace(open, ">", " role=\"img\" aria-hidden=\"true\">", 1)
-            }
-            // find closing </svg>
-            rest = strings.TrimSuffix(rest, "</svg>")
-            return open + rest + "</symbol>\n"
-        }
-    }
-    // fallback: wrap whole content
-    return fmt.Sprintf("<symbol id=\"%s\">%s</symbol>\n", id, r)
+	// naive: replace <svg ...> with <symbol id="id" ...>
+	r := svg
+	r = strings.TrimSpace(r)
+	if strings.HasPrefix(r, "<svg") {
+		// find closing '>' of opening svg tag
+		i := strings.Index(r, ">")
+		if i >= 0 {
+			open := r[:i+1]
+			rest := r[i+1:]
+			// replace tag name
+			open = strings.Replace(open, "<svg", fmt.Sprintf("<symbol id=\"%s\"", id), 1)
+
+			// Check if viewBox exists
+			if !strings.Contains(open, "viewBox=") {
+				// Try to find width and height to create viewBox
+				wMatch := regexp.MustCompile(`width="([^"]*)"`).FindStringSubmatch(open)
+				hMatch := regexp.MustCompile(`height="([^"]*)"`).FindStringSubmatch(open)
+				if len(wMatch) > 1 && len(hMatch) > 1 {
+					open = strings.Replace(open, ">", fmt.Sprintf(" viewBox=\"0 0 %s %s\">", wMatch[1], hMatch[1]), 1)
+				}
+			}
+
+			// Strip width/height attributes to allow scaling
+			reDim := regexp.MustCompile(`\s*(width|height)="[^"]*"`)
+			open = reDim.ReplaceAllString(open, "")
+
+			// ensure symbol has role and aria-hidden
+			if !strings.Contains(open, "role=") {
+				open = strings.Replace(open, ">", " role=\"img\" aria-hidden=\"true\">", 1)
+			}
+			// find closing </svg>
+			rest = strings.TrimSuffix(rest, "</svg>")
+			return open + rest + "</symbol>\n"
+		}
+	}
+	// fallback: wrap whole content
+	return fmt.Sprintf("<symbol id=\"%s\">%s</symbol>\n", id, r)
 }
 
 func stripXMLHeader(s string) string {
-    s = strings.TrimSpace(s)
-    if strings.HasPrefix(s, "<?xml") {
-        // drop until ?>
-        idx := strings.Index(s, "?>")
-        if idx >= 0 {
-            s = s[idx+2:]
-        }
-    }
-    return s
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "<?xml") {
+		// drop until ?>
+		idx := strings.Index(s, "?>")
+		if idx >= 0 {
+			s = s[idx+2:]
+		}
+	}
+	return s
 }
 
 // generateHeader returns a file-appropriate header that marks files as generated.
 func generateHeader(filename string) string {
-    ts := now()
-    if strings.HasSuffix(filename, ".tsx") || strings.HasSuffix(filename, ".ts") {
-        return fmt.Sprintf("// Generated file: %s\n// Project: mlcremote (https://github.com/mlechner911/mlcremote)\n// Do not edit this file — it is generated by cmd/icon-gen\n// Generated: %s\n\n", filename, ts)
-    }
-    // default: SVG (XML comment)
-    return fmt.Sprintf("<!--\nGenerated file: %s\nProject: mlcremote (https://github.com/mlechner911/mlcremote)\nDo not edit this file — it is generated by cmd/icon-gen\nGenerated: %s\n-->\n\n", filename, ts)
+	ts := now()
+	if strings.HasSuffix(filename, ".tsx") || strings.HasSuffix(filename, ".ts") {
+		return fmt.Sprintf("// Generated file: %s\n// Project: mlcremote (https://github.com/mlechner911/mlcremote)\n// Do not edit this file — it is generated by cmd/icon-gen\n// Generated: %s\n\n", filename, ts)
+	}
+	// default: SVG (XML comment)
+	return fmt.Sprintf("<!--\nGenerated file: %s\nProject: mlcremote (https://github.com/mlechner911/mlcremote)\nDo not edit this file — it is generated by cmd/icon-gen\nGenerated: %s\n-->\n\n", filename, ts)
 }
 
 func now() string {
-    return time.Now().UTC().Format(time.RFC3339)
+	return time.Now().UTC().Format(time.RFC3339)
 }
 
 func writeTSXWrapper(w io.Writer, prefix string, extMap map[string]string, mimeMap map[string]string) {
-    // Import generated types from icons-types.ts
-    fmt.Fprintln(w, "import React from 'react'")
-    fmt.Fprintln(w, "import type { IconExtKey, IconMimeKey } from './icons-types'")
-    fmt.Fprintln(w, "export type IconProps = { name?: string; className?: string; title?: string; size?: number }")
-    fmt.Fprintln(w, "export const Icon: React.FC<IconProps> = ({ name, className, title, size = 16 }) => {")
-    fmt.Fprintln(w, "  if (!name) return null")
-    fmt.Fprintln(w, "  const href = `#"+"${name}`")
-    fmt.Fprintln(w, "  return (")
-    fmt.Fprintln(w, "    <svg className={className} width={size} height={size} aria-hidden={title? undefined : 'true'} role={title? 'img' : undefined}>")
-    fmt.Fprintln(w, "      {title ? <title>{title}</title> : null}")
-    fmt.Fprintln(w, "      <use href={href} />")
-    fmt.Fprintln(w, "    </svg>")
-    fmt.Fprintln(w, "  )")
-    fmt.Fprintln(w, "}")
-    fmt.Fprintln(w, "")
+	// Import generated types from icons-types.ts
+	fmt.Fprintln(w, "import React from 'react'")
+	fmt.Fprintln(w, "import type { IconExtKey, IconMimeKey } from './icons-types'")
+	fmt.Fprintln(w, "export type IconProps = { name?: string; className?: string; title?: string; size?: number }")
+	fmt.Fprintln(w, "export const Icon: React.FC<IconProps> = ({ name, className, title, size = 16 }) => {")
+	fmt.Fprintln(w, "  if (!name) return null")
+	fmt.Fprintln(w, "  const href = `#"+"${name}`")
+	fmt.Fprintln(w, "  return (")
+	fmt.Fprintln(w, "    <svg className={className} width={size} height={size} aria-hidden={title? undefined : 'true'} role={title? 'img' : undefined}>")
+	fmt.Fprintln(w, "      {title ? <title>{title}</title> : null}")
+	fmt.Fprintln(w, "      <use href={href} />")
+	fmt.Fprintln(w, "    </svg>")
+	fmt.Fprintln(w, "  )")
+	fmt.Fprintln(w, "}")
+	fmt.Fprintln(w, "")
 
-    // typed map using generated IconExtKey
-    fmt.Fprintln(w, "export const extensionToIcon: Record<IconExtKey, string> = {")
-    for ex, id := range extMap {
-        fmt.Fprintf(w, "  '%s': '%s',\n", ex, id)
-    }
-    fmt.Fprintln(w, "} as unknown as Record<IconExtKey, string>")
-    fmt.Fprintln(w, "")
-    fmt.Fprintln(w, "export function iconForExtension(ext?: string) {")
-    fmt.Fprintln(w, "  if (!ext) return undefined")
-    fmt.Fprintln(w, "  return (extensionToIcon as Record<string,string>)[ext.toLowerCase()]")
-    fmt.Fprintln(w, "}")
+	// typed map using generated IconExtKey
+	fmt.Fprintln(w, "export const extensionToIcon: Record<IconExtKey, string> = {")
+	for ex, id := range extMap {
+		fmt.Fprintf(w, "  '%s': '%s',\n", ex, id)
+	}
+	fmt.Fprintln(w, "} as unknown as Record<IconExtKey, string>")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "export function iconForExtension(ext?: string) {")
+	fmt.Fprintln(w, "  if (!ext) return undefined")
+	fmt.Fprintln(w, "  return (extensionToIcon as Record<string,string>)[ext.toLowerCase()]")
+	fmt.Fprintln(w, "}")
 
-    // emit mime map and helper (typed)
-    fmt.Fprintln(w, "\nexport const mimeToIcon: Record<IconMimeKey, string> = {")
-    for m, id := range mimeMap {
-        fmt.Fprintf(w, "  '%s': '%s',\n", m, id)
-    }
-    fmt.Fprintln(w, "} as unknown as Record<IconMimeKey, string>")
+	// emit mime map and helper (typed)
+	fmt.Fprintln(w, "\nexport const mimeToIcon: Record<IconMimeKey, string> = {")
+	for m, id := range mimeMap {
+		fmt.Fprintf(w, "  '%s': '%s',\n", m, id)
+	}
+	fmt.Fprintln(w, "} as unknown as Record<IconMimeKey, string>")
 
-    fmt.Fprintln(w, "\nexport function iconForMimeOrFilename(mime?: string, filename?: string) {")
-    fmt.Fprintln(w, "  // try mime exact match")
-    fmt.Fprintln(w, "  if (mime) {")
-    fmt.Fprintln(w, "    const m = (mimeToIcon as Record<string,string>)[mime]")
-    fmt.Fprintln(w, "    if (m) return m")
-    fmt.Fprintln(w, "    // try type/* fallback")
-    fmt.Fprintln(w, "    const parts = mime.split('/')")
-    fmt.Fprintln(w, "    if (parts.length === 2) {")
-    fmt.Fprintln(w, "      const star = parts[0] + '/*'")
-    fmt.Fprintln(w, "      const ms = (mimeToIcon as Record<string,string>)[star]")
-    fmt.Fprintln(w, "      if (ms) return ms")
-    fmt.Fprintln(w, "    }")
-    fmt.Fprintln(w, "  }")
-    fmt.Fprintln(w, "  // fallback to extension")
-    fmt.Fprintln(w, "  if (filename) {")
-    fmt.Fprintln(w, "    const dot = filename.lastIndexOf('.')")
-    fmt.Fprintln(w, "    if (dot >= 0 && dot < filename.length-1) {")
-    fmt.Fprintln(w, "      const ext = filename.slice(dot+1).toLowerCase()")
-    fmt.Fprintln(w, "      return iconForExtension(ext)")
-    fmt.Fprintln(w, "    }")
-    fmt.Fprintln(w, "  }")
-    fmt.Fprintln(w, "  return undefined")
-    fmt.Fprintln(w, "}")
+	fmt.Fprintln(w, "\nexport function iconForMimeOrFilename(mime?: string, filename?: string) {")
+	fmt.Fprintln(w, "  // try mime exact match")
+	fmt.Fprintln(w, "  if (mime) {")
+	fmt.Fprintln(w, "    const m = (mimeToIcon as Record<string,string>)[mime]")
+	fmt.Fprintln(w, "    if (m) return m")
+	fmt.Fprintln(w, "    // try type/* fallback")
+	fmt.Fprintln(w, "    const parts = mime.split('/')")
+	fmt.Fprintln(w, "    if (parts.length === 2) {")
+	fmt.Fprintln(w, "      const star = parts[0] + '/*'")
+	fmt.Fprintln(w, "      const ms = (mimeToIcon as Record<string,string>)[star]")
+	fmt.Fprintln(w, "      if (ms) return ms")
+	fmt.Fprintln(w, "    }")
+	fmt.Fprintln(w, "  }")
+	fmt.Fprintln(w, "  // fallback to extension")
+	fmt.Fprintln(w, "  if (filename) {")
+	fmt.Fprintln(w, "    const dot = filename.lastIndexOf('.')")
+	fmt.Fprintln(w, "    if (dot >= 0 && dot < filename.length-1) {")
+	fmt.Fprintln(w, "      const ext = filename.slice(dot+1).toLowerCase()")
+	fmt.Fprintln(w, "      return iconForExtension(ext)")
+	fmt.Fprintln(w, "    }")
+	fmt.Fprintln(w, "  }")
+	fmt.Fprintln(w, "  return undefined")
+	fmt.Fprintln(w, "}")
 }
+
 /*
 
 func writeTypesInline(w io.Writer, extMap map[string]string, mimeMap map[string]string) {

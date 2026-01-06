@@ -1,5 +1,6 @@
 import React from 'react'
 import { useI18n } from '../utils/i18n'
+import { Icon } from '../generated/icons'
 import { SetMasterPassword, HasMasterPassword, IsPremium, GetManagedIdentity } from '../wailsjs/go/app/App'
 
 export default function SettingsDialog({ onClose }: { onClose: () => void }) {
@@ -110,31 +111,31 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
           <label style={{ display: 'block', marginBottom: 8, fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
             {t('language')}
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
             {languages.map(l => {
               const isActive = lang === l.code;
+              const flagCode = l.code === 'en' ? 'gb' : l.code;
               return (
                 <button
                   key={l.code}
                   onClick={() => setLang(l.code)}
+                  title={l.name}
                   style={{
-                    padding: '10px',
+                    padding: 8,
                     borderRadius: '6px',
                     background: isActive ? 'var(--accent)' : 'var(--bg-panel)',
-                    color: isActive ? 'white' : 'var(--text-primary)',
                     border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
                     cursor: 'pointer',
-                    fontSize: '0.9rem',
-                    fontWeight: isActive ? 600 : 400,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 8,
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    opacity: isActive ? 1 : 0.7
                   }}
+                  onMouseOver={(e) => { if (!isActive) e.currentTarget.style.opacity = '1' }}
+                  onMouseOut={(e) => { if (!isActive) e.currentTarget.style.opacity = '0.7' }}
                 >
-                  {l.name}
-                  {isActive && <span style={{ fontSize: '0.8rem' }}>●</span>}
+                  <Icon name={`icon-flag-${flagCode}`} size={28} />
                 </button>
               )
             })}
@@ -144,7 +145,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
         {isPremium && (
           <div style={{ margin: '20px 0', borderTop: '1px solid var(--border)', paddingTop: 20 }}>
             <label style={{ marginBottom: 8, fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', color: '#f7b955', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
-              Managed Identity
+              {t('managed_identity_label')}
               <span style={{ fontSize: 9, border: '1px solid #f7b955', borderRadius: 4, padding: '0 4px' }}>PRO</span>
             </label>
             <div style={{ position: 'relative' }}>
@@ -171,11 +172,11 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
                   fontSize: 10, padding: '2px 8px', background: 'var(--bg-root)', border: '1px solid var(--border)', borderRadius: 4,
                   cursor: 'pointer', color: 'var(--text-primary)'
                 }}>
-                Copy
+                {t('copy')}
               </button>
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, textAlign: 'left' }}>
-              This is your distinct public key for secure access.
+              {t('managed_identity_desc')}
             </div>
           </div>
         )}

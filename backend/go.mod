@@ -9,7 +9,6 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.4
-
 )
 
 require (
@@ -32,4 +31,5 @@ require (
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/tools v0.7.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

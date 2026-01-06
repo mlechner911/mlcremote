@@ -77,6 +77,9 @@ export const translations = {
         auth_custom: "Custom Key File",
         managed_key_info: "Using secure, app-managed identity.",
         browse: "Browse...",
+        copy: "Copy",
+        managed_identity_label: "Managed Identity",
+        managed_identity_desc: "This is your distinct public key for secure access.",
         // Session
         session_found: "Existing Session Found",
         session_found_desc: "A backend instance is already running on this server. You can join the existing session or start a new one.",
@@ -174,10 +177,22 @@ export const translations = {
         auth_custom: "Benutzerdefinierte Schlüsseldatei",
         managed_key_info: "Verwendet sichere, von der App verwaltete Identität.",
         browse: "Durchsuchen...",
+        copy: "Kopieren",
+        managed_identity_label: "Verwaltete Identität",
+        managed_identity_desc: "Dies ist Ihr eindeutiger öffentlicher Schlüssel für den sicheren Zugriff.",
         premium_managed: "Verwaltete Identität (Premium)",
         setup_secure_access: "Sicheren Zugang einrichten",
         setup_managed_key_msg: "Geben Sie Ihr Remote-Passwort ein. Wir erstellen eine sichere Identität und konfigurieren den Server für passwortlosen Zugriff.",
-        premium_managed_key_desc: "Wechseln Sie zu einem sicheren, von der App verwalteten SSH-Schlüssel, anstatt ein Passwort zu verwenden."
+        premium_managed_key_desc: "Wechseln Sie zu einem sicheren, von der App verwalteten SSH-Schlüssel, anstatt ein Passwort zu verwenden.",
+
+        // Session
+        session_found: "Bestehende Sitzung gefunden",
+        session_found_desc: "Eine Backend-Instanz läuft bereits auf diesem Server. Sie können der bestehenden Sitzung beitreten oder eine neue starten.",
+        restart_session: "Sitzung neu starten",
+        start_parallel: "Neue Instanz starten",
+        join_session: "Sitzung beitreten",
+        share_session: "Sitzung teilen",
+        session_key_copied: "Sitzungsschlüssel in die Zwischenablage kopiert!"
     },
     es: {
         app_title: "MLCRemote Desktop",

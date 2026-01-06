@@ -185,7 +185,7 @@ export default function App() {
 
         // Language Sync Logic: Desktop Launcher (URL param) overrides Server Settings
         const params = new URLSearchParams(window.location.search)
-        const urlLang = params.get('lang')
+        const urlLang = params.get('lng') || params.get('lang')
 
         if (urlLang && urlLang !== s.language) {
           console.log(`[i18n] Syncing language from Desktop (${urlLang}) -> Server`)

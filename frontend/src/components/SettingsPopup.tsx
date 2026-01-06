@@ -46,31 +46,33 @@ export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, 
           <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: 8, letterSpacing: '0.05em' }}>
             {t('language')}
           </label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, background: 'var(--bg-panel)', borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             {languages.map(l => {
               const isActive = i18n.language === l.code || (l.code === 'en' && !i18n.language)
+              // Mapping 'en' to 'gb' for flagcdn, others match usually
+              const flagCode = l.code === 'en' ? 'gb' : l.code
+
               return (
                 <button
                   key={l.code}
                   onClick={() => changeLanguage(l.code)}
+                  title={l.name}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '8px 12px',
-                    background: isActive ? 'var(--bg-select)' : 'transparent',
-                    color: isActive ? 'var(--accent)' : 'inherit',
-                    border: 'none',
+                    justifyContent: 'center',
+                    padding: 6,
+                    background: isActive ? 'var(--bg-select)' : 'var(--bg-panel)',
+                    border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    borderRadius: 6,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    textAlign: 'left',
-                    transition: 'background 0.2s',
+                    transition: 'all 0.2s',
+                    opacity: isActive ? 1 : 0.7
                   }}
-                  onMouseOver={(e) => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-                  onMouseOut={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+                  onMouseOver={(e) => { if (!isActive) e.currentTarget.style.opacity = '1' }}
+                  onMouseOut={(e) => { if (!isActive) e.currentTarget.style.opacity = '0.7' }}
                 >
-                  <span style={{ fontWeight: isActive ? 600 : 400 }}>{l.name}</span>
-                  {isActive && <Icon name={getIcon('check')} size={14} />}
+                  <Icon name={`icon-flag-${flagCode}`} size={24} />
                 </button>
               )
             })}

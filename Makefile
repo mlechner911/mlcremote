@@ -167,11 +167,8 @@ endif
 
 
 # Define delete command
-ifeq ($(OS),Windows_NT)
-	RM_RF = powershell -noprofile -command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
-else
-	RM_RF = rm -rf
-endif
+# Define delete command
+RM_RF = rm -rf
 
 clean:
 	@rm -f $(BIN_DIR)/dev-server
@@ -182,13 +179,7 @@ clean:
 .PHONY: dist
 dist: icons backend frontend
 	@echo "Packaging distribution into build/dist"
-	@$(RM_RF) build/dist
-	@mkdir -p build/dist/bin
-	@mkdir -p build/dist/frontend
-	@cp -r $(BIN_DIR)/dev-server build/dist/bin/ || true
-	@cp -r $(BIN_DIR)/icon-gen build/dist/bin/ || true
-	@# Copy frontend static output
-	@if [ -d "$(FRONTEND_DIR)/dist" ]; then cp -r $(FRONTEND_DIR)/dist/* build/dist/frontend/; else echo "No frontend dist found; run make frontend"; exit 1; fi
+	@powershell -noprofile -ExecutionPolicy Bypass -File scripts/dist.ps1
 	@echo "Packaged distribution to build/dist"
 
 # Docker Targets

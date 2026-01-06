@@ -12,13 +12,13 @@ interface RemoteViewProps {
 }
 
 export default function RemoteView({ url, profileName, profileId, profileColor, user, localPort, onDisconnect }: RemoteViewProps) {
-    const { t } = useI18n()
+    const { t, lang } = useI18n()
     // Append profileId to URL if present
     // DEBUG: Point to debug page (Disabled)
     // const targetSrc = `/debug_iframe.html?api=${encodeURIComponent(url)}&_t=${Date.now()}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
 
     // Production View
-    const targetSrc = `/ide/index.html?api=${encodeURIComponent(url)}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
+    const targetSrc = `/ide/index.html?api=${encodeURIComponent(url)}&lng=${lang}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
 
     const handleShare = () => {
         try {

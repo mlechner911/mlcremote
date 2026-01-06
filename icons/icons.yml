@@ -2,7 +2,28 @@ version: 1
 defaults:
   sprite_prefix: "icon"
 
+
 icons:
+  - id: flag-gb
+    name: "Flag: GB"
+    file: raw/gb.svg
+    extensions: ["flag-gb"]
+
+  - id: flag-de
+    name: "Flag: DE"
+    file: raw/de.svg
+    extensions: ["flag-de"]
+
+  - id: flag-es
+    name: "Flag: ES"
+    file: raw/es.svg
+    extensions: ["flag-es"]
+
+  - id: flag-fr
+    name: "Flag: FR"
+    file: raw/fr.svg
+    extensions: ["flag-fr"]
+
   - id: folder
     name: Folder
     file: raw/folder.svg
