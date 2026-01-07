@@ -30,6 +30,17 @@ Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
 3.  Search for **OpenSSH Server** and click **Install**.
 4.  Wait for the installation to complete.
 
+### Method C: Manual Install (GitHub - Fallback)
+If the above fail (e.g., older Windows 10), install manually:
+1.  Download the latest `OpenSSH-Win64.zip` from [Win32-OpenSSH Releases](https://github.com/PowerShell/Win32-OpenSSH/releases).
+2.  Extract the contents to `C:\Program Files\OpenSSH`.
+3.  Open **Administrator PowerShell** and run:
+    ```powershell
+    cd "C:\Program Files\OpenSSH"
+    powershell -ExecutionPolicy Bypass -File install-sshd.ps1
+    ```
+4.  Restart your computer or add `C:\Program Files\OpenSSH` to your System PATH environment variable.
+
 ## Step 2: Start and Configure the SSH Service
 
 By default, the service is installed but not running.
