@@ -51,11 +51,24 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		return "failed", fmt.Errorf("failed to detect remote OS: %w", err)
 	}
 
-	// update profile with detected OS if missing?
-	// The frontend does this after connection success, so we can skip here or do it.
-	// Let's stick to the flow: Backend methods return info, Front end saves it.
-
 	// 4. Deploy Agent
+
+	// Update OS Metadata
+	if parts := strings.Split(osArch, "/"); len(parts) >= 2 {
+		cp.RemoteOS = parts[0]
+		cp.RemoteArch = parts[1]
+
+		// Fetch Version efficiently using known OS
+		if version, err := a.Backend.CheckRemoteVersionWithOS(profileJSON, cp.RemoteOS); err == nil {
+			cp.RemoteVersion = version
+		} else {
+			cp.RemoteVersion = "unknown"
+		}
+
+		// Save Updated Profile with OS Info
+		a.Config.SaveProfile(cp)
+	}
+
 	// Generate a secure session token
 	token := uuid.New().String()
 

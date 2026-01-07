@@ -38,6 +38,16 @@ func (m *Manager) CheckBackend(profileJSON string) (bool, error) {
 
 // CheckRemoteVersion returns the version string of the remote backend or "unknown"
 func (m *Manager) CheckRemoteVersion(profileJSON string) (string, error) {
+	osArch, err := m.DetectRemoteOS(profileJSON)
+	if err != nil {
+		return "unknown", err
+	}
+	parts := strings.Split(osArch, "/")
+	return m.CheckRemoteVersionWithOS(profileJSON, parts[0])
+}
+
+// CheckRemoteVersionWithOS returns the version string of the remote backend using known OS
+func (m *Manager) CheckRemoteVersionWithOS(profileJSON string, osType string) (string, error) {
 	var p ssh.TunnelProfile
 	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
 		return "", fmt.Errorf("invalid profile JSON: %w", err)
@@ -55,8 +65,21 @@ func (m *Manager) CheckRemoteVersion(profileJSON string) (string, error) {
 		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
 	}
 
+	sys := getRemoteSystem(osType)
+	binName := sys.GetBinaryName(RemoteBinaryName)
+
+	var remotePath string
+	if osType == "windows" {
+		// Windows cmd.exe style
+		// .mlcremote/bin/dev-server.exe
+		remotePath = fmt.Sprintf("%%USERPROFILE%%\\.mlcremote\\bin\\%s", binName)
+	} else {
+		// Unix style
+		remotePath = fmt.Sprintf("~/.mlcremote/bin/%s", binName)
+	}
+
 	cmdArgs := append([]string{}, sshBaseArgs...)
-	cmdArgs = append(cmdArgs, target, fmt.Sprintf("~/%s/%s --version", RemoteBinDir, RemoteBinaryName))
+	cmdArgs = append(cmdArgs, target, fmt.Sprintf("\"%s\" --version", remotePath))
 
 	out, err := createSilentCmd("ssh", cmdArgs...).Output()
 	if err != nil {
