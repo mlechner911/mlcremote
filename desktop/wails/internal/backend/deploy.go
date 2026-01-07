@@ -343,10 +343,11 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 	// Start Backend
 	fmt.Println("Starting remote backend...")
 	var startCmd string
-	authArg := "--no-auth"
-	if token != "" {
-		authArg = fmt.Sprintf("-token=%s", token)
+
+	if token == "" {
+		return "failed", fmt.Errorf("backend token is required for secure mode")
 	}
+	authArg := fmt.Sprintf("-token=%s", token)
 
 	// Port configuration
 	targetPort := 8443
