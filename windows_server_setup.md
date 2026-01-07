@@ -9,9 +9,23 @@ MLCRemote supports Windows 10/11 acting as the "Remote Server". This allows you 
 
 ## Step 1: Install OpenSSH Server
 
-Windows has a built-in OpenSSH Server that is robust and easy to configure.
+You can install it via Settings OR PowerShell.
 
-1.  Open **Settings** > **System** > **Optional features**.
+### Method A: PowerShell (Fastest)
+
+If you can't find it in Settings, run this in **Administrator PowerShell**:
+
+```powershell
+# Check if available
+Get-WindowsCapability -Online | Where-Object Name -like 'OpenSSH*'
+
+# Install Server
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+```
+
+### Method B: Settings UI
+
+1.  Open **Settings** > **Apps** > **Optional features** (or **System** > **Optional features** on Win 11).
 2.  Click **Add a feature**.
 3.  Search for **OpenSSH Server** and click **Install**.
 4.  Wait for the installation to complete.
