@@ -41,7 +41,7 @@ func main() {
 	tokenFlag := flag.String("token", "", "auth token (if empty and no-auth is false, one will be generated)")
 	flag.Parse()
 
-	version := "1.0.1"
+	version := "1.0.2"
 	if *showVersion {
 		fmt.Println(version)
 		os.Exit(0)

@@ -58,7 +58,7 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 		profile.RemotePort = 8443
 	}
 	if profile.RemoteHost == "" {
-		profile.RemoteHost = "localhost"
+		profile.RemoteHost = "127.0.0.1"
 	}
 
 	// Verify DNS

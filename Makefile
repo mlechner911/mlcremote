@@ -77,21 +77,25 @@ backend-linux-payload:
 	@echo "Building Linux (amd64) backend..."
 	@$(MKDIR_PAYLOAD)/linux/amd64
 	$(BUILD_LINUX_CMD) -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/linux/amd64/dev-server ./cmd/dev-server
+	$(BUILD_LINUX_CMD) -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/linux/amd64/md5-util ./cmd/md5-util
 
 backend-windows-payload:
 	@echo "Building Windows (amd64) backend..."
 	@$(MKDIR_PAYLOAD)/windows/amd64
 	cd $(BACKEND_DIR) && set "GOOS=windows" && set "GOARCH=amd64" && go build -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/windows/amd64/dev-server.exe ./cmd/dev-server
+	cd $(BACKEND_DIR) && set "GOOS=windows" && set "GOARCH=amd64" && go build -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/windows/amd64/md5-util.exe ./cmd/md5-util
 
 backend-darwin-amd64-payload:
 	@echo "Building MacOS (amd64) backend..."
 	@$(MKDIR_PAYLOAD)/darwin/amd64
 	cd $(BACKEND_DIR) && set "GOOS=darwin" && set "GOARCH=amd64" && go build -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/darwin/amd64/dev-server ./cmd/dev-server
+	cd $(BACKEND_DIR) && set "GOOS=darwin" && set "GOARCH=amd64" && go build -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/darwin/amd64/md5-util ./cmd/md5-util
 
 backend-darwin-arm64-payload:
 	@echo "Building MacOS (arm64) backend..."
 	@$(MKDIR_PAYLOAD)/darwin/arm64
 	cd $(BACKEND_DIR) && set "GOOS=darwin" && set "GOARCH=arm64" && go build -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/darwin/arm64/dev-server ./cmd/dev-server
+	cd $(BACKEND_DIR) && set "GOOS=darwin" && set "GOARCH=arm64" && go build -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/darwin/arm64/md5-util ./cmd/md5-util
 
 prepare-payload: backend-linux-payload backend-windows-payload backend-darwin-amd64-payload backend-darwin-arm64-payload
 	@echo "Building frontend for payload..."

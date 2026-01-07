@@ -60,6 +60,8 @@ export function StartTunnel(arg1:string):Promise<string>;
 
 export function StartTunnelWithProfile(arg1:string):Promise<string>;
 
+export function StopRemoteServer(arg1:string):Promise<void>;
+
 export function StopTunnel():Promise<string>;
 
 export function TailRemoteLogs(arg1:string):Promise<string>;

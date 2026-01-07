@@ -6,18 +6,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/mlechner911/mlcremote/desktop/wails/internal/remotesystem"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/ssh"
 )
 
 // DetectRemoteOS attempts to determine the remote operating system and architecture
 func (m *Manager) DetectRemoteOS(profileJSON string) (string, error) {
+	// ... (Previous implementation remains valid or can be refactored too)
+	// For now, let's keep the existing probe logic or move it?
+	// The problem is we need OS to instantiate the right System.
+	// So we keep this probe logic here to decide which System to create.
+
 	var p ssh.TunnelProfile
 	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
 		return "", fmt.Errorf("invalid profile JSON: %w", err)
@@ -83,9 +88,17 @@ func (m *Manager) DetectRemoteOS(profileJSON string) (string, error) {
 	return "unknown", nil
 }
 
+func getRemoteSystem(osType string) remotesystem.Remote {
+	if osType == "windows" {
+		return &remotesystem.Windows{}
+	}
+	if osType == "darwin" {
+		return &remotesystem.Darwin{}
+	}
+	return &remotesystem.Linux{}
+}
+
 // DeployAgent ensures the correct binary and assets are on the remote host.
-// It generates a secure session token if one is not provided (though in this implementation the token is passed in).
-// The function handles checking MD5 checksums to avoid unnecessary uploads.
 func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, forceNew bool) (string, error) {
 	var p ssh.TunnelProfile
 	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
@@ -98,30 +111,7 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 	}
 	targetOS, targetArch := parts[0], parts[1]
 
-	tmpDir, err := ioutil.TempDir("", "mlcremote-install")
-	if err != nil {
-		return "setup-failed", fmt.Errorf("failed to create temp dir: %w", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	binName := "dev-server"
-	if targetOS == "windows" {
-		binName = "dev-server.exe"
-	}
-
-	payloadPath := fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, binName)
-
-	binContent, err := fs.ReadFile(m.payload, payloadPath)
-	if err != nil {
-		return "setup-failed", fmt.Errorf("payload binary not found for %s: %w", osArch, err)
-	}
-
-	binPath := filepath.Join(tmpDir, binName)
-	if err := ioutil.WriteFile(binPath, binContent, 0755); err != nil {
-		return "setup-failed", fmt.Errorf("failed to write backend binary: %w", err)
-	}
-
-	// Make directories
+	// SSH Setup
 	target := fmt.Sprintf("%s@%s", p.User, p.Host)
 	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
 	if p.IdentityFile != "" {
@@ -131,125 +121,226 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
 	}
 
-	remoteBinDir := ".mlcremote/bin"
-	remoteFrontendDir := ".mlcremote/frontend"
+	// We reuse the single command execution style
+	runRemote := func(cmd string) (string, error) {
+		args := append([]string{}, sshBaseArgs...)
+		args = append(args, target, cmd)
+		out, err := createSilentCmd("ssh", args...).CombinedOutput()
+		return strings.TrimSpace(string(out)), err
+	}
 
-	mkdirCmd := fmt.Sprintf("mkdir -p ~/%s ~/%s", remoteBinDir, remoteFrontendDir)
+	remoteSys := getRemoteSystem(targetOS)
+	home := remoteSys.GetHomeDir()
+
+	// 0. Pre-flight Cleanup (The Nuke Option)
+	// User reported zombie processes, so we must be aggressive if we are not forcing a new parallel session.
+	// We use "dev-server" literal here because binName logic is below, but acceptable for this critical fix.
+	if !forceNew {
+		fmt.Println("Cleaning up potential zombie processes...")
+		// Assuming standard name "dev-server" or "dev-server.exe" in process list
+		// FallbackKill uses pkill -f, so it matches partial command line.
+		runRemote(remoteSys.FallbackKill("dev-server"))
+		time.Sleep(1 * time.Second) // Give it a moment to die
+	}
+
+	// Create temp dir
+	tmpDir, err := os.MkdirTemp("", "mlcremote-install")
+	if err != nil {
+		return "setup-failed", fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// 1. Prepare Binaries (dev-server AND md5-util)
+	binName := "dev-server"
+	md5Name := "md5-util"
 	if targetOS == "windows" {
-		mkdirCmd = "mkdir .mlcremote\\bin .mlcremote\\frontend 2>NUL || echo OK"
+		binName = "dev-server.exe"
+		md5Name = "md5-util.exe"
 	}
 
-	mkdirArgs := append([]string{}, sshBaseArgs...)
-	mkdirArgs = append(mkdirArgs, target, mkdirCmd)
-	_ = createSilentCmd("ssh", mkdirArgs...).Run()
+	// Remote Directories
+	// .mlcremote/bin
+	// .mlcremote/frontend
+	// home variable moved up
+	// Keep these relative for SCP/chmod/cat compatibility which assume ~/ prefix
+	remoteBinDir := remoteSys.JoinPath(".mlcremote", "bin")
+	remoteFrontendDir := remoteSys.JoinPath(".mlcremote", "frontend")
 
-	// Check MD5
+	// Read dev-server
+	devServerContent, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, binName))
+	if err != nil {
+		return "setup-failed", fmt.Errorf("payload binary not found for %s: %w", osArch, err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, binName), devServerContent, 0755); err != nil {
+		return "setup-failed", fmt.Errorf("failed to write backend binary: %w", err)
+	}
+
+	// Read md5-util (Assuming it's built and in payload)
+	// We need to update build script to place it there!
+	md5Content, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, md5Name))
+	if err == nil {
+		if err := os.WriteFile(filepath.Join(tmpDir, md5Name), md5Content, 0755); err != nil {
+			// Not fatal? but desirable
+			fmt.Printf("Warning: failed to write md5-util: %v\n", err)
+		}
+	} else {
+		fmt.Printf("Warning: md5-util not found in payload for %s: %v\n", osArch, err)
+	}
+
+	// Ensure directories exist
+	// Note: Windows mkdir can fail if exists, but our implementation handles it or we chain.
+	// Actually, just fire them individually or joined with ; or && depending on OS?
+	// The implementation returns complete command string.
+	// Let's create one command to init structure.
+
+	runRemote(remoteSys.Mkdir(remoteBinDir))
+	runRemote(remoteSys.Mkdir(remoteFrontendDir))
+
+	// Check MD5 (dev-server)
 	skipBinary := false
-	localSum := fmt.Sprintf("%x", md5.Sum(binContent))
+	localSum := fmt.Sprintf("%x", md5.Sum(devServerContent))
 
-	var remoteSumCmd string
-	if targetOS == "linux" {
-		remoteSumCmd = fmt.Sprintf("md5sum ~/%s/%s | awk '{print $1}'", remoteBinDir, binName)
-	} else if targetOS == "darwin" {
-		remoteSumCmd = fmt.Sprintf("md5 -q ~/%s/%s", remoteBinDir, binName)
-	} else if targetOS == "windows" {
-		remoteSumCmd = fmt.Sprintf("powershell -Command \"(Get-FileHash -Algorithm MD5 .mlcremote\\bin\\%s).Hash\"", binName)
-	}
-
-	if remoteSumCmd != "" {
-		sumArgs := append([]string{}, sshBaseArgs...)
-		sumArgs = append(sumArgs, target, remoteSumCmd)
-		if out, err := createSilentCmd("ssh", sumArgs...).Output(); err == nil {
-			remoteSum := strings.TrimSpace(string(out))
-			if strings.EqualFold(remoteSum, localSum) {
-				fmt.Println("Binary up to date, skipping upload.")
-				skipBinary = true
-			}
+	hashCmd, hashParser := remoteSys.FileHash(remoteSys.JoinPath(home, remoteBinDir, binName))
+	if out, err := runRemote(hashCmd); err == nil {
+		remoteSum := hashParser(out)
+		if strings.EqualFold(remoteSum, localSum) {
+			fmt.Println("Binary up to date, skipping upload.")
+			skipBinary = true
 		}
 	}
 
-	// Check if already running (ONLY if not forcing new)
+	// Check PID / Re-use session
 	if !forceNew {
-		if running, _ := m.IsServerRunning(profileJSON, fmt.Sprintf("%s/%s", targetOS, targetArch)); running {
-			// Try to read existing token
-			tokenCmd := fmt.Sprintf("cat ~/%s/token", ".mlcremote")
-			tokenArgs := append([]string{}, sshBaseArgs...)
-			tokenArgs = append(tokenArgs, target, tokenCmd)
-			if out, err := createSilentCmd("ssh", tokenArgs...).Output(); err == nil {
-				existingToken := strings.TrimSpace(string(out))
-				if existingToken != "" {
-					fmt.Println("Backend already running, reusing session.")
-					// Assume default port 8443 for existing sessions (unless we read port from somewhere else, but default is 8443)
-					return fmt.Sprintf("deployed:8443:%s", existingToken), nil
+		pidFile := remoteSys.JoinPath(".mlcremote", "pid")
+		if out, err := runRemote(fmt.Sprintf("cat ~/%s || type %s", pidFile, pidFile)); err == nil {
+			pidStr := strings.TrimSpace(out)
+			if pidStr != "" {
+				if _, err := runRemote(remoteSys.IsProcessRunning(pidStr)); err == nil {
+					// Running! Reuse token.
+					tokenFile := remoteSys.JoinPath(".mlcremote", "token")
+					if tokenOut, err := runRemote(fmt.Sprintf("cat ~/%s || type %s", tokenFile, tokenFile)); err == nil && tokenOut != "" {
+						return fmt.Sprintf("deployed:8443:%s", strings.TrimSpace(tokenOut)), nil
+					}
+				} else {
+					// Stale
+					fmt.Println("Stale PID, cleaning up.")
+					runRemote(remoteSys.Remove(pidFile))
+					runRemote(remoteSys.Remove(remoteSys.JoinPath(".mlcremote", "token")))
 				}
 			}
-			// If running but cannot read token, we proceed to restart (overwrite)
 		}
 	}
 
-	// Upload Logic
+	// Kill Old (Already done at start of function)
+	// kept comment for flow reference
+
 	scpArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
 	if p.IdentityFile != "" {
 		scpArgs = append(scpArgs, "-i", p.IdentityFile)
 	}
 
-	// Kill Logic (ONLY if not forcing new)
-	if !forceNew {
-		killCmd := fmt.Sprintf("systemctl --user stop %s 2>/dev/null; pkill -f %s || true", ServiceName, binName)
-		if targetOS == "windows" {
-			killCmd = fmt.Sprintf("taskkill /IM %s /F || echo OK", binName)
-		}
-		killArgs := append([]string{}, sshBaseArgs...)
-		killArgs = append(killArgs, target, killCmd)
-		_ = createSilentCmd("ssh", killArgs...).Run()
-		time.Sleep(500 * time.Millisecond)
-	}
-
 	if !skipBinary {
-		// If binary is running, SCP might fail with "Text file busy".
-		// We remove it first to unlink the inode.
-		rmArgs := append([]string{}, sshBaseArgs...)
-		rmArgs = append(rmArgs, target, fmt.Sprintf("rm -f ~/%s/%s", remoteBinDir, binName))
-		_ = createSilentCmd("ssh", rmArgs...).Run()
+		// Remove old binary to avoid text file busy
+		runRemote(remoteSys.Remove(remoteSys.JoinPath(remoteBinDir, binName)))
 
+		// SCP binaries
+		// dev-server
 		scpBinArgs := append([]string{}, scpArgs...)
-		scpBinArgs = append(scpBinArgs, binPath, fmt.Sprintf("%s:~/%s/%s", target, remoteBinDir, binName))
+		scpBinArgs = append(scpBinArgs, filepath.Join(tmpDir, binName), fmt.Sprintf("%s:~/%s/%s", target, remoteBinDir, binName))
 		if out, err := createSilentCmd("scp", scpBinArgs...).CombinedOutput(); err != nil {
 			return "upload-failed", fmt.Errorf("scp binary failed: %s", string(out))
 		}
+
+		// md5-util (Always upload for now)
+		if _, err := os.Stat(filepath.Join(tmpDir, md5Name)); err == nil {
+			runRemote(remoteSys.Remove(remoteSys.JoinPath(remoteBinDir, md5Name)))
+			scpMd5Args := append([]string{}, scpArgs...)
+			scpMd5Args = append(scpMd5Args, filepath.Join(tmpDir, md5Name), fmt.Sprintf("%s:~/%s/%s", target, remoteBinDir, md5Name))
+			createSilentCmd("scp", scpMd5Args...).Run()
+
+			if targetOS != "windows" {
+				runRemote(fmt.Sprintf("chmod +x ~/%s/%s", remoteBinDir, md5Name))
+			}
+		}
+
+		if targetOS != "windows" {
+			runRemote(fmt.Sprintf("chmod +x ~/%s/%s", remoteBinDir, binName))
+		}
 	}
 
-	// Upload Frontend
-	// We skip upload because we rely on local assets via manual update
-	fmt.Println("Frontend upload skipped (using local desktop view).")
+	// Upload Frontend (Optimized)
+	shouldUploadFrontend := true
+	localIndex, err := fs.ReadFile(m.payload, "assets/payload/frontend-dist/index.html")
+	if err == nil {
+		// Check remote index
+		// Use file hash for index.html as well for stronger check? Or just content?
+		// Let's use content for now (easier and tested), checking MD5 of text files can be tricky with EOL.
+		// Reading small text file is fast.
+		idxPath := remoteSys.JoinPath(remoteFrontendDir, "index.html")
+		idxCmd := fmt.Sprintf("cat ~/%s || type %s", idxPath, idxPath)
+		if out, err := runRemote(idxCmd); err == nil {
+			remoteIndex := strings.TrimSpace(out)
+			localIndexStr := strings.TrimSpace(string(localIndex))
+			if remoteIndex == localIndexStr {
+				fmt.Println("Frontend already up to date.")
+				shouldUploadFrontend = false
+			}
+		}
+	}
 
-	// Meta file
-	metaContent := fmt.Sprintf(`{"version": "1.0.1", "updated": "%s", "os": "%s", "arch": "%s"}`, time.Now().Format(time.RFC3339), targetOS, targetArch)
+	if shouldUploadFrontend {
+		fmt.Println("Uploading frontend assets...")
+		frontendTmp := filepath.Join(tmpDir, "frontend")
+		os.MkdirAll(frontendTmp, 0755)
+
+		// Copy frontend files to tmp
+		fs.WalkDir(m.payload, "assets/payload/frontend-dist", func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
+			}
+			rel, _ := filepath.Rel("assets/payload/frontend-dist", path)
+			dest := filepath.Join(frontendTmp, rel)
+			os.MkdirAll(filepath.Dir(dest), 0755)
+			content, _ := fs.ReadFile(m.payload, path)
+			os.WriteFile(dest, content, 0644)
+			return nil
+		})
+
+		// Clean remote frontend
+		runRemote(remoteSys.Remove(remoteSys.JoinPath(remoteFrontendDir, "*")))
+
+		// SCP recursive
+		// Uploading content of frontendTmp to .mlcremote/frontend/
+		// scp -r frontendTmp/* target:~/.mlcremote/frontend/
+		// Using the directory upload trick: upload frontendTmp to ~/.mlcremote/ (renames to frontend?)
+		// Safe way: upload to ~/.mlcremote/frontend
+
+		scpFrontArgs := append([]string{}, scpArgs...)
+		scpFrontArgs = append(scpFrontArgs, "-r", frontendTmp, fmt.Sprintf("%s:~/.mlcremote/", target))
+		if out, err := createSilentCmd("scp", scpFrontArgs...).CombinedOutput(); err != nil {
+			fmt.Printf("Warning: frontend upload failed: %s\n", string(out))
+		}
+	}
+
+	// Meta file (install.json) with V 1.0.2
+	metaContent := fmt.Sprintf(`{"version": "1.0.2", "updated": "%s", "os": "%s", "arch": "%s"}`, time.Now().Format(time.RFC3339), targetOS, targetArch)
 	metaPath := filepath.Join(tmpDir, "install.json")
-	_ = ioutil.WriteFile(metaPath, []byte(metaContent), 0644)
+	os.WriteFile(metaPath, []byte(metaContent), 0644)
 
 	scpMetaArgs := append([]string{}, scpArgs...)
 	scpMetaArgs = append(scpMetaArgs, metaPath, fmt.Sprintf("%s:~/.mlcremote/install.json", target))
-	_ = createSilentCmd("scp", scpMetaArgs...).Run()
+	createSilentCmd("scp", scpMetaArgs...).Run()
 
-	if targetOS != "windows" {
-		chmodArgs := append([]string{}, sshBaseArgs...)
-		chmodArgs = append(chmodArgs, target, fmt.Sprintf("chmod +x ~/%s/%s", remoteBinDir, binName))
-		_ = createSilentCmd("ssh", chmodArgs...).Run()
-	}
-
-	// Save token to remote file for future sessions (ONLY if default session)
-	// If forceNew, we don't overwrite the default token file, or we accept this new one becomes default?
-	// Let's protect the default session if we are parallel.
+	// Token File
 	if token != "" && !forceNew {
 		tokenPath := filepath.Join(tmpDir, "token")
-		_ = ioutil.WriteFile(tokenPath, []byte(token), 0600)
+		os.WriteFile(tokenPath, []byte(token), 0600)
 		scpTokenArgs := append([]string{}, scpArgs...)
 		scpTokenArgs = append(scpTokenArgs, tokenPath, fmt.Sprintf("%s:~/.mlcremote/token", target))
-		_ = createSilentCmd("scp", scpTokenArgs...).Run()
+		createSilentCmd("scp", scpTokenArgs...).Run()
 	}
 
-	// Start the backend
+	// Start Backend
 	fmt.Println("Starting remote backend...")
 	var startCmd string
 	authArg := "--no-auth"
@@ -261,113 +352,113 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 	targetPort := 8443
 	portArg := "-port=8443"
 	if forceNew {
-		targetPort = 0 // Will resolve later
+		targetPort = 0
 		portArg = "-port=0"
 	}
+	// Force bind to 127.0.0.1 to avoid IPv6 mismatch with SSH localhost forwarding
+	hostArg := "-host=127.0.0.1"
 
-	// Log file
 	logFile := "current.log"
 	if forceNew {
 		logFile = fmt.Sprintf("session-%d.log", time.Now().Unix())
 	}
 
+	pidFile := remoteSys.JoinPath(home, ".mlcremote", "pid")
 	if targetOS == "windows" {
-		// Use PowerShell to start hidden and detached
-		// Note: ArgumentList expects comma-separated strings for multiple args: "arg1", "arg2"
-		startCmd = fmt.Sprintf("powershell -Command \"Start-Process -FilePath .mlcremote\\bin\\%s -ArgumentList '%s', '%s' -RedirectStandardOutput .mlcremote\\%s -RedirectStandardError .mlcremote\\%s -WindowStyle Hidden\"", binName, authArg, portArg, logFile, logFile)
-	} else {
-		// Linux/Darwin: nohup
-		startCmd = fmt.Sprintf("nohup ~/%s/%s %s %s > ~/%s/%s 2>&1 &", remoteBinDir, binName, authArg, portArg, remoteBinDir, logFile)
+		// Windows specific adjustment if needed, but JoinPath(".", ...) is .\...
+		// pidFile is used for output redirection in StartProcess
 	}
 
-	fmt.Printf("[DEBUG] DeployAgent: Starting backend with command: %s\n", startCmd)
-	fmt.Printf("[DEBUG] DeployAgent: AuthArg='%s' PortArg='%s'\n", authArg, portArg)
+	startCmd = remoteSys.StartProcess(
+		remoteSys.JoinPath(home, remoteBinDir, binName),
+		fmt.Sprintf("%s %s %s", authArg, portArg, hostArg),
+		remoteSys.JoinPath(home, ".mlcremote", logFile),
+		pidFile, // StartProcess inside knows how to redirect
+	)
 
-	startArgs := append([]string{}, sshBaseArgs...)
-	startArgs = append(startArgs, target, startCmd)
-	if err := createSilentCmd("ssh", startArgs...).Run(); err != nil {
-		fmt.Printf("Warning: failed to start backend: %v\n", err)
-	} else {
-		fmt.Println("Backend started.")
-		// give it a moment to startup
-		time.Sleep(1 * time.Second)
-	}
+	runRemote(startCmd)
+	time.Sleep(1 * time.Second)
 
-	// If dynamic port, read log to find it
-	if forceNew {
-		// Grep logic
-		// Access URL: http://...:PORT
-		// Linux: grep -o "Access URL.*" ~/.mlcremote/LOG
-		// Windows: Select-String ...
-		fmt.Println("Resolving dynamic port from logs...")
+	// Verify Startup
+	pidPath := remoteSys.JoinPath(".mlcremote", "pid") // Relative for cat ~/%s
+	// (StartProcess used pidFile variable which was correctly set to home/.mlcremote/pid)
 
-		// Attempt parsing for up to 5 seconds
-		resolvedPort := 0
-		for i := 0; i < 5; i++ {
-			time.Sleep(1 * time.Second)
+	if out, err := runRemote(fmt.Sprintf("cat ~/%s || type %s", pidPath, pidPath)); err == nil {
+		pidStr := strings.TrimSpace(out)
+		if pidStr != "" {
+			if _, err := runRemote(remoteSys.IsProcessRunning(pidStr)); err == nil {
+				// Running!
+				fmt.Println("Backend started successfully.")
 
-			var grepCmd string
-			if targetOS == "windows" {
-				grepCmd = fmt.Sprintf("powershell -Command \"Select-String -Path .mlcremote\\%s -Pattern 'Access URL'\"", logFile)
-			} else {
-				grepCmd = fmt.Sprintf("grep 'Access URL' ~/%s/%s", remoteBinDir, logFile)
-			}
+				// If dynamic port was requested, we need to find it in the logs
+				if targetPort == 0 {
+					fmt.Println("Dynamic port requested, reading logs to find port...")
+					logPath := remoteSys.JoinPath(".mlcremote", logFile)
+					foundPort := 0
 
-			grepArgs := append([]string{}, sshBaseArgs...)
-			grepArgs = append(grepArgs, target, grepCmd)
-
-			if out, err := createSilentCmd("ssh", grepArgs...).Output(); err == nil {
-				output := string(out)
-				// Format: Access URL: http://HOST:PORT/?token=...
-				// Simple parse: find ":PORT"
-				// Or regex
-				// Let's assume standard log format.
-				// Extract digits after http://HOST:
-				// Splitting by ":" might be easier. "http" ":" "//HOST" ":" "PORT/..."
-
-				// Example: http://localhost:54321/?token=...
-				// Example: http://localhost:54321/
-
-				if idx := strings.LastIndex(output, ":"); idx != -1 {
-					// This finds the last colon, which might be in token or query? No, token is hex.
-					// URL might have query params.
-					// "http://localhost:54321/?token=..." -> Last colon is before port if token has no colons.
-					// But token is hex, no colons.
-					// ipv6? we bind to localhost/127.0.0.1 or 0.0.0.0.
-
-					// Better strategy: Use regex if I could import regexp in this context, yes I can.
-					// Just extract string between last colon and slash?
-					// "http://localhost:54321/"
-
-					// Let's just iterate parts
-					parts := strings.Split(output, ":")
-					// http, //localhost, 54321/?token=...
-					if len(parts) >= 3 {
-						portPart := parts[len(parts)-1] // "54321/?token=..." or "54321\r\n"
-						// Clean up
-						portPart = strings.Split(portPart, "/")[0]
-						portPart = strings.TrimSpace(portPart)
-						if p, err := strconv.Atoi(portPart); err == nil && p > 0 {
-							resolvedPort = p
+					// Retry loop to allow log flush
+					for i := 0; i < 10; i++ {
+						time.Sleep(500 * time.Millisecond)
+						if out, err := runRemote(fmt.Sprintf("cat ~/%s || type %s", logPath, logPath)); err == nil {
+							// Look for "Server started on http://...:PORT"
+							// Simple string parsing to avoid regex import overhead if possible, but regex is safer.
+							// Format: "Server started on http://HOST:PORT"
+							lines := strings.Split(out, "\n")
+							for _, line := range lines {
+								if idx := strings.Index(line, "Server started on http://"); idx != -1 {
+									// Extract URL part
+									part := line[idx:]
+									// Find last colon
+									lastColon := strings.LastIndex(part, ":")
+									if lastColon != -1 {
+										portStr := part[lastColon+1:]
+										// Trim any trailing text (comma, space)
+										// "8443, binary=..."
+										endIdx := strings.IndexAny(portStr, " ,")
+										if endIdx != -1 {
+											portStr = portStr[:endIdx]
+										}
+										portStr = strings.TrimSpace(portStr)
+										if p, err := strconv.Atoi(portStr); err == nil {
+											foundPort = p
+											break
+										}
+									}
+								}
+							}
+						}
+						if foundPort > 0 {
 							break
 						}
 					}
+
+					if foundPort > 0 {
+						targetPort = foundPort
+						fmt.Printf("found dynamic port: %d\n", targetPort)
+					} else {
+						return "startup-failed", fmt.Errorf("timed out waiting for port in logs")
+					}
 				}
+
+			} else {
+				// Failed to start
+				fmt.Printf("Startup failed. Reading log file %s...\n", logFile)
+				logPath := remoteSys.JoinPath(".mlcremote", logFile)
+				logContent := ""
+				if out, err := runRemote(fmt.Sprintf("cat ~/%s || type %s", logPath, logPath)); err == nil {
+					logContent = out
+				}
+				return "startup-failed", fmt.Errorf("backend process died immediately. Log output:\n%s", logContent)
 			}
+		} else {
+			return "startup-failed", fmt.Errorf("backend failed to write PID file")
 		}
-
-		if resolvedPort > 0 {
-			return fmt.Sprintf("deployed:%d:%s", resolvedPort, token), nil
-		}
-
-		// Debug: Read whole log to see what happened
-		catCmd := fmt.Sprintf("cat ~/%s/%s || type .mlcremote\\%s", remoteBinDir, logFile, logFile)
-		catArgs := append([]string{}, sshBaseArgs...)
-		catArgs = append(catArgs, target, catCmd)
-		logContent, _ := createSilentCmd("ssh", catArgs...).Output()
-
-		return "setup-failed", fmt.Errorf("failed to resolve dynamic port from logs. Log content: %s", string(logContent))
+	} else {
+		return "startup-failed", fmt.Errorf("failed to read PID file: %v", err)
 	}
+
+	// Dynamic port resolution (if needed) ... (Same logic as before, just path adjustments)
+	// For now defaulting to 8443 return to keep refactor minimal risk.
 
 	return fmt.Sprintf("deployed:%d:%s", targetPort, token), nil
 }
@@ -389,18 +480,18 @@ func (m *Manager) SaveIdentityFile(b64 string, filename string) (string, error) 
 	return path, nil
 }
 
-// KillRemoteSession terminates the running backend on the remote host
-func (m *Manager) KillRemoteSession(profileJSON string) error {
+// KillRemoteServer terminates the running backend on the remote host
+func (m *Manager) KillRemoteServer(profileJSON string) error {
 	var p ssh.TunnelProfile
-	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
-		return fmt.Errorf("invalid profile JSON: %w", err)
+	json.Unmarshal([]byte(profileJSON), &p)
+
+	osArch, _ := m.DetectRemoteOS(profileJSON)
+	targetOS := "linux"
+	if strings.Contains(osArch, "windows") {
+		targetOS = "windows"
 	}
 
-	// Detect OS to know how to kill
-	osArch, err := m.DetectRemoteOS(profileJSON)
-	if err != nil {
-		return err // Cannot proceed if we can't talk to host
-	}
+	remoteSys := getRemoteSystem(targetOS)
 
 	target := fmt.Sprintf("%s@%s", p.User, p.Host)
 	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
@@ -411,27 +502,33 @@ func (m *Manager) KillRemoteSession(profileJSON string) error {
 		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
 	}
 
-	targetOS := "linux"
-	if strings.Contains(osArch, "/") {
-		targetOS = strings.Split(osArch, "/")[0]
+	runRemote := func(cmd string) (string, error) {
+		args := append([]string{}, sshBaseArgs...)
+		args = append(args, target, cmd)
+		out, err := createSilentCmd("ssh", args...).CombinedOutput()
+		return strings.TrimSpace(string(out)), err
 	}
 
-	binName := "dev-server"
-	if targetOS == "windows" {
-		binName = "dev-server.exe"
+	// Read PID
+	pidFile := remoteSys.JoinPath(".mlcremote", "pid")
+	if out, err := runRemote(fmt.Sprintf("cat ~/%s || type %s", pidFile, pidFile)); err == nil {
+		pidStr := strings.TrimSpace(out)
+		if pidStr != "" {
+			fmt.Printf("Killing PID: %s\n", pidStr)
+			runRemote(remoteSys.KillProcess(pidStr))
+
+			// Verify
+			if _, err := runRemote(remoteSys.IsProcessRunning(pidStr)); err != nil {
+				// Gone
+				runRemote(remoteSys.Remove(pidFile))
+				runRemote(remoteSys.Remove(remoteSys.JoinPath(".mlcremote", "token")))
+				return nil
+			}
+		}
 	}
 
-	// Kill Logic
-	killCmd := fmt.Sprintf("systemctl --user stop %s 2>/dev/null; pkill -f %s || true", ServiceName, binName)
-	if targetOS == "windows" {
-		killCmd = fmt.Sprintf("taskkill /IM %s /F || echo OK", binName)
-	}
-	killArgs := append([]string{}, sshBaseArgs...)
-	killArgs = append(killArgs, target, killCmd)
-
-	output, err := createSilentCmd("ssh", killArgs...).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to kill process: %s (%w)", string(output), err)
-	}
+	// Fallback
+	runRemote(remoteSys.FallbackKill("dev-server"))
+	runRemote(remoteSys.Remove(pidFile))
 	return nil
 }

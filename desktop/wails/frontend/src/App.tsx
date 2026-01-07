@@ -3,7 +3,7 @@ import LaunchScreen from './components/LaunchScreen'
 import AppLock from './components/AppLock'
 import SettingsDialog from './components/SettingsDialog'
 import RemoteView from './components/RemoteView'
-import { StopTunnel, HasMasterPassword } from './wailsjs/go/app/App'
+import { StopTunnel, HasMasterPassword, StopRemoteServer } from './wailsjs/go/app/App'
 import { I18nProvider, useI18n } from './utils/i18n'
 // @ts-ignore
 import spriteUrl from './generated/icons-sprite.svg'
@@ -48,6 +48,7 @@ function AppContent() {
   const [profileName, setProfileName] = useState('')
   const [profileColor, setProfileColor] = useState('')
   const [shuttingDown, setShuttingDown] = useState(false)
+  const [currentProfile, setCurrentProfile] = useState<Profile | null>(null)
 
   useEffect(() => {
     // Global shutdown listener
@@ -101,6 +102,7 @@ function AppContent() {
   }, [])
 
   const handleConnected = (p: Profile, token?: string) => {
+    setCurrentProfile(p)
     setProfileName(`${p.user}@${p.host}`)
     setProfileColor(p.color || '')
     let url = `http://localhost:${p.localPort || 8443}`
@@ -112,23 +114,23 @@ function AppContent() {
     // Propagate language
     url += `&lang=${lang || 'en'}`
 
-    // Cleanup double ?? if token was missing (resulting in http://...?)
-    // Actually easier:
-    // let params = new URLSearchParams()
-    // if (token) params.set('token', token)
-    // if (i18n.language) params.set('lang', i18n.language)
-    // url += '?' + params.toString()
-    // Let's rewrite safely.
-
-    setRemoteUrl(url) // FIX: Actually set the state!
+    setRemoteUrl(url)
     setView('remote')
   }
 
   const handleDisconnect = async () => {
+    if (currentProfile) {
+      try {
+        await StopRemoteServer(JSON.stringify(currentProfile))
+      } catch (e) {
+        console.error("Failed to stop remote server:", e)
+      }
+    }
     try { await StopTunnel() } catch (e) { console.error(e) }
     setRemoteUrl('')
     setProfileName('')
     setProfileColor('')
+    setCurrentProfile(null)
     setView('launch')
   }
 

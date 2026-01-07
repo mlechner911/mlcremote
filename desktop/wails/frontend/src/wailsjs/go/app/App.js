@@ -114,6 +114,10 @@ export function StartTunnelWithProfile(arg1) {
   return window['go']['app']['App']['StartTunnelWithProfile'](arg1);
 }
 
+export function StopRemoteServer(arg1) {
+  return window['go']['app']['App']['StopRemoteServer'](arg1);
+}
+
 export function StopTunnel() {
   return window['go']['app']['App']['StopTunnel']();
 }

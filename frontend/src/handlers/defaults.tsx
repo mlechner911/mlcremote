@@ -4,7 +4,7 @@ import { makeUrl } from '../api'
 import TextView from '../components/TextView'
 import ImageView from '../components/ImageView'
 import PdfView from '../components/PdfView'
-import { extFromPath } from '../filetypes'
+import { extFromPath, isProbablyText } from '../filetypes'
 
 // Lazy load ShellView
 const ShellView = React.lazy(() => import('../components/ShellView'))
@@ -69,15 +69,12 @@ export const TextHandler: FileHandler = {
     matches: (opts: DecideOpts) => {
         // If probe says text, it's text.
         if (opts.probe && opts.probe.isText) return true
-        // Fallback to extension check if probe is missing or fails
-        if (opts.path) {
-            const lower = opts.path.toLowerCase()
-            // explicit list of known text types incase probe missing
-            if (lower.endsWith('.md') || lower.endsWith('.txt') || lower.endsWith('.json') || lower.endsWith('.js') || lower.endsWith('.ts') || lower.endsWith('.tsx') || lower.endsWith('.css') || lower.endsWith('.html') || lower.endsWith('.go') || lower.endsWith('.py') || lower.endsWith('.java') || lower.endsWith('.c') || lower.endsWith('.cpp') || lower.endsWith('.h') || lower.endsWith('.sh') || lower.endsWith('.bat') || lower.endsWith('.ps1') || lower.endsWith('.yaml') || lower.endsWith('.yml') || lower.endsWith('.toml') || lower.endsWith('.ini')) return true
 
-            // dotfiles and configs
-            if (lower.endsWith('.bashrc') || lower.endsWith('.zshrc') || lower.endsWith('.profile') || lower.endsWith('.bash_history') || lower.endsWith('.gitconfig') || lower.endsWith('.editorconfig') || lower.endsWith('.conf') || lower.endsWith('.config') || lower.endsWith('.xml')) return true
-        }
+        // If we have a probe and it explicitly says NOT text, then we shouldn't match
+        if (opts.probe && !opts.probe.isText) return false
+
+        // Fallback to heuristic
+        if (opts.path && isProbablyText(opts.path)) return true
         return false
     },
     view: ({ content, setContent, origContent, ext, alias, textareaId }: ViewProps) => (

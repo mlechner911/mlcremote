@@ -220,5 +220,13 @@ func (a *App) GetRemoteSession(profileJSON string) (*backend.SessionInfo, error)
 
 // KillRemoteSession terminates the existing backend session
 func (a *App) KillRemoteSession(profileJSON string) error {
-	return a.Backend.KillRemoteSession(profileJSON)
+	// This seems to be a placeholder or previous implementation?
+	// The user asked for "Stop Remote Server".
+	// Let's implement a robust "StopRemoteServer" that takes the profile and kills it.
+	return a.Backend.KillRemoteServer(profileJSON)
+}
+
+// StopRemoteServer is the new method for the frontend
+func (a *App) StopRemoteServer(profileJSON string) error {
+	return a.Backend.KillRemoteServer(profileJSON)
 }

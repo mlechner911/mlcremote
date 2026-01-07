@@ -34,6 +34,11 @@ try {
 	console.error('MLCRemote: Initialization error', e)
 }
 
+// Global generic drag-and-drop handler to prevent the browser from opening the file
+// inside the App window (default WebView behavior).
+window.addEventListener('dragover', (e) => e.preventDefault())
+window.addEventListener('drop', (e) => e.preventDefault());
+
 // Inject generated SVG sprite into the DOM so <use href="#icon-..."> works.
 // Dynamically import the sprite as raw text (Vite supports `?raw`) and insert it.
 (async () => {

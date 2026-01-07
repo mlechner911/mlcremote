@@ -106,7 +106,7 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		User:         cp.User,
 		Host:         cp.Host,
 		LocalPort:    targetPort,
-		RemoteHost:   "localhost", // Agent binds to localhost
+		RemoteHost:   "127.0.0.1", // Agent binds to 127.0.0.1 explicitly now
 		RemotePort:   remotePort,
 		IdentityFile: cp.IdentityFile,
 		ExtraArgs:    cp.ExtraArgs,

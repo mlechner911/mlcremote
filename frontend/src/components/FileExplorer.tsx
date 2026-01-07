@@ -111,6 +111,11 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
 
   const doUpload = async (targetDir: string, files: FileList | null) => {
     if (!files || files.length === 0) return
+    console.log('Dropping files:', files.length, 'to', targetDir)
+
+    // eslint-disable-next-line no-restricted-globals
+    if (!confirm(t('upload_confirm', `Upload ${files.length} file(s) to ${targetDir}?`))) return
+
     setUploading(true)
     setError('')
     try {
@@ -130,6 +135,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
 
   const onDrop = (e: React.DragEvent, targetDir: string) => {
     e.preventDefault()
+    console.log('onDrop triggered', targetDir)
     setDragOver(null)
     doUpload(targetDir, e.dataTransfer.files)
   }
@@ -299,7 +305,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
           onClose={() => setContextMenu(null)}
           items={[
             {
-              label: t('open'),
+              label: "OPEN TEST",
               icon: <Icon name={getIcon('view')} />,
               action: () => {
                 if (contextMenu.item.isDir) {
@@ -316,7 +322,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
               }
             },
             {
-              label: t('download'),
+              label: `${t('download')} ${contextMenu.item.isDir ? '(Dir)' : ''}`,
               icon: <Icon name={getIcon('download')} />,
               action: () => {
                 const link = document.createElement('a')
@@ -368,11 +374,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
               danger: true,
               action: () => handleDelete(contextMenu.item.path)
             }
-          ].filter(i => {
-            // Filter out Download for directories
-            if (i.label === t('download') && contextMenu.item.isDir) return false
-            return true
-          })}
+          ]}
         />
       )}
     </div>
