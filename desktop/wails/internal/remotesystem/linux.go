@@ -32,7 +32,7 @@ func (l *Linux) FileHash(path string) (string, func(string) string) {
 	// For now, we assume md5-util will be deployed to ~/.mlcremote/bin/md5-util
 	// We'll use a shell condition to check for it? Or just assume it's there after deployment.
 	// Let's rely on md5sum as fallback for now.
-	// Actually, the plan says "Use this deployed binary".
+	// note.. i had issues with my md5sum on windows and with virus scanner as well..
 
 	// We return a command that tries md5-util, then md5sum, then md5
 	// cmd := "md5sum path | awk '{print $1}'"
@@ -63,4 +63,17 @@ func (l *Linux) StartProcess(bin, args, logFile, pidFile string) string {
 }
 func (l *Linux) GetStartupScript() (string, string) {
 	return "", ""
+}
+
+func (l *Linux) ReadFile(path string) string {
+	cleanPath := strings.TrimPrefix(path, "./")
+	return fmt.Sprintf("cat ~/%s", cleanPath)
+}
+
+func (l *Linux) GetBinaryName(name string) string {
+	return name
+}
+
+func (l *Linux) GetMD5UtilityName() string {
+	return "md5-util"
 }

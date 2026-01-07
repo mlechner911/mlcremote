@@ -56,3 +56,16 @@ func (d *Darwin) StartProcess(bin, args, logFile, pidFile string) string {
 func (d *Darwin) GetStartupScript() (string, string) {
 	return "", ""
 }
+
+func (d *Darwin) ReadFile(path string) string {
+	cleanPath := strings.TrimPrefix(path, "./")
+	return fmt.Sprintf("cat ~/%s", cleanPath)
+}
+
+func (d *Darwin) GetBinaryName(name string) string {
+	return name
+}
+
+func (d *Darwin) GetMD5UtilityName() string {
+	return "md5-util"
+}

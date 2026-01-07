@@ -160,12 +160,8 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 
 	remoteBinDir := remoteSys.JoinPath(".mlcremote", "bin")
 	remoteFrontendDir := remoteSys.JoinPath(".mlcremote", "frontend")
-	binName := "dev-server"
-	md5Name := "md5-util"
-	if targetOS == "windows" {
-		binName = "dev-server.exe"
-		md5Name = "md5-util.exe"
-	}
+	binName := remoteSys.GetBinaryName("dev-server")
+	md5Name := remoteSys.GetMD5UtilityName()
 
 	// 1. Cleanup Stale / Zombie Processes
 	if !forceNew {
@@ -206,25 +202,15 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 // Helper Functions
 // --------------------------------------------------------------------------------
 
-func mkReadCmd(remoteSys remotesystem.Remote, subPath string) string {
-	if remoteSys.GetOSName() == "windows" {
-		// Use absolute path with %USERPROFILE% to ensure we read what the script wrote
-		cleanPath := strings.TrimPrefix(subPath, ".\\")
-		return fmt.Sprintf("type \"%%USERPROFILE%%\\%s\"", cleanPath)
-	}
-	cleanPath := strings.TrimPrefix(subPath, "./")
-	return fmt.Sprintf("cat ~/%s", cleanPath)
-}
-
 func (m *Manager) checkExistingSession(runRemote func(string) (string, error), remoteSys remotesystem.Remote) (string, bool) {
 	pidFile := remoteSys.JoinPath(".mlcremote", "pid")
-	if out, err := runRemote(mkReadCmd(remoteSys, pidFile)); err == nil {
+	if out, err := runRemote(remoteSys.ReadFile(pidFile)); err == nil {
 		pidStr := strings.TrimSpace(out)
 		if pidStr != "" {
 			if _, err := runRemote(remoteSys.IsProcessRunning(pidStr)); err == nil {
 				// Running! Reuse token.
 				tokenFile := remoteSys.JoinPath(".mlcremote", "token")
-				if tokenOut, err := runRemote(mkReadCmd(remoteSys, tokenFile)); err == nil && tokenOut != "" {
+				if tokenOut, err := runRemote(remoteSys.ReadFile(tokenFile)); err == nil && tokenOut != "" {
 					cleanToken := strings.TrimSpace(tokenOut)
 					cleanToken = strings.Map(func(r rune) rune {
 						if unicode.IsPrint(r) {
@@ -259,11 +245,13 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 	}
 
 	// Read md5-util locally
-	md5Content, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, md5Name))
-	if err == nil {
-		os.WriteFile(filepath.Join(tmpDir, md5Name), md5Content, 0755)
-	} else {
-		fmt.Printf("Warning: md5-util not found in payload for %s/%s\n", targetOS, targetArch)
+	if md5Name != "" {
+		md5Content, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, md5Name))
+		if err == nil {
+			os.WriteFile(filepath.Join(tmpDir, md5Name), md5Content, 0755)
+		} else {
+			fmt.Printf("Warning: md5-util not found in payload for %s/%s\n", targetOS, targetArch)
+		}
 	}
 
 	// Ensure remote directories exist
@@ -295,8 +283,8 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 			return fmt.Errorf("scp binary failed: %s", string(out))
 		}
 
-		// SCP MD5 Util (only non-windows)
-		if targetOS != "windows" {
+		// SCP MD5 Util (if needed)
+		if md5Name != "" {
 			if _, err := os.Stat(filepath.Join(tmpDir, md5Name)); err == nil {
 				runRemote(remoteSys.Remove(remoteSys.JoinPath(remoteBinDir, md5Name)))
 				scpMd5Args := append([]string{}, scpArgs...)
@@ -328,7 +316,7 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 	localIndex, err := fs.ReadFile(m.payload, "assets/payload/frontend-dist/index.html")
 	if err == nil {
 		idxPath := remoteSys.JoinPath(remoteFrontendDir, "index.html")
-		if out, err := runRemote(mkReadCmd(remoteSys, idxPath)); err == nil {
+		if out, err := runRemote(remoteSys.ReadFile(idxPath)); err == nil {
 			if strings.TrimSpace(out) == strings.TrimSpace(string(localIndex)) {
 				fmt.Println("Frontend already up to date.")
 				shouldUploadFrontend = false
@@ -426,7 +414,7 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 
 	for time.Since(startWait) < 15*time.Second {
 		// Check PID
-		if out, err := runRemote(mkReadCmd(remoteSys, pidPath)); err == nil {
+		if out, err := runRemote(remoteSys.ReadFile(pidPath)); err == nil {
 			pidStr := strings.TrimSpace(out)
 			if pidStr != "" {
 				pidFound = true
@@ -440,7 +428,7 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 				}
 
 				// Check Log
-				if out, err := runRemote(mkReadCmd(remoteSys, logPath)); err == nil {
+				if out, err := runRemote(remoteSys.ReadFile(logPath)); err == nil {
 					if isRunning && strings.TrimSpace(out) == "" {
 						fmt.Printf("DEBUG: Process %s running, log empty (buffering?).\n", pidStr)
 					}
@@ -471,7 +459,7 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 
 						// Read Token
 						tokenFile := remoteSys.JoinPath(".mlcremote", "token")
-						if tokenOut, err := runRemote(mkReadCmd(remoteSys, tokenFile)); err == nil && tokenOut != "" {
+						if tokenOut, err := runRemote(remoteSys.ReadFile(tokenFile)); err == nil && tokenOut != "" {
 							cleanToken := strings.TrimSpace(tokenOut)
 							cleanToken = strings.Map(func(r rune) rune {
 								if unicode.IsPrint(r) {
@@ -498,20 +486,20 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 	// Failure Report
 	logContent := ""
 	fmt.Printf("Reading log file %s...\n", logPath)
-	if out, err := runRemote(mkReadCmd(remoteSys, logPath)); err == nil {
+	if out, err := runRemote(remoteSys.ReadFile(logPath)); err == nil {
 		logContent = out
 	}
 
 	// Check stderr log (current.log.err)
 	if logContent == "" || !strings.Contains(logContent, "Server started") {
 		fmt.Printf("Log potentially missing info. Reading stderr file %s.err...\n", logPath)
-		if out, err := runRemote(mkReadCmd(remoteSys, logPath+".err")); err == nil && strings.TrimSpace(out) != "" {
+		if out, err := runRemote(remoteSys.ReadFile(logPath + ".err")); err == nil && strings.TrimSpace(out) != "" {
 			logContent += "\n\n--- Stderr details (current.log.err) ---\n" + out
 		}
 	}
 
 	errLogPath := remoteSys.JoinPath(".mlcremote", "startup_err.log")
-	if out, err := runRemote(mkReadCmd(remoteSys, errLogPath)); err == nil && strings.TrimSpace(out) != "" {
+	if out, err := runRemote(remoteSys.ReadFile(errLogPath)); err == nil && strings.TrimSpace(out) != "" {
 		logContent += "\n\n--- Startup Error details (startup_err.log) ---\n" + out
 	}
 	return "startup-failed", fmt.Errorf("backend process died or timed out. Log output:\n%s", logContent)
@@ -565,7 +553,7 @@ func (m *Manager) KillRemoteServer(profileJSON string) error {
 
 	// Read PID
 	pidFile := remoteSys.JoinPath(".mlcremote", "pid")
-	if out, err := runRemote(mkReadCmd(remoteSys, pidFile)); err == nil {
+	if out, err := runRemote(remoteSys.ReadFile(pidFile)); err == nil {
 		pidStr := strings.TrimSpace(out)
 		if pidStr != "" {
 			fmt.Printf("Killing PID: %s\n", pidStr)

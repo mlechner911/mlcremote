@@ -15,6 +15,21 @@ func (w *Windows) GetHomeDir() string {
 	return "."
 }
 
+func (w *Windows) ReadFile(path string) string {
+	// Clean relative paths
+	cleanPath := strings.TrimPrefix(path, ".\\")
+	// Use absolute path with %USERPROFILE% to ensure we read what the script wrote
+	return fmt.Sprintf("type \"%%USERPROFILE%%\\%s\"", cleanPath)
+}
+
+func (w *Windows) GetBinaryName(name string) string {
+	return name + ".exe"
+}
+
+func (w *Windows) GetMD5UtilityName() string {
+	return ""
+}
+
 func (w *Windows) JoinPath(elem ...string) string {
 	// Use forward slashes for cross-compatibility in many cases, but backslashes are safer for native cmds
 	// However, usually SSH on Windows (OpenSSH) handles forward slashes okay-ish, but let's stick to backslashes for path construction

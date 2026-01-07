@@ -40,6 +40,15 @@ type Remote interface {
 	// Returns empty strings if no script is needed.
 	GetStartupScript() (name string, content string)
 
+	// ReadFile returns the command to read a file relative to the user's home directory.
+	ReadFile(relativePath string) string
+
+	// GetBinaryName returns the OS-specific binary name (e.g. app vs app.exe).
+	GetBinaryName(name string) string
+
+	// GetMD5UtilityName returns the name of the MD5 utility to use/upload, or empty if native.
+	GetMD5UtilityName() string
+
 	// GetOSName returns the identifier for this system implementation (linux, darwin, windows).
 	GetOSName() string
 }
