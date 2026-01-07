@@ -12,7 +12,7 @@ func (d *Darwin) GetOSName() string {
 }
 
 func (d *Darwin) GetHomeDir() string {
-	return "~"
+	return "$HOME"
 }
 
 func (d *Darwin) JoinPath(elem ...string) string {
@@ -51,13 +51,16 @@ func (d *Darwin) FallbackKill(name string) string {
 }
 
 func (d *Darwin) StartProcess(bin, args, logFile, pidFile string) string {
-	return fmt.Sprintf("nohup %s %s > %s 2>&1 & echo $! > %s", bin, args, logFile, pidFile)
+	return fmt.Sprintf("sh -c 'nohup %s %s > \"%s\" 2>&1 & echo $! > \"%s\"'", bin, args, logFile, pidFile)
 }
 func (d *Darwin) GetStartupScript() (string, string) {
 	return "", ""
 }
 
 func (d *Darwin) ReadFile(path string) string {
+	if strings.HasPrefix(path, "/") || strings.HasPrefix(path, "~") || strings.HasPrefix(path, "$") {
+		return fmt.Sprintf("cat \"%s\"", path)
+	}
 	cleanPath := strings.TrimPrefix(path, "./")
 	return fmt.Sprintf("cat ~/%s", cleanPath)
 }

@@ -457,21 +457,8 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 						}
 						fmt.Printf("Backend listening on port: %d\n", targetPort)
 
-						// Read Token
-						tokenFile := remoteSys.JoinPath(".mlcremote", "token")
-						if tokenOut, err := runRemote(remoteSys.ReadFile(tokenFile)); err == nil && tokenOut != "" {
-							cleanToken := strings.TrimSpace(tokenOut)
-							cleanToken = strings.Map(func(r rune) rune {
-								if unicode.IsPrint(r) {
-									return r
-								}
-								return -1
-							}, cleanToken)
-							if fields := strings.Fields(cleanToken); len(fields) > 0 {
-								cleanToken = fields[0]
-							}
-							return fmt.Sprintf("deployed:%d:%s", targetPort, cleanToken), nil
-						}
+						// Return success with provided token
+						return fmt.Sprintf("deployed:%d:%s", targetPort, token), nil
 					}
 				}
 			}
