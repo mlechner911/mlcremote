@@ -37,7 +37,7 @@ Lightweight remote development environment for small servers, wrapped in a nativ
 2. **Run** the application.
 3. **Connect** to your server:
     - Enter `User` (e.g., `root` or `ubuntu`) and `Host` (IP or domain).
-    - Provide an SSH key path (optional) or use password auth.
+    - **SSH Key Required:** You must provide an SSH private key. Password authentication is only supported for the initial key upload.
     - Click **Connect**. The app will automatically check for the backend and install/update it if needed.
 
 ## Development
