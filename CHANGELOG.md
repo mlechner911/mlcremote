@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **File Details Tab**: New dedicated view for files when "Auto Open" is disabled. Shows metadata (size, permissions, timestamps), full path, and a download button.
+- **File Explorer**: Selecting a file with Auto Open disabled now opens/focuses the File Details tab instead of creating empty tabs.
 - **Remote OS Info**: Status bar now displays the remote operating system and distro (e.g., Windows, Ubuntu).
 
 ### Changed
@@ -13,6 +15,8 @@ All notable changes to this project will be documented in this file.
 - **Frontend Refactor**: Major refactoring of file handling logic using a Strategy Pattern for better maintainability and extensibility.
 
 ### Fixed
+- **Stat Failed Error**: Fixed an issue where the "File Details" view would lose context of the selected file and fail to load metadata.
+- **PDF Detection**: Fixed PDF files sometimes not opening correctly due to incorrect tab handling.
 - **Auto-Login**: Fixed a race condition where the token URL parameter was ignored on startup.
 - **Windows Build**: Fixed `make run` failing on Windows due to `mkdir -p` syntax errors.
 - **Symlink Dirty State**: Opening a symlink to a directory no longer incorrectly shows the "unsaved changes" (red tab) indicator.

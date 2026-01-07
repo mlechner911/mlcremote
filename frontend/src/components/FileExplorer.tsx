@@ -275,8 +275,9 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
                   <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     <button data-path={e.path} type="button" className="entry" style={{ flex: 1, textAlign: 'left' }} onClick={() => {
                       if (autoOpen === false) {
-                        // just select (do not open persistent tab)
+                        // Metadata View Mode: Select file and open/focus 'metadata' tab
                         onSelect(e.path, false)
+                        if (onView) onView('metadata')
                         return
                       }
                       onSelect(e.path, false)

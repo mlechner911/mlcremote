@@ -10,6 +10,7 @@ import { getIconForShell, getIconForDir, getIcon } from './generated/icon-helper
 import TrashView from './components/TrashView'
 import Editor from './components/Editor'
 import BinaryView from './components/BinaryView'
+import FileDetailsView from './components/FileDetailsView'
 const TerminalTab = React.lazy(() => import('./components/TerminalTab'))
 // const TabBarComponent = React.lazy(() => import('./components/TabBar'))
 
@@ -366,13 +367,13 @@ export default function App() {
       })
 
       // side effects (explorer dir sync)
-      if (path && !path.startsWith('shell-')) {
+      if (path && !path.startsWith('shell-') && path !== 'metadata') {
         const parts = path.split('/').filter(Boolean)
         parts.pop()
         const dir = parts.length ? `/${parts.join('/')}` : ''
         // if (dir !== explorerDir) setExplorerDir(dir) // optional sync
       }
-      setSelectedPath(path)
+      if (path !== 'metadata') setSelectedPath(path)
       setFocusRequest(Date.now())
     }
 
@@ -407,6 +408,8 @@ export default function App() {
           }
         }
         titles[f] = name
+      } else if (f === 'metadata') {
+        titles[f] = t('file_details', 'File Details')
       } else {
         const baseName = f.split('/').pop() || f
         titles[f] = unsavedChanges[f] ? `*${baseName}` : baseName
@@ -487,6 +490,8 @@ export default function App() {
                     </React.Suspense>
                   ) : f === 'trash' ? (
                     <TrashView />
+                  ) : f === 'metadata' ? (
+                    <FileDetailsView path={selectedPath} />
                   ) : f === 'binary' ? (
                     <React.Suspense fallback={<div className="muted">Loading…</div>}>
                       <BinaryView path={binaryPath || undefined} />
@@ -675,7 +680,7 @@ export default function App() {
               if (autoOpen) {
                 openFile(p)
               } else {
-                setActiveFile(p)
+                if (openFiles.includes(p)) setActiveFile(p)
               }
             })()
             // check health status since backend interaction succeeded
@@ -687,7 +692,7 @@ export default function App() {
             } else {
               openFile(p)
             }
-            setSelectedPath(p)
+            if (p !== 'metadata') setSelectedPath(p)
             // check health status since backend interaction succeeded
             checkHealthStatus()
           }} onBackendActive={checkHealthStatus} onChangeRoot={async () => {
