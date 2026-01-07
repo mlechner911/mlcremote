@@ -190,15 +190,37 @@ func (m *Manager) DeployPublicKey(host string, user string, port int, password s
 		// We use the raw key and escape single quotes for PowerShell (which is '')
 		psKey := strings.ReplaceAll(pubKeyStr, "'", "''")
 
-		// Note: We don't try to fix permissions deeply here as it requires complex ACL script.
-		// We rely on the user having followed the setup guide for ACLs or the default being "okay" enough for now.
-		// Using backticks for escaping double quotes inside the command string if needed, or just strict sequence.
-		winCmd := fmt.Sprintf("powershell -Command \"New-Item -Force -ItemType Directory -Path \\\"$env:USERPROFILE\\.ssh\\\"; Add-Content -Force -Path \\\"$env:USERPROFILE\\.ssh\\authorized_keys\\\" -Value '%s'\"", psKey)
+		// Refactor: Split into two steps.
+		// 1. Add Key (Critical)
+		// 2. Fix ACLs (Best Effort - failure here shouldn't block connection if key is present)
 
-		output2, err2 := session2.CombinedOutput(winCmd)
+		// Step 1: Create Dir & Add Key
+		// Use Out-Null to reduce noise
+		cmdAdd := fmt.Sprintf("New-Item -Force -ItemType Directory -Path \"$env:USERPROFILE\\.ssh\" | Out-Null; "+
+			"Add-Content -Force -Path \"$env:USERPROFILE\\.ssh\\authorized_keys\" -Value '%s' -Encoding Ascii", psKey)
+
+		winCmdAdd := fmt.Sprintf("powershell -Command \"%s\"", cmdAdd)
+
+		output2, err2 := session2.CombinedOutput(winCmdAdd)
 		if err2 != nil {
 			return fmt.Errorf("failed to install public key (tried Linux and Windows): %v (LinOut: %s) (WinOut: %s)", err2, strings.TrimSpace(string(output)), strings.TrimSpace(string(output2)))
 		}
+
+		// Step 2: Fix ACLs (Best Effort)
+		// We need a fresh session for the next command
+		session3, err3 := client.NewSession()
+		if err3 == nil {
+			defer session3.Close()
+			cmdAcl := "icacls \"$env:USERPROFILE\\.ssh\\authorized_keys\" /inheritance:r /grant *S-1-5-18:F /grant *S-1-5-32-544:F /grant \"$env:USERNAME:F\""
+			winCmdAcl := fmt.Sprintf("powershell -Command \"%s\"", cmdAcl)
+
+			if out3, errAcl := session3.CombinedOutput(winCmdAcl); errAcl != nil {
+				fmt.Printf("[DEBUG] DeployPublicKey: ACL fix warning (non-fatal): %v. Out: %s\n", errAcl, string(out3))
+			} else {
+				fmt.Printf("[DEBUG] DeployPublicKey: ACLs set successfully.\n")
+			}
+		}
+
 		fmt.Printf("[DEBUG] DeployPublicKey: Windows fallback success. Output: %s\n", string(output2))
 		return nil
 	}
