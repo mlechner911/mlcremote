@@ -9,6 +9,17 @@
     --error: #f48771;
 }
 
+.theme-light {
+    --bg-root: #f9fafb;
+    --bg-panel: #ffffff;
+    --bg-select: #e5e7eb;
+    --text-primary: #111827;
+    --text-muted: #6b7280;
+    --border: #d1d5db;
+    --accent: #007acc;
+    --error: #ef4444;
+}
+
 body {
     margin: 0;
     font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
@@ -129,4 +140,34 @@ button {
 .input:focus {
     border-color: var(--accent);
     outline: none;
+}
+
+/* Launch Screen Backgrounds */
+.launch-container {
+    background-image: url(/startup_hero.png);
+    background-size: cover;
+    background-position: center;
+}
+
+.launch-overlay {
+    /* Dark Mode (Default) */
+    background: linear-gradient(135deg, rgba(13, 17, 23, 0.95), rgba(22, 27, 34, 0.8));
+}
+
+.theme-light .launch-overlay {
+    /* Light Mode */
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(243, 244, 246, 0.85));
+}
+
+/* Connection Icon Halo/Shadow */
+.connection-icon {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    transition: box-shadow 0.3s ease;
+}
+
+.theme-light .connection-icon {
+    /* Halo Effect for Light Mode: Stronger drop shadow + White ring */
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15), 0 0 0 6px rgba(255, 255, 255, 0.7);
+    border: none;
 }

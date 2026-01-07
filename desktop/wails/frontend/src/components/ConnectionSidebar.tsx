@@ -76,9 +76,9 @@ export default function ConnectionSidebar({
                             {p.lastUsed > 0 ? (() => {
                                 const diff = Math.floor(Date.now() / 1000) - p.lastUsed
                                 if (diff < 60) return t('just_now')
-                                if (diff < 3600) return `${Math.floor(diff / 60)}${t('minutes_ago')}`
-                                if (diff < 86400) return `${Math.floor(diff / 3600)}${t('hours_ago')}`
-                                return `${Math.floor(diff / 86400)}${t('days_ago')}`
+                                if (diff < 3600) return t('minutes_ago', { val: Math.floor(diff / 60) })
+                                if (diff < 86400) return t('hours_ago', { val: Math.floor(diff / 3600) })
+                                return t('days_ago', { val: Math.floor(diff / 86400) })
                             })() : ''}
                         </div>
                         <button className="icon-btn link" style={{ opacity: 0.5 }} onClick={(e) => onDelete(p.id!, e)}>

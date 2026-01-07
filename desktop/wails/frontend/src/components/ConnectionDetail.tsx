@@ -23,12 +23,12 @@ export default function ConnectionDetail({
     return (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center' }}>
             <div style={{ marginBottom: 32, transform: 'scale(1.5)' }}>
-                <div className={loading ? 'pulse-ring' : ''} style={{ width: 64, height: 64, borderRadius: '50%', background: profile.color, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', color: 'white', border: '2px solid rgba(255,255,255,0.1)' }}>
+                <div className={`${loading ? 'pulse-ring ' : ''}connection-icon`} style={{ width: 64, height: 64, borderRadius: '50%', background: profile.color, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', color: 'white' }}>
                     <Icon name="icon-server" size={32} />
                 </div>
             </div>
-            <h1 style={{ margin: '0 0 8px 0', textShadow: '0 2px 4px rgba(0,0,0,0.5)', color: '#fff' }}>{profile.name}</h1>
-            <div className="muted" style={{ fontSize: 16, marginBottom: 32, color: 'rgba(255,255,255,0.7)' }}>
+            <h1 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>{profile.name}</h1>
+            <div className="muted" style={{ fontSize: 16, marginBottom: 32, color: 'var(--text-muted)' }}>
                 {profile.user}@{profile.host}
                 {isManaged && (
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 12, background: 'rgba(56, 139, 253, 0.2)', color: '#58a6ff', padding: '2px 8px', borderRadius: 10, fontSize: 11, border: '1px solid rgba(56, 139, 253, 0.3)' }}>
@@ -40,8 +40,8 @@ export default function ConnectionDetail({
 
             {status && (
                 <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ color: '#ff7b72', background: 'rgba(0,0,0,0.4)', padding: '4px 12px', borderRadius: 100 }}>
-                        {status === t('connecting') ? <span style={{ color: 'var(--text-primary)' }}>{status}</span> : status}
+                    <div className={`status-pill ${status.toLowerCase().includes('failed') || status.toLowerCase().includes('error') ? 'error' : ''}`}>
+                        {status}
                     </div>
 
                     {(status.includes(t('status_failed')) || status.includes('Failed') || status.includes('Error')) && (
@@ -67,7 +67,7 @@ export default function ConnectionDetail({
                 <button className="btn primary" style={{ padding: '12px 32px', fontSize: 16, boxShadow: '0 4px 12px rgba(0,123,255,0.3)' }} onClick={onConnect} disabled={loading}>
                     {loading ? t('connecting') : t('connect')}
                 </button>
-                <button className="btn" style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} onClick={onEdit} disabled={loading}>
+                <button className="btn" style={{ padding: '12px 24px' }} onClick={onEdit} disabled={loading}>
                     {t('edit')}
                 </button>
             </div>

@@ -6,7 +6,7 @@ type Language = 'en' | 'de' | 'es' | 'fr';
 interface I18nContextType {
     lang: Language;
     setLang: (l: Language) => void;
-    t: (key: keyof LocaleType) => string;
+    t: (key: keyof LocaleType, args?: Record<string, string | number>) => string;
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
@@ -22,9 +22,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('mlcremote_lang', l);
     };
 
-    const t = (key: keyof LocaleType): string => {
+    const t = (key: keyof LocaleType, args?: Record<string, string | number>): string => {
         const dict = translations[lang] || translations['en'];
-        return dict[key] || (translations['en'][key] as string) || key;
+        let val = (dict as any)[key] || (translations['en'][key] as string) || key;
+        if (args) {
+            Object.entries(args).forEach(([k, v]) => {
+                val = val.replace(`{{${k}}}`, String(v));
+            });
+        }
+        return val;
     };
 
     return (

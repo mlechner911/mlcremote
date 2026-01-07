@@ -141,6 +141,30 @@ export default function App() {
   const [now, setNow] = React.useState<Date>(new Date())
   const [messageBox, setMessageBox] = React.useState<{ title: string; message: string } | null>(null)
 
+  const isControlled = React.useMemo(() => !!new URLSearchParams(window.location.search).get('theme'), [])
+
+  // Listen for messages from parent (Desktop Overlay)
+  React.useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (!e.data) return
+      if (e.data.type === 'set-theme') {
+        const t = e.data.theme
+        if (t === 'light' || t === 'dark') {
+          setTheme(t)
+          defaultStore.set('theme', t, strSerializer as any)
+          if (t === 'light') document.documentElement.classList.add('theme-light')
+          else document.documentElement.classList.remove('theme-light')
+        }
+      }
+      if (e.data.type === 'screenshot') {
+        const root = document.querySelector('.app') as HTMLElement
+        if (root) captureElementToPng(root, 'mlcremote-screenshot.png')
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
   // Cleaned up auth state and effects (moved to AuthContext)
 
   const [reloadTriggers, setReloadTriggers] = React.useState<Record<string, number>>({})
@@ -186,6 +210,15 @@ export default function App() {
 
         // Language Sync Logic: Desktop Launcher (URL param) overrides Server Settings
         const params = new URLSearchParams(window.location.search)
+
+        // Theme Sync
+        const urlTheme = params.get('theme')
+        if (urlTheme === 'light' || urlTheme === 'dark') {
+          setTheme(urlTheme as any)
+          if (urlTheme === 'light') document.documentElement.classList.add('theme-light')
+          else document.documentElement.classList.remove('theme-light')
+        }
+
         const urlLang = params.get('lng') || params.get('lang')
 
         if (urlLang && urlLang !== s.language) {
@@ -572,26 +605,31 @@ export default function App() {
           }} title={t('terminal')} aria-label={t('terminal')}><Icon name={getIcon('terminal')} title={t('terminal')} size={16} /></button>
 
           {/* Settings moved to popup (icon at the right). */}
-          <button className="link icon-btn" aria-label="Toggle theme" onClick={() => {
-            const next = theme === 'dark' ? 'light' : 'dark'
-            setTheme(next)
-            defaultStore.set('theme', next, strSerializer as any)
-            if (next === 'light') document.documentElement.classList.add('theme-light')
-            else document.documentElement.classList.remove('theme-light')
-          }}>
-            {theme === 'dark' ? <Icon name={getIcon('moon')} title={t('theme')} size={16} /> : <Icon name={getIcon('sun')} title={t('theme')} size={16} />}
-          </button>
+          {/* Settings moved to popup (icon at the right). */}
+          {!isControlled && (
+            <button className="link icon-btn" aria-label="Toggle theme" onClick={() => {
+              const next = theme === 'dark' ? 'light' : 'dark'
+              setTheme(next)
+              defaultStore.set('theme', next, strSerializer as any)
+              if (next === 'light') document.documentElement.classList.add('theme-light')
+              else document.documentElement.classList.remove('theme-light')
+            }}>
+              {theme === 'dark' ? <Icon name={getIcon('moon')} title={t('theme')} size={16} /> : <Icon name={getIcon('sun')} title={t('theme')} size={16} />}
+            </button>
+          )}
           {/* Logs toggle moved into settings popup */}
           <button className="link icon-btn" title={t('about')} aria-label={t('about')} onClick={() => setAboutOpen(true)}><Icon name={getIcon('info')} title={t('about')} size={16} /></button>
-          <button className="link icon-btn" title="Screenshot" aria-label="Screenshot" onClick={async () => {
-            const root = document.querySelector('.app') as HTMLElement | null
-            if (!root) return
-            try {
-              await captureElementToPng(root, 'mlcremote-screenshot.png')
-            } catch (e) {
-              console.error('Screenshot failed', e)
-            }
-          }}><Icon name={getIcon('screenshot')} title="Screenshot" size={16} /></button>
+          {!isControlled && (
+            <button className="link icon-btn" title="Screenshot" aria-label="Screenshot" onClick={async () => {
+              const root = document.querySelector('.app') as HTMLElement | null
+              if (!root) return
+              try {
+                await captureElementToPng(root, 'mlcremote-screenshot.png')
+              } catch (e) {
+                console.error('Screenshot failed', e)
+              }
+            }}><Icon name={getIcon('screenshot')} title="Screenshot" size={16} /></button>
+          )}
           <button className="link icon-btn" title="Trash" aria-label="Trash" onClick={() => {
             // open a single trash tab
             if (!openFiles.includes('trash')) {

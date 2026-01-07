@@ -1,3 +1,4 @@
+import React from 'react'
 import { Icon } from '../generated/icons'
 import { useI18n } from '../utils/i18n'
 
@@ -8,17 +9,37 @@ interface RemoteViewProps {
     profileColor?: string
     user?: string
     localPort?: number
+    theme: 'light' | 'dark'
+    onSetTheme: (t: 'light' | 'dark') => void
     onDisconnect: () => void
 }
 
-export default function RemoteView({ url, profileName, profileId, profileColor, user, localPort, onDisconnect }: RemoteViewProps) {
+export default function RemoteView({ url, profileName, profileId, profileColor, user, localPort, theme, onSetTheme, onDisconnect }: RemoteViewProps) {
     const { t, lang } = useI18n()
     // Append profileId to URL if present
     // DEBUG: Point to debug page (Disabled)
     // const targetSrc = `/debug_iframe.html?api=${encodeURIComponent(url)}&_t=${Date.now()}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
 
     // Production View
-    const targetSrc = `/ide/index.html?api=${encodeURIComponent(url)}&lng=${lang}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
+    const targetSrc = `/ide/index.html?api=${encodeURIComponent(url)}&lng=${lang}&theme=${theme}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
+
+    const iframeRef = React.useRef<HTMLIFrameElement>(null)
+
+    React.useEffect(() => {
+        if (iframeRef.current && iframeRef.current.contentWindow) {
+            iframeRef.current.contentWindow.postMessage({ type: 'set-theme', theme }, '*')
+        }
+    }, [theme])
+
+    const handleScreenshot = () => {
+        if (iframeRef.current && iframeRef.current.contentWindow) {
+            iframeRef.current.contentWindow.postMessage({ type: 'screenshot' }, '*')
+        }
+    }
+
+    const toggleTheme = () => {
+        onSetTheme(theme === 'dark' ? 'light' : 'dark')
+    }
 
     const handleShare = () => {
         try {
@@ -107,16 +128,52 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                 </div>
             </div>
 
-            {/* Iframe Content */}
-            <div style={{ flex: 1, position: 'relative' }}>
+            {/* Overlay Controls */}
+            <div style={{
+                position: 'absolute',
+                top: 60, right: 20, // Below header
+                display: 'flex', gap: 8,
+                zIndex: 100
+            }}>
+                <button
+                    onClick={toggleTheme}
+                    title={t('toggle_theme')}
+                    style={{
+                        width: 36, height: 36, borderRadius: '50%',
+                        background: 'var(--bg-panel)', border: '1px solid var(--border)',
+                        color: 'var(--text-primary)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)', cursor: 'pointer'
+                    }}
+                >
+                    <Icon name={theme === 'dark' ? 'icon-moon' : 'icon-sun'} size={18} />
+                </button>
+                <button
+                    onClick={handleScreenshot}
+                    title={t('screenshot')}
+                    style={{
+                        width: 36, height: 36, borderRadius: '50%',
+                        background: 'var(--bg-panel)', border: '1px solid var(--border)',
+                        color: 'var(--text-primary)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)', cursor: 'pointer'
+                    }}
+                >
+                    <Icon name="icon-screenshot" size={18} />
+                </button>
+            </div>
+
+            <div style={{ flex: 1, background: '#000', position: 'relative' }}>
                 <iframe
+                    ref={iframeRef}
                     src={targetSrc}
                     style={{
                         width: '100%',
                         height: '100%',
                         border: 'none',
-                        display: 'block'
+                        background: theme === 'dark' ? '#111827' : '#f9fafb'
                     }}
+                    allow="clipboard-read; clipboard-write"
                     title="Remote Backend"
                 />
             </div>

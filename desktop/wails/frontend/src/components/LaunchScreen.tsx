@@ -333,12 +333,10 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
             />
 
             {/* Main Content */}
-            <div style={{
-                flex: 1, display: 'flex', flexDirection: 'column', position: 'relative',
-                backgroundImage: 'url(/startup_hero.png)', backgroundSize: 'cover', backgroundPosition: 'center'
+            <div className="launch-container" style={{
+                flex: 1, display: 'flex', flexDirection: 'column', position: 'relative'
             }}>
-                <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(0px)' }} />
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(13, 17, 23, 0.95), rgba(22, 27, 34, 0.8))' }} />
+                <div className="launch-overlay" style={{ position: 'absolute', inset: 0 }} />
 
                 <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>
                     {editing || !selectedId ? (

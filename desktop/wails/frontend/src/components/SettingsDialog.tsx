@@ -3,7 +3,7 @@ import { useI18n } from '../utils/i18n'
 import { Icon } from '../generated/icons'
 import { SetMasterPassword, HasMasterPassword, IsPremium, GetManagedIdentity } from '../wailsjs/go/app/App'
 
-export default function SettingsDialog({ onClose }: { onClose: () => void }) {
+export default function SettingsDialog({ onClose, theme, onSetTheme }: { onClose: () => void, theme: 'light' | 'dark' | 'auto', onSetTheme: (t: 'light' | 'dark' | 'auto') => void }) {
   const { lang, setLang, t } = useI18n()
   const [newPassword, setNewPassword] = React.useState('')
   const [saveStatus, setSaveStatus] = React.useState('')
@@ -139,6 +139,53 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
                 </button>
               )
             })}
+          </div>
+        </div>
+
+        <div style={{ margin: '20px 0' }}>
+          <label style={{ display: 'block', marginBottom: 8, fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+            {t('appearance')}
+          </label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => onSetTheme('auto')}
+              style={{
+                flex: 1, padding: '8px', borderRadius: 6,
+                background: theme === 'auto' ? 'var(--accent)' : 'var(--bg-panel)',
+                border: theme === 'auto' ? '1px solid var(--accent)' : '1px solid var(--border)',
+                color: theme === 'auto' ? 'white' : 'inherit',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+              }}
+            >
+              <Icon name="icon-terminal" size={18} />
+              {t('system_theme')}
+            </button>
+            <button
+              onClick={() => onSetTheme('dark')}
+              style={{
+                flex: 1, padding: '8px', borderRadius: 6,
+                background: theme === 'dark' ? 'var(--accent)' : 'var(--bg-panel)',
+                border: theme === 'dark' ? '1px solid var(--accent)' : '1px solid var(--border)',
+                color: theme === 'dark' ? 'white' : 'inherit',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+              }}
+            >
+              <Icon name="icon-moon" size={18} />
+              {t('dark_mode')}
+            </button>
+            <button
+              onClick={() => onSetTheme('light')}
+              style={{
+                flex: 1, padding: '8px', borderRadius: 6,
+                background: theme === 'light' ? 'var(--accent)' : 'var(--bg-panel)',
+                border: theme === 'light' ? '1px solid var(--accent)' : '1px solid var(--border)',
+                color: theme === 'light' ? 'white' : 'inherit',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+              }}
+            >
+              <Icon name="icon-sun" size={18} />
+              {t('light_mode')}
+            </button>
           </div>
         </div>
 

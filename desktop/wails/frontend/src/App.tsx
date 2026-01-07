@@ -50,6 +50,42 @@ function AppContent() {
   const [shuttingDown, setShuttingDown] = useState(false)
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null)
 
+  // Theme Management
+  const [theme, setTheme] = useState<'auto' | 'dark' | 'light'>('auto')
+  const [effectiveTheme, setEffectiveTheme] = useState<'dark' | 'light'>('dark')
+
+  useEffect(() => {
+    const saved = localStorage.getItem('app-theme')
+    if (saved === 'light' || saved === 'dark' || saved === 'auto') {
+      setTheme(saved as any)
+    }
+  }, [])
+
+  useEffect(() => {
+    const resolve = () => {
+      if (theme === 'auto') {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      }
+      return theme
+    }
+    setEffectiveTheme(resolve())
+
+    if (theme === 'auto') {
+      const m = window.matchMedia('(prefers-color-scheme: dark)')
+      const handler = (e: MediaQueryListEvent) => setEffectiveTheme(e.matches ? 'dark' : 'light')
+      m.addEventListener('change', handler)
+      return () => m.removeEventListener('change', handler)
+    }
+  }, [theme])
+
+  useEffect(() => {
+    document.documentElement.className = effectiveTheme === 'dark' ? 'theme-dark' : 'theme-light'
+    // Also set body styles to ensure full coverage
+    document.body.style.backgroundColor = effectiveTheme === 'dark' ? '#111827' : '#f9fafb'
+    document.body.style.color = effectiveTheme === 'dark' ? '#f3f4f6' : '#1f2937'
+    localStorage.setItem('app-theme', theme)
+  }, [effectiveTheme, theme])
+
   useEffect(() => {
     // Global shutdown listener
     const rt = loadRuntimeIfPresent()
@@ -155,12 +191,21 @@ function AppContent() {
           url={remoteUrl}
           profileName={profileName}
           profileColor={profileColor}
+          profileId={currentProfile?.id}
+          user={currentProfile?.user}
+          localPort={currentProfile?.localPort}
+          theme={effectiveTheme}
+          onSetTheme={setTheme}
           onDisconnect={handleDisconnect}
         />
       )}
 
       {view === 'settings' && (
-        <SettingsDialog onClose={() => setView('launch')} />
+        <SettingsDialog
+          theme={theme}
+          onSetTheme={setTheme}
+          onClose={() => setView('launch')}
+        />
       )}
 
       {shuttingDown && (
