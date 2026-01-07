@@ -349,7 +349,7 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 	}
 
 	// Meta file
-	metaContent := fmt.Sprintf(`{"version": "1.0.2", "updated": "%s", "os": "%s", "arch": "%s"}`, time.Now().Format(time.RFC3339), targetOS, targetArch)
+	metaContent := fmt.Sprintf(`{"version": "1.0.3", "updated": "%s", "os": "%s", "arch": "%s"}`, time.Now().Format(time.RFC3339), targetOS, targetArch)
 	metaPath := filepath.Join(tmpDir, "install.json")
 	os.WriteFile(metaPath, []byte(metaContent), 0644)
 	scpMetaArgs := append([]string{}, scpArgs...)
