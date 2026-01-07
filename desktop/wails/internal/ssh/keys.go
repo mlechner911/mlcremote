@@ -1,12 +1,16 @@
 package ssh
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf16"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -178,50 +182,62 @@ func (m *Manager) DeployPublicKey(host string, user string, port int, password s
 		fmt.Printf("[DEBUG] DeployPublicKey: Linux command failed: %v. Output: %s\n", err, strings.TrimSpace(string(output)))
 		fmt.Println("[DEBUG] DeployPublicKey: Attempting Windows fallback...")
 
-		// Re-open session? Yes, CombinedOutput closes the session.
-		// We need a NEW session for the fallback.
-		session2, err2 := client.NewSession()
-		if err2 != nil {
-			return fmt.Errorf("failed to create fallback session: %w", err2)
-		}
-		defer session2.Close()
-
-		// Windows/PowerShell implementation
+		// Windows/PowerShell implementation (Robust Base64 EncodedCommand)
 		// We use the raw key and escape single quotes for PowerShell (which is '')
 		psKey := strings.ReplaceAll(pubKeyStr, "'", "''")
 
-		// Refactor: Split into two steps.
-		// 1. Add Key (Critical)
-		// 2. Fix ACLs (Best Effort - failure here shouldn't block connection if key is present)
+		// PowerShell Script to securely create/append key and set strictly defined ACLs (User/Admin/System only)
+		// We use .NET classes for ACLs to avoid "icacls" localization/parsing issues.
+		script := fmt.Sprintf(`
+$k = '%s'
+$d = "$env:USERPROFILE\.ssh"
+$f = "$d\authorized_keys"
+if (!(Test-Path $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+Add-Content -Force -Path $f -Value $k -Encoding Ascii
 
-		// Step 1: Create Dir & Add Key
-		// Use Out-Null to reduce noise
-		cmdAdd := fmt.Sprintf("New-Item -Force -ItemType Directory -Path \"$env:USERPROFILE\\.ssh\" | Out-Null; "+
-			"Add-Content -Force -Path \"$env:USERPROFILE\\.ssh\\authorized_keys\" -Value '%s' -Encoding Ascii", psKey)
+# Fix ACLs using .NET
+$a = Get-Acl $f
+# Disable inheritance, remove existing rules
+$a.SetAccessRuleProtection($true, $false)
 
-		winCmdAdd := fmt.Sprintf("powershell -Command \"%s\"", cmdAdd)
+# Add Current User
+$id = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+$a.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($id, "FullControl", "Allow")))
 
-		output2, err2 := session2.CombinedOutput(winCmdAdd)
-		if err2 != nil {
-			return fmt.Errorf("failed to install public key (tried Linux and Windows): %v (LinOut: %s) (WinOut: %s)", err2, strings.TrimSpace(string(output)), strings.TrimSpace(string(output2)))
+# Add Administrators (SID: S-1-5-32-544)
+$ad = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-544")
+$a.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($ad, "FullControl", "Allow")))
+
+# Add System (SID: S-1-5-18)
+$sy = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-18")
+$a.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($sy, "FullControl", "Allow")))
+
+Set-Acl $f $a
+Write-Host "Key deployed and secured."
+`, psKey)
+
+		// Encode Script to UTF-16LE Base64 for -EncodedCommand
+		u16 := utf16.Encode([]rune(script))
+		buf := new(bytes.Buffer)
+		for _, v := range u16 {
+			binary.Write(buf, binary.LittleEndian, v)
+		}
+		b64Cmd := base64.StdEncoding.EncodeToString(buf.Bytes())
+
+		// Create session for Windows fallback
+		sessionWin, errWin := client.NewSession()
+		if errWin != nil {
+			return fmt.Errorf("failed to create fallback session: %w", errWin)
+		}
+		defer sessionWin.Close()
+
+		winCmd := fmt.Sprintf("powershell -EncodedCommand %s", b64Cmd)
+		outputWin, errWinCmd := sessionWin.CombinedOutput(winCmd)
+		if errWinCmd != nil {
+			return fmt.Errorf("failed to install public key (Windows Fallback): %v. Output: %s", errWinCmd, strings.TrimSpace(string(outputWin)))
 		}
 
-		// Step 2: Fix ACLs (Best Effort)
-		// We need a fresh session for the next command
-		session3, err3 := client.NewSession()
-		if err3 == nil {
-			defer session3.Close()
-			cmdAcl := "icacls \"$env:USERPROFILE\\.ssh\\authorized_keys\" /inheritance:r /grant *S-1-5-18:F /grant *S-1-5-32-544:F /grant \"$env:USERNAME:F\""
-			winCmdAcl := fmt.Sprintf("powershell -Command \"%s\"", cmdAcl)
-
-			if out3, errAcl := session3.CombinedOutput(winCmdAcl); errAcl != nil {
-				fmt.Printf("[DEBUG] DeployPublicKey: ACL fix warning (non-fatal): %v. Out: %s\n", errAcl, string(out3))
-			} else {
-				fmt.Printf("[DEBUG] DeployPublicKey: ACLs set successfully.\n")
-			}
-		}
-
-		fmt.Printf("[DEBUG] DeployPublicKey: Windows fallback success. Output: %s\n", string(output2))
+		fmt.Printf("[DEBUG] DeployPublicKey: Windows fallback success. Output: %s\n", string(outputWin))
 		return nil
 	}
 

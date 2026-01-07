@@ -38,10 +38,8 @@ func (w *Windows) Remove(path string) string {
 }
 
 func (w *Windows) FileHash(path string) (string, func(string) string) {
-	// Use custom md5-util or powershell fallback
-	// .mlcremote\bin\md5-util.exe
-
-	cmd := fmt.Sprintf(".mlcremote\\bin\\md5-util.exe \"%s\" || powershell -Command \"(Get-FileHash -Algorithm MD5 '%s').Hash\"", path, path)
+	// Use native PowerShell Get-FileHash to avoid AV false positives with unsigned binaries
+	cmd := fmt.Sprintf("powershell -Command \"(Get-FileHash -Algorithm MD5 '%s').Hash\"", path)
 
 	parser := func(output string) string {
 		return strings.TrimSpace(output)
@@ -62,8 +60,57 @@ func (w *Windows) FallbackKill(name string) string {
 	return fmt.Sprintf("taskkill /IM %s /F || echo OK", name)
 }
 
+func (w *Windows) GetStartupScript() (string, string) {
+	script := `param(
+    [string]$Bin,
+    [string]$ArgsList,
+    [string]$LogFile,
+    [string]$PidFile
+)
+
+$ErrorActionPreference = "Stop"
+
+try {
+    # Resolve all paths to absolute using USERPROFILE
+    $Bin = Join-Path $env:USERPROFILE ($Bin -replace '^\.\\', '')
+    $LogFile = Join-Path $env:USERPROFILE ($LogFile -replace '^\.\\', '')
+    $PidFile = Join-Path $env:USERPROFILE ($PidFile -replace '^\.\\', '')
+    
+    # Define quote char to avoid escaping hell and Go raw string conflicts
+    $q = [char]34
+    
+    # Cmd: cmd /c ""Bin" Args > "Log" 2>&1"
+    # We wrap the command for cmd /c in outer quotes, and inner paths in quotes.
+    $CmdLine = "cmd /c $q$q$Bin$q $ArgsList > $q$LogFile$q 2>&1$q"
+
+    Write-Output "DEBUG: Launching via WMI"
+    Write-Output "DEBUG: Cmd=$CmdLine"
+
+    # Pass CurrentDirectory ($env:USERPROFILE) as second argument to Create
+    $Result = Invoke-WmiMethod -Class Win32_Process -Name Create -ArgumentList $CmdLine, $env:USERPROFILE
+    
+    if ($Result.ReturnValue -eq 0) {
+        $Result.ProcessId | Out-File -Encoding ascii $PidFile
+        Write-Output "DEBUG: Success PID=$($Result.ProcessId)"
+    } else {
+        throw "WMI Launch Failed: ReturnValue=$($Result.ReturnValue)"
+    }
+} catch {
+    $ErrLog = Join-Path $env:USERPROFILE ".mlcremote\startup_err.log"
+    "DEBUG VARIABLES:" | Out-File -Encoding ascii $ErrLog
+    "Bin: '$Bin'" | Out-File -Encoding ascii -Append $ErrLog
+    "LogFile: '$LogFile'" | Out-File -Encoding ascii -Append $ErrLog
+    "LogErr: '$LogErr'" | Out-File -Encoding ascii -Append $ErrLog
+    "Error:" | Out-File -Encoding ascii -Append $ErrLog
+    $_ | Out-File -Encoding ascii -Append $ErrLog
+    Write-Error $_
+    exit 1
+}`
+	return "start_agent.ps1", script
+}
+
 func (w *Windows) StartProcess(bin, args, logFile, pidFile string) string {
-	// powershell start-process etc
-	// $p = Start-Process ... -PassThru; $p.Id | Out-File ...
-	return fmt.Sprintf("powershell -Command \"$p = Start-Process -FilePath %s -ArgumentList '%s' -RedirectStandardOutput %s -RedirectStandardError %s -WindowStyle Hidden -PassThru; $p.Id | Out-File %s -Encoding ascii\"", bin, args, logFile, logFile, pidFile)
+	// Execute the uploaded PowerShell script.
+	// We use -Command to allow dynamic path resolution of the script script.
+	return fmt.Sprintf("powershell -ExecutionPolicy Bypass -Command \"$s = Join-Path $env:USERPROFILE '.mlcremote\\start_agent.ps1'; & $s -Bin '%s' -ArgsList '%s' -LogFile '%s' -PidFile '%s'\"", bin, args, logFile, pidFile)
 }

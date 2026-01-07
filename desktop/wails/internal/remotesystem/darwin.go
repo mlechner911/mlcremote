@@ -53,3 +53,6 @@ func (d *Darwin) FallbackKill(name string) string {
 func (d *Darwin) StartProcess(bin, args, logFile, pidFile string) string {
 	return fmt.Sprintf("nohup %s %s > %s 2>&1 & echo $! > %s", bin, args, logFile, pidFile)
 }
+func (d *Darwin) GetStartupScript() (string, string) {
+	return "", ""
+}

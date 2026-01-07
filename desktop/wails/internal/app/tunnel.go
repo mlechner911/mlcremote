@@ -125,7 +125,7 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	// We can check /health through the tunnel
 	time.Sleep(500 * time.Millisecond) // Wait for tunnel to establish
 	// Check backend health
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 20; i++ {
 		status, _ := a.HealthCheck(fmt.Sprintf("http://localhost:%d", targetPort), token, 1)
 		if status == "ok" {
 			return fmt.Sprintf("started:%d:%s", targetPort, token), nil

@@ -47,6 +47,8 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Ensure logs go to stdout so the deployment script can capture them in current.log
+	log.SetOutput(os.Stdout)
 	log.Printf("MLCRemote v%s starting", version)
 	if *root == "" {
 		*root = os.Getenv("HOME")

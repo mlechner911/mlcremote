@@ -48,13 +48,32 @@ By default, the service is installed but not running.
 1.  Open **PowerShell** as Administrator.
 2.  Run the following commands to start the service and ensure it runs on boot:
 
+### CRITICAL: Administrator Permissions
+
+**Important:** If you are running as an **Administrator** user (common on typical Windows setups), the default Windows OpenSSH configuration **ignores** your `authorized_keys` file for security reasons.
+
+**To fix this, you MUST edit the config file:**
+
+1. Open Notepad **as Administrator**.
+2. Open `C:\ProgramData\ssh\sshd_config` (Note: `ProgramData` is hidden).
+3. Comment out the following lines at the bottom (add `#`):
+   ```text
+   # Match Group administrators
+   #       AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys
+   ```
+4. Restart the service:
+   ```powershell
+   Restart-Service sshd -Force
+   ```
+
+Note: There is a reason why this setting is the default and you should know that it is not a security issue. It is a security feature.
+Make sure you know what you are doing before you change this setting.
+
+### 3. Start the SSH Service
+Start the service and set it to run automatically:
 ```powershell
-# Start the SSHD service
 Start-Service sshd
-
-# Set startup type to Automatic
 Set-Service -Name sshd -StartupType 'Automatic'
-
 # Check status
 Get-Service sshd
 ```
@@ -143,3 +162,26 @@ Now simply open MLCRemote:
 4.  **Connect**.
 
 MLCRemote will automatically deploy the Windows-compatible agent and start the session.
+
+---
+
+## Technical Internals: Windows Deployment (For Contributors)
+
+MLCRemote uses a sophisticated deployment strategy for Windows to bypass limitations of the SSH "Session 0" environment where GUI interactions and strict process isolation typically cause hangs.
+
+### 1. WMI Process Spawning
+Standard `Start-Process` commands often fail to detach correctly in an SSH session, leading to hanging connections or processes that die when the SSH tunnel closes.
+MLCRemote solves this by using **Windows Management Instrumentation (WMI)** to spawn the backend process.
+
+*   **Class**: `Win32_Process`
+*   **Method**: `Create`
+*   **Mechanism**: This creates a process completely independent of the parent SSH shell, effectively "daemonizing" it on Windows.
+
+### 2. Log Redirection via cmd.exe
+To capture stdout/stderr from the detached process, we wrap the execution in `cmd.exe`:
+`cmd /c ""binary.exe" args > "current.log" 2>&1"`
+
+This ensures logs are properly written to disk even for detached processes.
+
+### 3. Path Robustness
+The deployment script (`start_agent.ps1` via `Invoke-WmiMethod`) automatically resolves paths relative to `$env:USERPROFILE`, ensuring the backend runs in the user's home directory regardless of the SSH shell's initial working directory (which might default to `System32` for WMI).

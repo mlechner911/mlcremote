@@ -117,7 +117,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 user: p.user,
                 host: p.host,
                 localPort: p.localPort,
-                remoteHost: 'localhost',
+                remoteHost: '127.0.0.1',
                 remotePort: 8443,
                 identityFile: p.identityFile,
                 extraArgs: [...(p.extraArgs || [])],
@@ -152,10 +152,10 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                     if (parts.length === 3) {
                         // started:PORT:TOKEN
                         actualPort = parseInt(parts[1], 10);
-                        token = parts[2];
+                        token = parts[2].trim();
                     } else {
                         // Legacy started:TOKEN
-                        token = res.substring(8);
+                        token = res.substring(8).trim();
                     }
                 }
 
@@ -182,7 +182,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 }
 
                 onConnected({
-                    user: p.user, host: p.host, localPort: actualPort, remoteHost: 'localhost', remotePort: 8443,
+                    user: p.user, host: p.host, localPort: actualPort, remoteHost: '127.0.0.1', remotePort: 8443,
                     identityFile: p.identityFile, extraArgs: p.extraArgs,
                     remoteOS: p.remoteOS, remoteArch: p.remoteArch, remoteVersion: p.remoteVersion,
                     id: p.id, color: p.color
@@ -226,7 +226,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
         setStatus(t('status_checking'))
         try {
             const backendProfile = {
-                user: p.user, host: p.host, localPort: p.localPort, remoteHost: 'localhost', remotePort: 8443,
+                user: p.user, host: p.host, localPort: p.localPort, remoteHost: '127.0.0.1', remotePort: 8443,
                 identityFile: p.identityFile, extraArgs: [...(p.extraArgs || [])]
             }
             if (p.port && p.port !== 22) backendProfile.extraArgs.push('-p', String(p.port))
@@ -389,7 +389,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                         setStatus(t('restart_session'))
                         try {
                             const backendProfile = {
-                                user: p.user, host: p.host, localPort: p.localPort, remoteHost: 'localhost', remotePort: 8443,
+                                user: p.user, host: p.host, localPort: p.localPort, remoteHost: '127.0.0.1', remotePort: 8443,
                                 identityFile: p.identityFile, extraArgs: [...(p.extraArgs || [])]
                             }
                             if (p.port && p.port !== 22) backendProfile.extraArgs.push('-p', String(p.port))
