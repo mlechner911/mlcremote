@@ -169,14 +169,38 @@ func (m *Manager) DeployPublicKey(host string, user string, port int, password s
 	safeKey := strings.ReplaceAll(pubKeyStr, "'", "'\\''")
 
 	// Simplified command: check dir -> append key -> fix perms
-	cmd := fmt.Sprintf("mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '%s' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys", safeKey)
+	// Linux/Mac implementation
+	linuxCmd := fmt.Sprintf("mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '%s' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys", safeKey)
 
 	fmt.Printf("[DEBUG] DeployPublicKey: Running command on remote...\n")
-	output, err := session.CombinedOutput(cmd)
+	output, err := session.CombinedOutput(linuxCmd)
 	if err != nil {
-		fmt.Printf("[DEBUG] DeployPublicKey: Remote command failed: %v\n", err)
-		fmt.Printf("[DEBUG] DeployPublicKey: Remote output: %s\n", string(output))
-		return fmt.Errorf("failed to install public key: %w (output: %s)", err, strings.TrimSpace(string(output)))
+		fmt.Printf("[DEBUG] DeployPublicKey: Linux command failed: %v. Output: %s\n", err, strings.TrimSpace(string(output)))
+		fmt.Println("[DEBUG] DeployPublicKey: Attempting Windows fallback...")
+
+		// Re-open session? Yes, CombinedOutput closes the session.
+		// We need a NEW session for the fallback.
+		session2, err2 := client.NewSession()
+		if err2 != nil {
+			return fmt.Errorf("failed to create fallback session: %w", err2)
+		}
+		defer session2.Close()
+
+		// Windows/PowerShell implementation
+		// We use the raw key and escape single quotes for PowerShell (which is '')
+		psKey := strings.ReplaceAll(pubKeyStr, "'", "''")
+
+		// Note: We don't try to fix permissions deeply here as it requires complex ACL script.
+		// We rely on the user having followed the setup guide for ACLs or the default being "okay" enough for now.
+		// Using backticks for escaping double quotes inside the command string if needed, or just strict sequence.
+		winCmd := fmt.Sprintf("powershell -Command \"New-Item -Force -ItemType Directory -Path \\\"$env:USERPROFILE\\.ssh\\\"; Add-Content -Force -Path \\\"$env:USERPROFILE\\.ssh\\authorized_keys\\\" -Value '%s'\"", psKey)
+
+		output2, err2 := session2.CombinedOutput(winCmd)
+		if err2 != nil {
+			return fmt.Errorf("failed to install public key (tried Linux and Windows): %v (LinOut: %s) (WinOut: %s)", err2, strings.TrimSpace(string(output)), strings.TrimSpace(string(output2)))
+		}
+		fmt.Printf("[DEBUG] DeployPublicKey: Windows fallback success. Output: %s\n", string(output2))
+		return nil
 	}
 
 	fmt.Printf("[DEBUG] DeployPublicKey: Success. Output: %s\n", string(output))
