@@ -77,7 +77,9 @@ New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled Tru
 
 ## Step 4: Authentication Setup (SSH Only)
 
-**MLCRemote strictly enforces SSH Key authentication.** Password authentication is only supported for the initial key upload, but keys are preferred for stability.
+**MLCRemote strictly enforces SSH Key authentication.**
+*   **Why?** The app connects using `BatchMode=yes`, which automatically fails if a password is requested (to prevent the app from hanging).
+*   **Manual Testing:** You *can* use a password to test the connection in a terminal (`ssh user@host`), but the app **will NOT work** without a key.
 
 ### A. Set Default Shell (Optional but Recommended)
 MLCRemote is compatible with the default Command Prompt (`cmd.exe`), as it explicitly invokes PowerShell when needed. You **do not** need to change the default shell to PowerShell, though many users prefer it.
