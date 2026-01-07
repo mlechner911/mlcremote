@@ -70,11 +70,12 @@ func (m *Manager) CheckRemoteVersionWithOS(profileJSON string, osType string) (s
 
 	var remotePath string
 	if osType == "windows" {
-		// Windows cmd.exe style
-		// .mlcremote/bin/dev-server.exe
+		// Windows cmd.exe style path construction.
+		// We use %USERPROFILE% because typical SSH sessions on Windows spawn cmd.exe or unexpanded shells
+		// where '~' is not recognized. This ensures we target the correct absolute path.
 		remotePath = fmt.Sprintf("%%USERPROFILE%%\\.mlcremote\\bin\\%s", binName)
 	} else {
-		// Unix style
+		// Unix style pathing (Standard)
 		remotePath = fmt.Sprintf("~/.mlcremote/bin/%s", binName)
 	}
 

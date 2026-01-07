@@ -53,12 +53,15 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 
 	// 4. Deploy Agent
 
-	// Update OS Metadata
+	// Update OS Metadata in Profile
+	// We persist the detected OS, Architecture, and Version immediately.
+	// This ensures the UI (Sidebar, Details) shows accurate info (e.g., "windows/amd64 v1.0.3")
+	// avoiding "vunknown" or missing labels on subsequent launches.
 	if parts := strings.Split(osArch, "/"); len(parts) >= 2 {
 		cp.RemoteOS = parts[0]
 		cp.RemoteArch = parts[1]
 
-		// Fetch Version efficiently using known OS
+		// Fetch Version efficiently using known OS to handle pathing correctly
 		if version, err := a.Backend.CheckRemoteVersionWithOS(profileJSON, cp.RemoteOS); err == nil {
 			cp.RemoteVersion = version
 		} else {
