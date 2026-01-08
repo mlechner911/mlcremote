@@ -238,7 +238,9 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
           )}
         </div>
         <div className="breadcrumbs">
-          <button type="button" className="link" onClick={() => load('')}>root</button>
+          <button type="button" className="link icon-btn" onClick={() => load('')} title="Server Root">
+            <Icon name={getIcon('terminal')} size={14} />
+          </button>
           {path && path.split('/').filter(Boolean).map((seg, idx, arr) => {
             const p = `/${arr.slice(0, idx + 1).join('/')}`
             return (
