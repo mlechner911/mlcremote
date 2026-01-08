@@ -159,8 +159,10 @@ endif
 ## installer - Build Windows Installer using NSIS (Windows Only)
 installer: prepare-payload
 	@echo "Building Windows Installer (NSIS)..."
-	set "PATH=%PATH%;C:\Program Files (x86)\NSIS" && cd $(DESKTOP_DIR)/wails && wails build -nsis
-	@echo "Installer created in $(DESKTOP_DIR)/wails/build/bin/"
+	cd $(DESKTOP_DIR)/wails && wails build -nsis
+	@if not exist dist mkdir dist
+	@powershell -noprofile -command "Copy-Item -Force $(DESKTOP_DIR)/wails/build/bin/*installer.exe dist/"
+	@echo "Installer available in dist/"
 
 
 

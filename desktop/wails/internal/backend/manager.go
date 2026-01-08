@@ -3,6 +3,8 @@ package backend
 import (
 	"io/fs"
 	"os/exec"
+
+	"github.com/mlechner911/mlcremote/desktop/wails/internal/remotesystem"
 )
 
 type Manager struct {
@@ -17,6 +19,6 @@ func NewManager(payload fs.FS) *Manager {
 
 func createSilentCmd(name string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
-	configureSysProcAttr(cmd)
+	remotesystem.ConfigureCmd(cmd)
 	return cmd
 }

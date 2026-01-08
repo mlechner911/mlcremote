@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mlechner911/mlcremote/desktop/wails/internal/remotesystem"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -99,7 +100,7 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 	cmd := exec.Command("ssh", args...)
 	// Set SysProcAttr for windows to hide window?
 	// if runtime.GOOS == "windows" { ... } -> copied from original code usually
-	configureSysProcAttr(cmd)
+	remotesystem.ConfigureCmd(cmd)
 
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
@@ -162,7 +163,7 @@ func (m *Manager) KillPort(port int) error {
 		// Simplified implementation for prototype
 		cmd := exec.Command("powershell", "-Command",
 			fmt.Sprintf("Get-NetTCPConnection -LocalPort %d -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }", port))
-		configureSysProcAttr(cmd)
+		remotesystem.ConfigureCmd(cmd)
 		// don't check error, might not exist
 		_ = cmd.Run()
 	} else {

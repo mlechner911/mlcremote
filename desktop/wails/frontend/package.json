@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:desktop": "vite build",
+    "build": "npx vite build",
+    "build:desktop": "npx vite build",
     "preview": "vite preview --port 5173"
   },
   "dependencies": {
