@@ -50,7 +50,7 @@ export default function ColorPicker({ value, onChange }: ColorPickerProps) {
                 />
                 <div style={{
                     width: 20, height: 20, borderRadius: '50%',
-                    background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)',
+                    background: isCustom ? value : 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)',
                     border: isCustom ? '2px solid white' : '2px solid transparent',
                     outline: isCustom ? '1px solid var(--accent)' : 'none',
                     pointerEvents: 'none'
