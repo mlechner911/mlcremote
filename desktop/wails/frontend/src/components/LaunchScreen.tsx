@@ -152,13 +152,6 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
 
             const pStr = JSON.stringify(backendProfile)
 
-            // Update LastUsed
-            p.lastUsed = Math.floor(Date.now() / 1000)
-            const validP = { ...p, id: p.id || "" }
-            // @ts-ignore
-            SaveProfile(validP)
-            refreshProfiles()
-
             // Unified Flow: StartTunnelWithProfile handles all logic (Detect -> Deploy -> Connect)
             const res = await StartTunnelWithProfile(pStr)
 
@@ -193,6 +186,9 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                         p.remoteArch = arch
                     }
                     if (ver) p.remoteVersion = ver
+
+                    // Update LastUsed on successful connection
+                    p.lastUsed = Math.floor(Date.now() / 1000)
 
                     const validP = { ...p, id: p.id || "" }
                     // @ts-ignore
