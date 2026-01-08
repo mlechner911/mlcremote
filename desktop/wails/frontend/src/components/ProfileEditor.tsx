@@ -58,6 +58,26 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
     const normalizePath = (p: string) => p.replace(/\\/g, '/').toLowerCase()
 
     useEffect(() => {
+        if (profile) {
+            setName(profile.name || '')
+            setColor(profile.color || DEFAULT_COLORS[0])
+            setUser(profile.user || '')
+            setHost(profile.host || '')
+            setPort(profile.port || 22)
+            setLocalPort(profile.localPort || 8443)
+            setIdentityFile(profile.identityFile || '')
+        } else {
+            setName('')
+            setColor(DEFAULT_COLORS[0])
+            setUser('')
+            setHost('')
+            setPort(22)
+            setLocalPort(8443)
+            setIdentityFile('')
+        }
+    }, [profile])
+
+    useEffect(() => {
         // Determine initial auth type
         if (!profile?.identityFile) {
             setAuthType('agent')
