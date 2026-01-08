@@ -162,7 +162,8 @@ export default function App() {
       }
       if (e.data.type === 'screenshot') {
         const root = document.querySelector('.app') as HTMLElement
-        if (root) captureElementToPng(root, 'mlcremote-screenshot.png')
+        const name = e.data.filename || 'mlcremote-screenshot.png'
+        if (root) captureElementToPng(root, name)
       }
     }
     window.addEventListener('message', handleMessage)
