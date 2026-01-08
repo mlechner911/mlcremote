@@ -21,7 +21,10 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
     // const targetSrc = `/debug_iframe.html?api=${encodeURIComponent(url)}&_t=${Date.now()}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
 
     // Production View
-    const targetSrc = `/ide/index.html?api=${encodeURIComponent(url)}&lng=${lang}&theme=${theme}` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
+    const [initialTheme] = React.useState(theme)
+    const targetSrc = React.useMemo(() => {
+        return `/ide/index.html?api=${encodeURIComponent(url)}&lng=${lang}&theme=${initialTheme}&controlled=true` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
+    }, [url, profileId, lang])
 
     const iframeRef = React.useRef<HTMLIFrameElement>(null)
 
@@ -56,6 +59,19 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
         }
     }
 
+    const btnStyle = {
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        color: 'white',
+        border: '1px solid rgba(255,255,255,0.2)',
+        padding: '6px 12px',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontWeight: 500,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        transition: 'background-color 0.2s',
+        height: 32
+    }
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
             {/* Header */}
@@ -87,38 +103,41 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                         Tunnel Port: {localPort || 8443}
                     </span>
                 </div>
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <button
+                        onClick={toggleTheme}
+                        title={t('toggle_theme')}
+                        style={btnStyle}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                    >
+                        <Icon name={theme === 'dark' ? 'icon-moon' : 'icon-sun'} size={16} />
+                    </button>
+                    <button
+                        onClick={handleScreenshot}
+                        title={t('screenshot')}
+                        style={btnStyle}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                    >
+                        <Icon name="icon-screenshot" size={16} />
+                    </button>
+
                     <button
                         onClick={handleShare}
-                        style={{
-                            backgroundColor: 'rgba(255,255,255,0.1)',
-                            color: 'white',
-                            border: '1px solid rgba(255,255,255,0.2)',
-                            padding: '6px 16px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontWeight: 500,
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            transition: 'background-color 0.2s',
-                        }}
+                        style={btnStyle}
                         onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
                         onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
                         title={t('share_session')}
                     >
-                        <Icon name="icon-key" size={14} />
                         <span style={{ fontSize: '0.9rem' }}>{t('share_session')}</span>
                     </button>
                     <button
                         onClick={onDisconnect}
                         style={{
+                            ...btnStyle,
                             backgroundColor: '#ef4444', // red-500
-                            color: 'white',
-                            border: 'none',
-                            padding: '6px 16px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontWeight: 500,
-                            transition: 'background-color 0.2s',
+                            border: 'none'
                         }}
                         onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
                         onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
@@ -126,41 +145,6 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                         {t('disconnect')}
                     </button>
                 </div>
-            </div>
-
-            {/* Overlay Controls */}
-            <div style={{
-                position: 'absolute',
-                top: 60, right: 20, // Below header
-                display: 'flex', gap: 8,
-                zIndex: 100
-            }}>
-                <button
-                    onClick={toggleTheme}
-                    title={t('toggle_theme')}
-                    style={{
-                        width: 36, height: 36, borderRadius: '50%',
-                        background: 'var(--bg-panel)', border: '1px solid var(--border)',
-                        color: 'var(--text-primary)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)', cursor: 'pointer'
-                    }}
-                >
-                    <Icon name={theme === 'dark' ? 'icon-moon' : 'icon-sun'} size={18} />
-                </button>
-                <button
-                    onClick={handleScreenshot}
-                    title={t('screenshot')}
-                    style={{
-                        width: 36, height: 36, borderRadius: '50%',
-                        background: 'var(--bg-panel)', border: '1px solid var(--border)',
-                        color: 'var(--text-primary)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)', cursor: 'pointer'
-                    }}
-                >
-                    <Icon name="icon-screenshot" size={18} />
-                </button>
             </div>
 
             <div style={{ flex: 1, background: '#000', position: 'relative' }}>

@@ -141,7 +141,11 @@ export default function App() {
   const [now, setNow] = React.useState<Date>(new Date())
   const [messageBox, setMessageBox] = React.useState<{ title: string; message: string } | null>(null)
 
-  const isControlled = React.useMemo(() => !!new URLSearchParams(window.location.search).get('theme'), [])
+  const isControlled = React.useMemo(() => {
+    const p = new URLSearchParams(window.location.search)
+    // Check for 'controlled' flag or fallback to legacy 'theme' existence check
+    return !!p.get('controlled') || !!p.get('theme')
+  }, [])
 
   // Listen for messages from parent (Desktop Overlay)
   React.useEffect(() => {
