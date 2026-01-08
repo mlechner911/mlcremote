@@ -166,15 +166,11 @@ installer: prepare-payload
 
 
 
-# Define delete command
-# Define delete command
-RM_RF = rm -rf
-
 ## clean - Remove build artifacts
 clean:
-	@rm -f $(BIN_DIR)/dev-server
-	@$(RM_RF) $(STATIC_DIR)
-	@$(RM_RF) build/dist
+	-$(RM_F) $(BIN_DIR)\dev-server$(EXT)
+	-$(RM_RF) $(STATIC_DIR)
+	-$(RM_RF) build/dist
 	@echo "Cleaned build artifacts"
 
 .PHONY: dist

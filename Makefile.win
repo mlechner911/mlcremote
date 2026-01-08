@@ -28,3 +28,7 @@ COPY_DESKTOP_IDE = powershell -noprofile -command "Copy-Item -Recurse -Force $(F
 
 # Linux Build Directory
 ENSURE_DIST_LINUX = if not exist dist\linux mkdir dist\linux
+
+# Clean Utilities
+RM_F = del /f /q
+RM_RF = powershell -noprofile -command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
