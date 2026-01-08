@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"runtime"
 	"sync"
+	"syscall"
 	"time"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -162,6 +163,7 @@ func (m *Manager) KillPort(port int) error {
 		// Simplified implementation for prototype
 		cmd := exec.Command("powershell", "-Command",
 			fmt.Sprintf("Get-NetTCPConnection -LocalPort %d -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }", port))
+		configureSysProcAttr(cmd)
 		// don't check error, might not exist
 		_ = cmd.Run()
 	} else {
@@ -184,6 +186,6 @@ func streamReaderToEvents(ctx context.Context, r io.Reader, source string) {
 
 func configureSysProcAttr(cmd *exec.Cmd) {
 	if runtime.GOOS == "windows" {
-		// cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true} // requiring syscall import
+		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	}
 }

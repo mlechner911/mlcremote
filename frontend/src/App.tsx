@@ -417,6 +417,15 @@ export default function App() {
 
     const onClose = (path: string) => {
       // close tab logic
+      const p = panes[paneId]
+      if (!p) return
+
+      // logic: if this is the last tab in the pane, AND we are not root, close the pane
+      if (p.files.length === 1 && p.files[0] === path && paneId !== 'root') {
+        closePane(paneId)
+        return
+      }
+
       setPanes(prev => {
         const p = prev[paneId]
         if (!p) return prev

@@ -127,7 +127,11 @@ Lightweight remote development environment for small servers, wrapped in a nativ
   <img src="screenshots/example.png" width="45%" alt="File Editor">
   <img src="screenshots/image_preview.png" width="45%" alt="Image Preview">
 </p>
-
+<p align="center">
+Split view and remote shells
+  <img src="screenshots/action1.png" width="45%" alt="File Editor">
+ 
+</p>
 ## Quick Start (Desktop)
 
 1. **Download** the latest release for your OS.

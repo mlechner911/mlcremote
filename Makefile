@@ -169,6 +169,15 @@ else
 	@echo "Created $$ZIPNAME"
 endif
 
+.PHONY: desktop-installer
+desktop-installer:
+ifeq ($(OS),Windows_NT)
+	@echo "Packaging installer..."
+	@powershell -ExecutionPolicy Bypass -File desktop/wails/scripts/package.ps1
+else
+	@echo "Installer generation is currently Windows-only."
+endif
+
 
 # Define delete command
 # Define delete command

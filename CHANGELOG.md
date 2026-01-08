@@ -28,6 +28,8 @@ All notable changes to this project will be documented in this file.
 - **Stat Failed Error**: Fixed an issue where the "File Details" view would lose context of the selected file.
 - **PDF Detection**: Fixed PDF files sometimes not opening correctly.
 - **Auto-Login**: Fixed a race condition where the token URL parameter was ignored on startup.
+- **Tab Context Menu**: Adjusted "Close Other" and "Close Left" options to only appear when relevant (e.g., multiple tabs open).
+- **Split View**: Fixed an issue where split panes would not automatically close when the last tab within them was closed.
 - **Windows Build**: Fixed `make run` failing on Windows due to `mkdir -p` syntax.
 - **Symlink Dirty State**: Opening a symlink to a directory no longer incorrectly shows the "unsaved changes" indicator.
 - **Binary Views**: "Unsupported" files now correctly share the single "Binary" tab instance.

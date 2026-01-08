@@ -169,8 +169,8 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
         return (
           <div className="dropdown" style={style}>
             <button ref={el => { if (el) el.focus() }} className="link" onClick={() => { onClose?.(p); setOpenIdx(null) }}>{t('close')}</button>
-            <button className="link" onClick={() => { onCloseOthers?.(p); setOpenIdx(null) }}>{t('close_others')}</button>
-            <button className="link" onClick={() => { onCloseLeft?.(p); setOpenIdx(null) }}>{t('close_left')}</button>
+            {openFiles.length > 1 && <button className="link" onClick={() => { onCloseOthers?.(p); setOpenIdx(null) }}>{t('close_others')}</button>}
+            {openIdx > 0 && <button className="link" onClick={() => { onCloseLeft?.(p); setOpenIdx(null) }}>{t('close_left')}</button>}
           </div>
         )
       })()}
