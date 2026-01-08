@@ -308,7 +308,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
           onClose={() => setContextMenu(null)}
           items={[
             {
-              label: "OPEN TEST",
+              label: t('open', 'Open'),
               icon: <Icon name={getIcon('view')} />,
               action: () => {
                 if (contextMenu.item.isDir) {
@@ -324,8 +324,8 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
                 }
               }
             },
-            {
-              label: `${t('download')} ${contextMenu.item.isDir ? '(Dir)' : ''}`,
+            ...(contextMenu.item.isDir ? [] : [{
+              label: t('download'),
               icon: <Icon name={getIcon('download')} />,
               action: () => {
                 const link = document.createElement('a')
@@ -336,7 +336,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
                 document.body.removeChild(link)
               },
               separator: true
-            },
+            }]),
             {
               label: t('copy_full_path'),
               icon: <Icon name={getIcon('copy')} />,
