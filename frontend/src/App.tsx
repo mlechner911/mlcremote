@@ -696,8 +696,9 @@ export default function App() {
           <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} reloadSignal={reloadSignal} onSelect={(p, isDir) => {
             setSelectedPath(p)
             if (isDir) {
-              // do not open a persistent tab for directories; just navigate
-              setActiveFile(p)
+              // Auto-open metadata view for directories
+              if (!openFiles.includes('metadata')) openFile('metadata')
+              setActiveFile('metadata')
               return
             }
             // file: open editor tab (respect autoOpen)
