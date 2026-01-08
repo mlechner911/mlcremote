@@ -3,6 +3,7 @@ frontend/node_modules/
 bin/*
 dist/*
 !dist/README.md
+!dist/MLCRemote-Installer.zip
 frontend/dist/
 public/js
 *.exe
