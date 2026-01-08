@@ -70,5 +70,6 @@
     "close_left": "Cerrar izquierda",
     "restore": "Restaurar",
     "scroll_left": "desplazarse a la izquierda",
-    "scroll_right": "desplazarse a la derecha"
+    "scroll_right": "desplazarse a la derecha",
+    "properties": "Propiedades"
 }
