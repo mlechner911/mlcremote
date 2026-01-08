@@ -485,8 +485,8 @@ export default function App() {
                 <TabBarComponent
                   openFiles={pFiles}
                   active={pActive}
-                  titles={titles}
-                  fullPaths={fullPaths}
+                  titles={{ ...titles, metadata: t('details', 'Details') }}
+                  fullPaths={{ ...fullPaths, metadata: selectedPath || '' }}
                   types={types}
                   onRestoreEvicted={() => { }} // simplified
                   onActivate={onActivate}

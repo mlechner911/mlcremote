@@ -121,6 +121,9 @@ export default function TabBar({ openFiles, active, onActivate, onClose, onClose
                 {(() => {
                   // Prefer using the generated `iconForExtension` mapping for all
                   // icon selection so we don't hardcode sprite ids here.
+                  if (p === 'metadata') {
+                    return <Icon name={getIcon('view')} />
+                  }
                   if ((types && types[p]) === 'shell') {
                     return <Icon name={getIcon('terminal')} />
                   }
