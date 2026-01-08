@@ -72,13 +72,20 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
         }
     }
 
+    const [isDisconnecting, setIsDisconnecting] = React.useState(false)
+
+    const handleDisconnectWrapper = () => {
+        setIsDisconnecting(true)
+        onDisconnect()
+    }
+
     const btnStyle = {
         backgroundColor: 'rgba(255,255,255,0.1)',
         color: 'white',
         border: '1px solid rgba(255,255,255,0.2)',
         padding: '6px 12px',
         borderRadius: '4px',
-        cursor: 'pointer',
+        cursor: isDisconnecting ? 'wait' : 'pointer',
         fontWeight: 500,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         transition: 'background-color 0.2s',
@@ -86,7 +93,10 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        <div style={{
+            display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden',
+            cursor: isDisconnecting ? 'wait' : 'default',
+        }}>
             {/* Header */}
             <div style={{
                 backgroundColor: '#1f2937', // dark-800
@@ -96,7 +106,9 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 borderBottom: '1px solid #374151',
-                userSelect: 'none'
+                userSelect: 'none',
+                opacity: isDisconnecting ? 0.6 : 1,
+                transition: 'opacity 0.3s'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     {profileColor && (
@@ -120,47 +132,57 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                     <button
                         onClick={toggleTheme}
                         title={t('toggle_theme')}
+                        disabled={isDisconnecting}
                         style={btnStyle}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
-                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                        onMouseOver={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)')}
+                        onMouseOut={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
                     >
                         <Icon name={theme === 'dark' ? 'icon-moon' : 'icon-sun'} size={16} />
                     </button>
                     <button
                         onClick={handleScreenshot}
                         title={t('screenshot')}
+                        disabled={isDisconnecting}
                         style={btnStyle}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
-                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                        onMouseOver={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)')}
+                        onMouseOut={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
                     >
                         <Icon name="icon-screenshot" size={16} />
                     </button>
 
                     <button
                         onClick={handleShare}
+                        disabled={isDisconnecting}
                         style={btnStyle}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
-                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                        onMouseOver={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)')}
+                        onMouseOut={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
                         title={t('share_session')}
                     >
                         <span style={{ fontSize: '0.9rem' }}>{t('share_session')}</span>
                     </button>
                     <button
-                        onClick={onDisconnect}
+                        onClick={handleDisconnectWrapper}
+                        disabled={isDisconnecting}
                         style={{
                             ...btnStyle,
                             backgroundColor: '#ef4444', // red-500
-                            border: 'none'
+                            border: 'none',
+                            opacity: isDisconnecting ? 0.7 : 1
                         }}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                        onMouseOver={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = '#dc2626')}
+                        onMouseOut={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = '#ef4444')}
                     >
-                        {t('disconnect')}
+                        {isDisconnecting ? t('disconnecting') || 'Disconnecting...' : t('disconnect')}
                     </button>
                 </div>
             </div>
 
-            <div style={{ flex: 1, background: '#000', position: 'relative' }}>
+            <div style={{
+                flex: 1, background: '#000', position: 'relative',
+                opacity: isDisconnecting ? 0.5 : 1,
+                transition: 'opacity 0.5s ease',
+                pointerEvents: isDisconnecting ? 'none' : 'auto'
+            }}>
                 <iframe
                     ref={iframeRef}
                     src={targetSrc}
