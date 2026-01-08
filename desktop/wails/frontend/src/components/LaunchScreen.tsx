@@ -69,6 +69,18 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
 
     const handleSave = async (p: ConnectionProfile) => {
         try {
+            // Check for duplicates if creating new
+            if (!p.id) {
+                const existing = profiles.find(x => x.user === p.user && x.host === p.host && (x.port || 22) === (p.port || 22))
+                if (existing) {
+                    const target = `${p.user}@${p.host}`
+                    // Confirm update vs create new
+                    if (confirm(t('profile_exists_update', { target }))) {
+                        p.id = existing.id
+                    }
+                }
+            }
+
             // Ensure ID is string to match Wails model
             const validP = { ...p, id: p.id || "" }
             // @ts-ignore - mismatch between local and wails types
