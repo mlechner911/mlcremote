@@ -4,6 +4,7 @@ import {
     StartTunnelWithProfile, HasMasterPassword, DetectRemoteOS, CheckRemoteVersion, DeploySSHKey,
     IsPremium, SetupManagedIdentity, GetManagedIdentityPath, GetRemoteSession, KillRemoteSession
 } from '../wailsjs/go/app/App'
+import { EventsOn, EventsOff } from '../wailsjs/runtime'
 import { useConnectionTester } from '../hooks/useConnectionTester'
 import ProfileEditor, { ConnectionProfile } from './ProfileEditor'
 import SessionDialog, { SessionInfo } from './SessionDialog'
@@ -169,6 +170,12 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
             const pStr = JSON.stringify(backendProfile)
 
             // Unified Flow: StartTunnelWithProfile handles all logic (Detect -> Deploy -> Connect)
+            // Listen for progress updates
+            // Listen for progress updates
+            EventsOn("connection-status", (msg: string) => {
+                setStatus(t(`status_${msg}` as any) || msg)
+            })
+
             const res = await StartTunnelWithProfile(pStr)
 
             if (res === 'started' || res.startsWith('started:')) {
@@ -253,6 +260,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 setStatus(t('status_failed'))
             }
         } finally {
+            EventsOff("connection-status")
             setLoading(false)
         }
     }

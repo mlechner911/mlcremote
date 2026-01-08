@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/config"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/ssh"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // StartTunnel starts a basic tunnel from a command string (legacy/simple)
@@ -45,6 +46,7 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	}
 
 	// 3. Detect Remote OS
+	runtime.EventsEmit(a.ctx, "connection-status", "detecting_os")
 	// We pass the raw JSON because Backend service expects it (to avoid re-marshalling)
 	osArch, err := a.Backend.DetectRemoteOS(profileJSON)
 	if err != nil {
@@ -75,6 +77,8 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	// Generate a secure session token
 	token := uuid.New().String()
 
+	runtime.EventsEmit(a.ctx, "connection-status", "deploying_agent")
+
 	forceNew := cp.Mode == "parallel"
 	deployRes, err := a.Backend.DeployAgent(profileJSON, osArch, token, forceNew)
 	if err != nil {
@@ -98,6 +102,7 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	}
 
 	// 6. Start Tunnel via SSH Service
+	runtime.EventsEmit(a.ctx, "connection-status", "starting_tunnel")
 	// Check if LocalPort is available, if not find a free one
 	targetPort := cp.LocalPort
 	if targetPort == 0 {
@@ -138,6 +143,7 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	}
 
 	// 7. Wait for Healthy (optional, but good UX)
+	runtime.EventsEmit(a.ctx, "connection-status", "verifying_connection")
 	// We can check /health through the tunnel
 	time.Sleep(500 * time.Millisecond) // Wait for tunnel to establish
 	// Check backend health

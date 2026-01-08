@@ -3,7 +3,6 @@ frontend/node_modules/
 bin/*
 dist/*
 !dist/README.md
-!dist/*.zip
 frontend/dist/
 public/js
 *.exe
@@ -18,8 +17,9 @@ desktop/lightdev-desktop
 # Desktop (Wails) build artifacts
 /desktop/build/
 /desktop/wails/build/
-/desktop/wails/appfrontend/dist/
-/desktop/wails/appfrontend/node_modules/
+/desktop/wails/frontend/dist/
+/desktop/wails/frontend/node_modules/
+/desktop/wails/frontend/public/ide/
 
 # MacOS and Windows extras
 .DS_Store
