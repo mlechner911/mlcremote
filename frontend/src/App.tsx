@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Health } from './api'
+import type { Health, Settings } from './api'
 import { statPath, saveSettings, getSettings } from './api'
 import { useAuth } from './context/AuthContext'
 import FileExplorer from './components/FileExplorer'
@@ -12,9 +12,9 @@ import Editor from './components/Editor'
 import BinaryView from './components/BinaryView'
 import FileDetailsView from './components/FileDetailsView'
 const TerminalTab = React.lazy(() => import('./components/TerminalTab'))
-// const TabBarComponent = React.lazy(() => import('./components/TabBar'))
-
 import TabBarComponent from './components/TabBar'
+import SetupWizard from './components/SetupWizard'
+
 import LogOverlay from './components/LogOverlay'
 import { formatBytes } from './utils/bytes'
 import { captureElementToPng } from './utils/capture'
@@ -134,12 +134,14 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = React.useState<boolean>(false)
   const [hideMemoryUsage, setHideMemoryUsage] = React.useState<boolean>(false)
   const [serverInfoOpen, setServerInfoOpen] = React.useState<boolean>(false)
-  const [settings, setSettings] = React.useState<{ allowDelete: boolean; defaultShell: string } | null>(null)
+  const [settings, setSettings] = React.useState<Settings | null>(null)
+  const [setupComplete, setSetupComplete] = React.useState<boolean>(true)
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
   const [theme, setTheme] = React.useState<'dark' | 'light'>('dark')
   const [maxEditorSize, setMaxEditorSize] = React.useState<number>(0) // 0 means not yet loaded or default
   const [now, setNow] = React.useState<Date>(new Date())
   const [messageBox, setMessageBox] = React.useState<{ title: string; message: string } | null>(null)
+  const [loadedSettings, setLoadedSettings] = React.useState(false)
 
   const isControlled = React.useMemo(() => {
     const p = new URLSearchParams(window.location.search)
@@ -200,8 +202,17 @@ export default function App() {
   React.useEffect(() => {
     getSettings()
       .then(s => {
-        setSettings({ allowDelete: s.allowDelete, defaultShell: s.defaultShell })
-        if (typeof s.allowDelete !== 'undefined') setCanChangeRoot(!!s.allowDelete) // Using allowDelete/ChangeRoot logic overlap? Actually allowChangeRoot was returned before.
+        setSettings(s)
+        if (typeof s.allowDelete !== 'undefined') setCanChangeRoot(!!s.allowDelete)
+
+        // Setup Wizard Logic
+        if (typeof s.setupCompleted !== 'undefined') {
+          setSetupComplete(s.setupCompleted)
+        } else {
+          // If undefined, assume false (show wizard) implies new user or upgrade needing confirmation
+          setSetupComplete(!!s.setupCompleted)
+        }
+
         // Apply user prefs
         if (s.theme) setTheme(s.theme as any)
         if (typeof s.autoOpen !== 'undefined') setAutoOpenState(s.autoOpen)
@@ -235,8 +246,12 @@ export default function App() {
           // Fallback to server setting
           i18n.changeLanguage(s.language)
         }
+        setLoadedSettings(true)
       })
-      .catch(() => setSettings({ allowDelete: false, defaultShell: 'bash' }))
+      .catch(() => {
+        setSettings({ allowDelete: false, defaultShell: 'bash' })
+        setLoadedSettings(true)
+      })
 
     // Restore state if profileId is present
     const params = new URLSearchParams(window.location.search)
@@ -561,6 +576,15 @@ export default function App() {
         )}
       </div>
     )
+  }
+
+  if (!loadedSettings) return null // or loading spinner
+
+  if (!setupComplete) {
+    return <SetupWizard onComplete={() => {
+      setSetupComplete(true)
+      saveSettings({ setupCompleted: true }).catch(console.error)
+    }} />
   }
 
   return (

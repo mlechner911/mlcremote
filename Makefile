@@ -16,55 +16,26 @@ DOCS_SPEC := $(PWD)/docs/openapi.yaml
 
 # OS-Specific Configuration
 ifeq ($(OS),Windows_NT)
-    EXT = .exe
-    ENSURE_BIN = if not exist $(BIN_DIR) mkdir $(BIN_DIR)
-    SERVER_BIN = .\$(BIN_DIR)\dev-server.exe
-    ICON_GEN_BIN = .\$(BIN_DIR)\icon-gen.exe
-    
-    # Payload Utilities
-    MKDIR_PAYLOAD = if not exist $(DESKTOP_DIR)\wails\assets\payload mkdir $(DESKTOP_DIR)\wails\assets\payload
-    # Note: Use set "VAR=val" to avoid trailing spaces
-    BUILD_LINUX_CMD = cd $(BACKEND_DIR) && set "GOOS=linux" && set "GOARCH=amd64" && go build
-    
-    # Cleanup and Copy for Windows
-    # We use powershell for reliable recursive copy/delete to avoid cmd.exe intricacies with xcopy/rmdir checks
-    CLEAN_PAYLOAD_FRONTEND = powershell -noprofile -command "if (Test-Path $(DESKTOP_DIR)/wails/assets/payload/frontend-dist) { Remove-Item -Recurse -Force $(DESKTOP_DIR)/wails/assets/payload/frontend-dist }"
-    MKDIR_PAYLOAD_FRONTEND = if not exist $(DESKTOP_DIR)\wails\assets\payload\frontend-dist mkdir $(DESKTOP_DIR)\wails\assets\payload\frontend-dist
-    COPY_PAYLOAD_FRONTEND = powershell -noprofile -command "Copy-Item -Recurse -Force $(FRONTEND_DIR)/dist/* $(DESKTOP_DIR)/wails/assets/payload/frontend-dist/"
-    
-    # Copy frontend to desktop public/ide for local serving
-    CLEAN_DESKTOP_IDE = powershell -noprofile -command "if (Test-Path $(DESKTOP_DIR)/wails/frontend/public/ide) { Remove-Item -Recurse -Force $(DESKTOP_DIR)/wails/frontend/public/ide }"
-    MKDIR_DESKTOP_IDE = if not exist $(DESKTOP_DIR)\wails\frontend\public\ide mkdir $(DESKTOP_DIR)\wails\frontend\public\ide
-    COPY_DESKTOP_IDE = powershell -noprofile -command "Copy-Item -Recurse -Force $(FRONTEND_DIR)/dist/* $(DESKTOP_DIR)/wails/frontend/public/ide/"
+    include Makefile.win
 else
-    EXT =
-    ENSURE_BIN = mkdir -p $(BIN_DIR)
-    SERVER_BIN = ./$(BIN_DIR)/dev-server
-    ICON_GEN_BIN = ./$(BIN_DIR)/icon-gen
-    
-    # Payload Utilities
-    MKDIR_PAYLOAD = mkdir -p $(DESKTOP_DIR)/wails/assets/payload
-    BUILD_LINUX_CMD = cd $(BACKEND_DIR) && GOOS=linux GOARCH=amd64 go build
-    
-    CLEAN_PAYLOAD_FRONTEND = rm -rf $(DESKTOP_DIR)/wails/assets/payload/frontend-dist
-    MKDIR_PAYLOAD_FRONTEND = mkdir -p $(DESKTOP_DIR)/wails/assets/payload/frontend-dist
-    COPY_PAYLOAD_FRONTEND = cp -r $(FRONTEND_DIR)/dist/* $(DESKTOP_DIR)/wails/assets/payload/frontend-dist/
-    
-    CLEAN_DESKTOP_IDE = rm -rf $(DESKTOP_DIR)/wails/frontend/public/ide
-    MKDIR_DESKTOP_IDE = mkdir -p $(DESKTOP_DIR)/wails/frontend/public/ide
-    COPY_DESKTOP_IDE = cp -r $(FRONTEND_DIR)/dist/* $(DESKTOP_DIR)/wails/frontend/public/ide/
+    include Makefile.unix
 endif
 
 .PHONY: help backend frontend run docs install connect clean desktop-dev desktop-build desktop-dist desktop-dist-zip dist docker-build docker-run test-env-up test-env-down build-linux backend-linux-payload prepare-payload
 
 # ... (help targets omitted) ...
 
+help: ## Show this help
+	@$(HELP_CMD)
+
+## backend - Build the Go backend
 backend:
 	@$(ENSURE_BIN)
 	cd $(BACKEND_DIR) && go mod download
 	cd $(BACKEND_DIR) && go build -ldflags "-s -w" -o ../$(BIN_DIR)/dev-server$(EXT) ./cmd/dev-server
 	@echo "Built $(BIN_DIR)/dev-server$(EXT)"
 
+## frontend - Build the React frontend
 frontend: icons
 	cd $(FRONTEND_DIR) && npm install
 	cd $(FRONTEND_DIR) && npm run build
@@ -97,6 +68,7 @@ backend-darwin-arm64-payload:
 	cd $(BACKEND_DIR) && set "GOOS=darwin" && set "GOARCH=arm64" && go build -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/darwin/arm64/dev-server ./cmd/dev-server
 	cd $(BACKEND_DIR) && set "GOOS=darwin" && set "GOARCH=arm64" && go build -ldflags "-s -w" -o ../$(DESKTOP_DIR)/wails/assets/payload/darwin/arm64/md5-util ./cmd/md5-util
 
+## prepare-payload - Build all payload assets (backend binaries for all OS + frontend)
 prepare-payload: backend-linux-payload backend-windows-payload backend-darwin-amd64-payload backend-darwin-arm64-payload
 	@echo "Building frontend for payload..."
 	cd $(FRONTEND_DIR) && npm run build
@@ -116,12 +88,14 @@ prepare-payload: backend-linux-payload backend-windows-payload backend-darwin-am
 	@echo "Payload prepared. Contents:"
 	@$(BIN_DIR)/build-util$(EXT) ls-r $(DESKTOP_DIR)/wails/assets/payload
 
+## desktop-dev - Run the desktop app in dev mode (wails dev)
 desktop-dev: prepare-payload
 	cd $(DESKTOP_DIR)/wails && wails dev -tags desktop
 
 .PHONY: debug
 debug: desktop-dev
 
+## desktop-build - Build the desktop app (wails build)
 desktop-build: prepare-payload
 	@$(ENSURE_BIN)
 	cd $(BACKEND_DIR) && go build -o ../$(BIN_DIR)/build-util$(EXT) ./cmd/build-util
@@ -138,6 +112,7 @@ desktop-upgrade-wails:
 	@echo "Upgrade complete. Review and commit changes in $(DESKTOP_DIR)"
 
 .PHONY: desktop-dist
+## desktop-dist - Build and package desktop app for distribution
 desktop-dist:
 	@echo "Building frontend and desktop (wails build)"
 	cd $(FRONTEND_DIR) && npm run build
@@ -154,6 +129,7 @@ desktop-dist:
 	@echo "Packaged to $$OUTDIR"
 
 .PHONY: desktop-dist-zip
+## desktop-dist-zip - Create a zip archive of the desktop distribution
 desktop-dist-zip:
 ifeq ($(OS),Windows_NT)
 	@echo "Running Windows build script..."
@@ -170,6 +146,7 @@ else
 endif
 
 .PHONY: desktop-installer
+## desktop-installer - Package the installer (PowerShell script) (Windows Only)
 desktop-installer:
 ifeq ($(OS),Windows_NT)
 	@echo "Packaging installer..."
@@ -178,11 +155,20 @@ else
 	@echo "Installer generation is currently Windows-only."
 endif
 
+.PHONY: installer
+## installer - Build Windows Installer using NSIS (Windows Only)
+installer: prepare-payload
+	@echo "Building Windows Installer (NSIS)..."
+	set "PATH=%PATH%;C:\Program Files (x86)\NSIS" && cd $(DESKTOP_DIR)/wails && wails build -nsis
+	@echo "Installer created in $(DESKTOP_DIR)/wails/build/bin/"
+
+
 
 # Define delete command
 # Define delete command
 RM_RF = rm -rf
 
+## clean - Remove build artifacts
 clean:
 	@rm -f $(BIN_DIR)/dev-server
 	@$(RM_RF) $(STATIC_DIR)
@@ -190,6 +176,7 @@ clean:
 	@echo "Cleaned build artifacts"
 
 .PHONY: dist
+## dist - Package full distribution (icons, backend, frontend) into build/dist
 dist: icons backend frontend
 	@echo "Packaging distribution into build/dist"
 	@powershell -noprofile -ExecutionPolicy Bypass -File scripts/dist.ps1
@@ -197,26 +184,33 @@ dist: icons backend frontend
 
 # Docker Targets
 .PHONY: icons
+## icons - Generate icons from raw assets
 icons:
 	@echo "Generating icons..."
 	cd cmd/icon-gen && go run . --manifest ../../icons/icons.yml --raw ../../icons/raw --out ../../frontend/src/generated
+## docker-build - Build the main Docker image
 docker-build:
 	docker build -t mlcremote .
 
+## docker-run - Run the application in Docker
 docker-run: docker-build
 	docker run -p $(PORT):$(PORT) -v "$(HOME):/data" mlcremote
 
+## docker-dev - Run the application in Docker (dev mode)
 docker-dev: frontend
 	docker build --target dev -t mlcremote-dev .
 	docker run -p $(PORT):$(PORT) -v "$(CURDIR)/backend:/app/backend" -v "$(CURDIR)/frontend/dist:/app/frontend/dist" -v "$(CURDIR)/tmp/data:/data" mlcremote-dev
 
+## test-env-up - Start test environment (docker-compose up)
 test-env-up:
 	docker-compose up -d
 
+## test-env-down - Stop test environment (docker-compose down)
 test-env-down:
 	docker-compose down
 
+## build-linux - Build Linux binary using Docker
 build-linux:
-	mkdir -p dist/linux
+	$(ENSURE_DIST_LINUX)
 	docker build -t mlcremote-builder -f docker/build-linux/Dockerfile .
-	docker run --rm -v "$(PWD):/app" -v "$(PWD)/dist/linux:/out" mlcremote-builder
+	docker run --rm -v "$(CURDIR):/app" -v "$(CURDIR)/dist/linux:/out" mlcremote-builder

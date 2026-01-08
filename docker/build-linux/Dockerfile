@@ -1,14 +1,17 @@
-FROM golang:1.21
+FROM golang:1.24
 
 # Install node
 RUN apt-get update && apt-get install -y curl
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 RUN apt-get install -y nodejs build-essential
 
+# Install specific npm version to match development environment
+RUN npm install -g npm@11.6.2
+
 # Install Wails dependencies for Linux
 RUN apt-get update && apt-get install -y \
     libgtk-3-dev \
-    libwebkit2gtk-4.0-dev \
+    libwebkit2gtk-4.1-dev \
     nsis \
     && rm -rf /var/lib/apt/lists/*
 
@@ -23,4 +26,5 @@ COPY . .
 # This dockerfile copies it in for the image build, but for dev we might want mounts.
 # For now, following the plan: copy source, run build.
 
-CMD ["sh", "-c", "cd desktop/wails && wails build && cp build/bin/MLCRemote /out/"]
+# Removing package-lock.json and node_modules from frontend to force resolution of platform-specific optional dependencies
+CMD ["sh", "-c", "cd desktop/wails/frontend && rm -rf node_modules package-lock.json && npm install && cd .. && wails build -tags webkit2_41 && cp build/bin/MLCRemote /out/"]

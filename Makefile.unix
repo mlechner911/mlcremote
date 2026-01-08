@@ -1,0 +1,26 @@
+# ==========================================
+# UNIX/LINUX/MACOS PLATFORM SPECIFIC CONFIGURATION
+# ==========================================
+
+EXT =
+ENSURE_BIN = mkdir -p $(BIN_DIR)
+SERVER_BIN = ./$(BIN_DIR)/dev-server
+ICON_GEN_BIN = ./$(BIN_DIR)/icon-gen
+
+# sed/grep command to extract generic help text from Makefiles
+HELP_CMD = grep -h "^##" Makefile Makefile.win Makefile.unix | sed 's/^## //g'
+
+# Payload Utilities
+MKDIR_PAYLOAD = mkdir -p $(DESKTOP_DIR)/wails/assets/payload
+BUILD_LINUX_CMD = cd $(BACKEND_DIR) && GOOS=linux GOARCH=amd64 go build
+
+CLEAN_PAYLOAD_FRONTEND = rm -rf $(DESKTOP_DIR)/wails/assets/payload/frontend-dist
+MKDIR_PAYLOAD_FRONTEND = mkdir -p $(DESKTOP_DIR)/wails/assets/payload/frontend-dist
+COPY_PAYLOAD_FRONTEND = cp -r $(FRONTEND_DIR)/dist/* $(DESKTOP_DIR)/wails/assets/payload/frontend-dist/
+
+CLEAN_DESKTOP_IDE = rm -rf $(DESKTOP_DIR)/wails/frontend/public/ide
+MKDIR_DESKTOP_IDE = mkdir -p $(DESKTOP_DIR)/wails/frontend/public/ide
+COPY_DESKTOP_IDE = cp -r $(FRONTEND_DIR)/dist/* $(DESKTOP_DIR)/wails/frontend/public/ide/
+
+# Linux Build Directory
+ENSURE_DIST_LINUX = mkdir -p dist/linux

@@ -14,5 +14,13 @@
   "frontend:dev:serverUrl": "http://localhost:5174",
   "wailsjsdir": "./frontend/src",
   "assetdir": "./frontend/dist",
-  "outputfilename": "MLCRemote"
+  "outputfilename": "MLCRemote",
+  "info": {
+    "companyName": "Michael Lechner",
+    "productName": "MLCRemote",
+    "productVersion": "1.0.1",
+    "copyright": "Copyright (c) 2025 Michael Lechner",
+    "comments": "Lightweight Remote Dev Environment"
+  },
+  "nsisType": "windows"
 }

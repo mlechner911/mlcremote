@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"runtime"
 	"sync"
-	"syscall"
 	"time"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -181,11 +180,5 @@ func streamReaderToEvents(ctx context.Context, r io.Reader, source string) {
 			fmt.Printf("[SSH STDERR] %s\n", line)
 		}
 		wailsRuntime.EventsEmit(ctx, "ssh-log", fmt.Sprintf("[%s] %s", source, line))
-	}
-}
-
-func configureSysProcAttr(cmd *exec.Cmd) {
-	if runtime.GOOS == "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	}
 }

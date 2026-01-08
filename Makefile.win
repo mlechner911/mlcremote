@@ -1,0 +1,30 @@
+# ==========================================
+# WINDOWS PLATFORM SPECIFIC CONFIGURATION
+# ==========================================
+
+EXT = .exe
+ENSURE_BIN = if not exist $(BIN_DIR) mkdir $(BIN_DIR)
+SERVER_BIN = .\$(BIN_DIR)\dev-server.exe
+ICON_GEN_BIN = .\$(BIN_DIR)\icon-gen.exe
+
+# Powershell command to extract generic help text from Makefiles
+HELP_CMD = powershell -noprofile -ExecutionPolicy Bypass -File scripts/make-help.ps1
+
+# Payload Utilities
+MKDIR_PAYLOAD = if not exist $(DESKTOP_DIR)\wails\assets\payload mkdir $(DESKTOP_DIR)\wails\assets\payload
+# Note: Use set "VAR=val" to avoid trailing spaces
+BUILD_LINUX_CMD = cd $(BACKEND_DIR) && set "GOOS=linux" && set "GOARCH=amd64" && go build
+
+# Cleanup and Copy for Windows
+# We use powershell for reliable recursive copy/delete to avoid cmd.exe intricacies with xcopy/rmdir checks
+CLEAN_PAYLOAD_FRONTEND = powershell -noprofile -command "if (Test-Path $(DESKTOP_DIR)/wails/assets/payload/frontend-dist) { Remove-Item -Recurse -Force $(DESKTOP_DIR)/wails/assets/payload/frontend-dist }"
+MKDIR_PAYLOAD_FRONTEND = if not exist $(DESKTOP_DIR)\wails\assets\payload\frontend-dist mkdir $(DESKTOP_DIR)\wails\assets\payload\frontend-dist
+COPY_PAYLOAD_FRONTEND = powershell -noprofile -command "Copy-Item -Recurse -Force $(FRONTEND_DIR)/dist/* $(DESKTOP_DIR)/wails/assets/payload/frontend-dist/"
+
+# Copy frontend to desktop public/ide for local serving
+CLEAN_DESKTOP_IDE = powershell -noprofile -command "if (Test-Path $(DESKTOP_DIR)/wails/frontend/public/ide) { Remove-Item -Recurse -Force $(DESKTOP_DIR)/wails/frontend/public/ide }"
+MKDIR_DESKTOP_IDE = if not exist $(DESKTOP_DIR)\wails\frontend\public\ide mkdir $(DESKTOP_DIR)\wails\frontend\public\ide
+COPY_DESKTOP_IDE = powershell -noprofile -command "Copy-Item -Recurse -Force $(FRONTEND_DIR)/dist/* $(DESKTOP_DIR)/wails/frontend/public/ide/"
+
+# Linux Build Directory
+ENSURE_DIST_LINUX = if not exist dist\linux mkdir dist\linux

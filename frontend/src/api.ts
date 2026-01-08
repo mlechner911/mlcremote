@@ -208,18 +208,18 @@ export async function deleteFile(path: string): Promise<void> {
 /**
  * User configurable settings.
  */
-export type Settings = {
-    allowDelete: boolean
-    defaultShell: string
-    // User preferences
-    theme?: string
+export interface Settings {
+    theme?: 'dark' | 'light'
+    language?: string
+    lastProfileId?: string
     autoOpen?: boolean
     showHidden?: boolean
     showLogs?: boolean
     hideMemoryUsage?: boolean
     maxEditorSize?: number
-    language?: string
-    mode?: string
+    allowDelete?: boolean
+    defaultShell?: string
+    setupCompleted?: boolean
 }
 
 export async function getSettings(): Promise<Settings> {

@@ -51,21 +51,29 @@ Lightweight remote development environment for small servers, wrapped in a nativ
 ## Development
 
 **Prerequisites:**
-
--   Go 1.21+
--   Node.js 18+
--   Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
--   Make (Windows: via Chocolatey or Scoop, or Git Bash)
-
-**Local Build & Run:**
-
-```bash
-# Full Desktop Build (Dev Mode with Hot Reload)
-make debug
-
-# Create Production Bundle (Windows)
-make desktop-dist-zip
-```
+ 
+ -   Go 1.24+ (required for backend/desktop modules)
+ -   Node.js 20+
+ -   Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
+ -   Make (Windows: via Chocolatey, Scoop, or use provided `scripts/make-help.ps1`)
+ -   Docker (Required for `make build-linux` target)
+ -   NSIS (Windows: For installer build, standard install path supported)
+ 
+ **Local Build & Run:**
+ 
+ ```bash
+ # See available targets
+ make help
+ 
+ # Full Desktop Build (Dev Mode with Hot Reload)
+ make debug
+ 
+ # Create Production Bundle (Windows)
+ make installer
+ 
+ # Cross-compile for Linux (Requires Docker)
+ make build-linux
+ ```
 
 **Docker Development:**
 

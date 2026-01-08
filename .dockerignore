@@ -1,0 +1,28 @@
+# Exclude build artifacts and dependencies
+bin/
+dist/
+build/
+backend/bin/
+desktop/wails/build/
+desktop/wails/dist/
+
+# Exclude dependencies
+node_modules/
+frontend/node_modules/
+desktop/wails/frontend/node_modules/
+
+# Exclude git
+.git/
+.gitignore
+
+# Exclude temporary files and local data
+tmp/
+.gemini/
+.vscode/
+.idea/
+
+# Exclude large/binary files not needed for build
+**/*.exe
+**/*.so
+**/*.dll
+**/*.test
