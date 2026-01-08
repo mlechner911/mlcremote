@@ -12,7 +12,6 @@ import { useI18n } from '../utils/i18n'
 import PasswordDialog from './PasswordDialog'
 import AboutDialog from './AboutDialog'
 import ConnectionSidebar from './ConnectionSidebar'
-import ConnectionSidebar from './ConnectionSidebar'
 import ConnectionDetail from './ConnectionDetail'
 import AlertDialog, { DialogType } from './AlertDialog'
 
@@ -241,13 +240,17 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 setPromptDeploy(p)
                 setStatus('')
             } else if (msg.includes('unknown-host')) {
-                alert(t('error_unknown_host'))
+                showAlert('Error', t('error_unknown_host'))
                 setStatus('')
             } else if (msg.includes('ssh-unreachable')) {
-                alert(t('error_unreachable'))
+                showAlert('Error', t('error_unreachable'))
                 setStatus('')
             } else {
-                setStatus(t('status_failed') + ': ' + (e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)))
+                // For generic errors, we can show status or alert. Let's show alert for visibility if it failed completely.
+                // But typically status is enough if it's just "Failed: ...".
+                // However user requested "nice styled error popup".
+                showAlert('Error', t('status_failed') + ': ' + (e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)))
+                setStatus(t('status_failed'))
             }
         } finally {
             setLoading(false)
@@ -432,7 +435,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                             performConnect(p)
                         } catch (e: any) {
                             const msg = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)
-                            alert(t('status_failed') + ": " + msg)
+                            showAlert('Error', t('status_failed') + ": " + msg)
                             setLoading(false)
                         }
                     }}
