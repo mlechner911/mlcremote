@@ -697,8 +697,7 @@ export default function App() {
             setSelectedPath(p)
             if (isDir) {
               // Auto-open metadata view for directories
-              if (!openFiles.includes('metadata')) openFile('metadata')
-              setActiveFile('metadata')
+              openFile('metadata')
               return
             }
             // file: open editor tab (respect autoOpen)

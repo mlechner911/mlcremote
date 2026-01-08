@@ -265,7 +265,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
             {entries.map(e => (
               <li key={e.path} onContextMenu={(ev) => handleContextMenu(ev, e)}>
                 {e.isDir ? (
-                  <button data-path={e.path} type="button" className={"entry" + (selectedPath === e.path ? ' selected' : '')} onClick={() => onSelect(e.path, true)} onDoubleClick={() => load(e.path)} onDrop={(ev) => onDrop(ev, e.path)} onDragOver={(ev) => onDragOver(ev, e.path)} onDragLeave={onDragLeave}>
+                  <button data-path={e.path} type="button" className={"entry" + (selectedPath === e.path ? ' selected' : '')} onClick={(e) => { e.stopPropagation(); onSelect(e.path, true) }} onDoubleClick={() => load(e.path)} onDrop={(ev) => onDrop(ev, e.path)} onDragOver={(ev) => onDragOver(ev, e.path)} onDragLeave={onDragLeave}>
                     <span className="icon"><Icon name={iconForExtension('dir') || getIcon('dir')} /></span> {e.name}
                     {e.isSymlink && <span title="Symbolic Link" style={{ marginLeft: 4, opacity: 0.5 }}>🔗</span>}
                     {e.isBroken && <span title="Broken Link" style={{ marginLeft: 4 }}>❌</span>}
