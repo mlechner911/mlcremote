@@ -82,7 +82,16 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation()
-        if (!confirm(t('delete_confirm'))) return
+        const p = profiles.find(x => x.id === id)
+        const name = p ? (p.name || `${p.user}@${p.host}`) : 'Profile'
+
+        // Basic confirmation with name
+        const msg = t('delete_confirm_with_name', { name })
+        // Fallback if translation missing (simple check if it returns key)
+        const display = (msg === 'delete_confirm_with_name') ? `Are you sure you want to delete '${name}'?` : msg
+
+        if (!confirm(display)) return
+
         try {
             await DeleteProfile(id)
             refreshProfiles()
