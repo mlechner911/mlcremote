@@ -61,6 +61,7 @@ When you first launch MLCRemote, you will see the **Launch Screen**.
    - **Port**: SSH port (Default: `22`).
 3. (Optional) Choose a **Color** to identify this profile easiest.
 4. Click **Save**.
+   > **Note**: If a profile with the same User, Host, and Port already exists, you will be asked if you want to update the existing one or create a new duplicate.
 5. Select the profile from the list and click **Connect**.
 
 The application will:

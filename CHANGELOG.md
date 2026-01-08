@@ -3,24 +3,29 @@
 All notable changes to this project will be documented in this file.
 
 
-## [Unreleased]
+## [1.0.0] - 2026-01-08
 
 ### Added
+- **Custom Error Dialogs**: Replaced native browser alerts with styled, theme-aware dialogs for errors and confirmations.
+- **Profile Duplication Check**: Prevents accidental creation of duplicate profiles by prompting to update existing ones.
 - **File Details Tab**: New dedicated view for files when "Auto Open" is disabled. Shows metadata (size, permissions, timestamps), full path, and a download button.
 - **File Explorer**: Selecting a file with Auto Open disabled now opens/focuses the File Details tab instead of creating empty tabs.
-- **Remote OS Info**: Status bar now displays the remote operating system and distro (e.g., Windows, Ubuntu).
+- **Remote OS Info**: Status bar now displays the remote operating system and distro.
+- **Improved Visuals**: Enhanced File Explorer selection visibility with theme-aware accent colors.
 
 ### Changed
-- **Windows Shell**: Improved shell execution on Windows. Now falls back to pipes when PTY creation fails (fixing "unsupported" errors) and defaults to PowerShell/CMD.
-- **Frontend Refactor**: Major refactoring of file handling logic using a Strategy Pattern for better maintainability and extensibility.
+- **Windows Shell**: Improved shell execution on Windows. Now falls back to pipes when PTY creation fails (fixing "unsupported" errors).
+- **Frontend Refactor**: Major refactoring of file handling logic using a Strategy Pattern.
+- **UI Polish**: Moved Theme/Screenshot controls to the header for better accessibility.
 
 ### Fixed
-- **Stat Failed Error**: Fixed an issue where the "File Details" view would lose context of the selected file and fail to load metadata.
-- **PDF Detection**: Fixed PDF files sometimes not opening correctly due to incorrect tab handling.
+- **Version Display**: Fixed "vunknown" version issue on Windows clients.
+- **Stat Failed Error**: Fixed an issue where the "File Details" view would lose context of the selected file.
+- **PDF Detection**: Fixed PDF files sometimes not opening correctly.
 - **Auto-Login**: Fixed a race condition where the token URL parameter was ignored on startup.
-- **Windows Build**: Fixed `make run` failing on Windows due to `mkdir -p` syntax errors.
-- **Symlink Dirty State**: Opening a symlink to a directory no longer incorrectly shows the "unsaved changes" (red tab) indicator.
-- **Binary Views**: "Unsupported" files now correctly share the single "Binary" tab instance instead of opening multiple tabs.
+- **Windows Build**: Fixed `make run` failing on Windows due to `mkdir -p` syntax.
+- **Symlink Dirty State**: Opening a symlink to a directory no longer incorrectly shows the "unsaved changes" indicator.
+- **Binary Views**: "Unsupported" files now correctly share the single "Binary" tab instance.
 
 ## [0.4.0] - 2026-01-01
 
