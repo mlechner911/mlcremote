@@ -45,10 +45,12 @@ export default function FileDetailsView({ path }: Props) {
                     <h2 style={{ margin: 0, wordBreak: 'break-all' }}>{path.split('/').pop()}</h2>
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
-                    <a className="btn primary" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split('/').pop()}>
-                        <span style={{ marginRight: 6, display: 'inline-flex' }}><Icon name="icon-download" size={16} /></span>
-                        {t('download')}
-                    </a>
+                    {meta && !meta.isDir && (
+                        <a className="btn primary" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split('/').pop()}>
+                            <span style={{ marginRight: 6, display: 'inline-flex' }}><Icon name="icon-download" size={16} /></span>
+                            {t('download')}
+                        </a>
+                    )}
                 </div>
             </div>
 
