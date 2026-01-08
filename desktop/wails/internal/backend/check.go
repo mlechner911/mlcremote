@@ -76,7 +76,7 @@ func (m *Manager) CheckRemoteVersionWithOS(profileJSON string, osType string) (s
 		remotePath = fmt.Sprintf("%%USERPROFILE%%\\.mlcremote\\bin\\%s", binName)
 	} else {
 		// Unix style pathing (Standard)
-		remotePath = fmt.Sprintf("~/.mlcremote/bin/%s", binName)
+		remotePath = fmt.Sprintf("$HOME/.mlcremote/bin/%s", binName)
 	}
 
 	cmdArgs := append([]string{}, sshBaseArgs...)

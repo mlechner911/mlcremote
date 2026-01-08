@@ -73,6 +73,7 @@
     "scroll_left": "scroll left",
     "scroll_right": "scroll right",
     "editor_settings": "Editor Settings",
+    "properties": "Properties",
     "max_file_size": "Max File Size (MB)",
     "max_file_size_tooltip": "Files larger than this will open in read-only mode."
 }
