@@ -12,7 +12,9 @@ import { useI18n } from '../utils/i18n'
 import PasswordDialog from './PasswordDialog'
 import AboutDialog from './AboutDialog'
 import ConnectionSidebar from './ConnectionSidebar'
+import ConnectionSidebar from './ConnectionSidebar'
 import ConnectionDetail from './ConnectionDetail'
+import AlertDialog, { DialogType } from './AlertDialog'
 
 interface LaunchScreenProps {
     onConnected: (p: Profile, token?: string) => void
@@ -37,6 +39,17 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
     const [promptManaged, setPromptManaged] = useState<ConnectionProfile | null>(null) // Prompt for managed identity
     const [managedPath, setManagedPath] = useState('')
     const [promptSession, setPromptSession] = useState<{ p: ConnectionProfile, info: SessionInfo } | null>(null)
+    const [alertState, setAlertState] = useState<{
+        open: boolean, title: string, message: string, type: DialogType, onConfirm?: () => void, cancelText?: string, confirmText?: string
+    }>({ open: false, title: '', message: '', type: 'info' })
+
+    const showAlert = (title: string, message: string, type: DialogType = 'error') => {
+        setAlertState({ open: true, title, message, type })
+    }
+
+    const showConfirm = (title: string, message: string, onConfirm: () => void, cancelText?: string, confirmText?: string) => {
+        setAlertState({ open: true, title, message, type: 'question', onConfirm, cancelText, confirmText })
+    }
 
 
     const normalizePath = (p: string) => p.replace(/\\/g, '/').toLowerCase()
@@ -67,50 +80,54 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
 
     useEffect(() => { refreshProfiles() }, [])
 
-    const handleSave = async (p: ConnectionProfile) => {
+    const performSave = async (p: ConnectionProfile) => {
         try {
-            // Check for duplicates if creating new
-            if (!p.id) {
-                const existing = profiles.find(x => x.user === p.user && x.host === p.host && (x.port || 22) === (p.port || 22))
-                if (existing) {
-                    const target = `${p.user}@${p.host}`
-                    // Confirm update vs create new
-                    if (confirm(t('profile_exists_update', { target }))) {
-                        p.id = existing.id
-                    }
-                }
-            }
-
-            // Ensure ID is string to match Wails model
             const validP = { ...p, id: p.id || "" }
-            // @ts-ignore - mismatch between local and wails types
+            // @ts-ignore
             await SaveProfile(validP)
             setEditing(false)
             refreshProfiles()
         } catch (e: any) {
-            alert('Failed to save profile: ' + e.message)
+            showAlert('Error', 'Failed to save profile: ' + e.message)
         }
     }
 
-    const handleDelete = async (id: string, e: React.MouseEvent) => {
+    const handleSave = (p: ConnectionProfile) => {
+        // Check for duplicates if creating new
+        if (!p.id) {
+            const existing = profiles.find(x => x.user === p.user && x.host === p.host && (x.port || 22) === (p.port || 22))
+            if (existing) {
+                const target = `${p.user}@${p.host}`
+                showConfirm(
+                    t('new_connection'),
+                    t('profile_exists_update', { target }),
+                    () => performSave({ ...p, id: existing.id }),
+                    'Create New',
+                    'Update'
+                )
+                return
+            }
+        }
+        performSave(p)
+    }
+
+    const handleDelete = (id: string, e: React.MouseEvent) => {
         e.stopPropagation()
         const p = profiles.find(x => x.id === id)
         const name = p ? (p.name || `${p.user}@${p.host}`) : 'Profile'
 
-        // Basic confirmation with name
         const msg = t('delete_confirm_with_name', { name })
-        // Fallback if translation missing (simple check if it returns key)
         const display = (msg === 'delete_confirm_with_name') ? `Are you sure you want to delete '${name}'?` : msg
 
-        if (!confirm(display)) return
-
-        try {
-            await DeleteProfile(id)
-            refreshProfiles()
-            if (selectedId === id) setSelectedId(null)
-        } catch (e: any) {
-            alert('Delete failed: ' + e.message)
-        }
+        showConfirm(t('delete_connection'), display, async () => {
+            try {
+                await DeleteProfile(id)
+                refreshProfiles()
+                if (selectedId === id) setSelectedId(null)
+            } catch (e: any) {
+                showAlert('Error', 'Delete failed: ' + e.message)
+            }
+        })
     }
 
     useEffect(() => {
@@ -210,10 +227,10 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                     setPromptDeploy(p)
                     setStatus('')
                 } else if (res === 'unknown-host') {
-                    alert(t('error_unknown_host'))
+                    showAlert('Error', t('error_unknown_host'))
                     setStatus('')
                 } else {
-                    alert(t('status_failed') + ": " + res)
+                    showAlert('Error', t('status_failed') + ": " + res)
                 }
             }
 
@@ -452,6 +469,16 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                     loading={deployLoading}
                 />
             )}
+            <AlertDialog
+                open={alertState.open}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                confirmText={alertState.confirmText}
+                cancelText={alertState.cancelText}
+                onClose={() => setAlertState(s => ({ ...s, open: false }))}
+                onConfirm={alertState.onConfirm}
+            />
         </div>
     )
 }
