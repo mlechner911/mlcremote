@@ -156,10 +156,9 @@ else
 endif
 
 .PHONY: installer
-## installer - Build Windows Installer using NSIS (Windows Only)
-installer: prepare-payload
+installer:
 	@echo "Building Windows Installer (NSIS)..."
-	cd $(DESKTOP_DIR)/wails && wails build -nsis
+	@powershell -ExecutionPolicy Bypass -File desktop/wails/scripts/build-installer.ps1
 	@if not exist dist mkdir dist
 	@powershell -noprofile -command "Copy-Item -Force $(DESKTOP_DIR)/wails/build/bin/*installer.exe dist/"
 	@echo "Installer available in dist/"

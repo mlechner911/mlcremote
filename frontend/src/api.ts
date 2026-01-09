@@ -43,7 +43,7 @@ export type Health = {
 
     server_time?: string;
     timezone?: string;
-
+    start_time?: string;
 }
 
 /**
@@ -219,7 +219,7 @@ export interface Settings {
     maxEditorSize?: number
     allowDelete?: boolean
     defaultShell?: string
-    setupCompleted?: boolean
+
 }
 
 export async function getSettings(): Promise<Settings> {

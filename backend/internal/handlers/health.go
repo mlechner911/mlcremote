@@ -12,6 +12,9 @@ import (
 	memutil "github.com/shirou/gopsutil/v3/mem"
 )
 
+// startTime is set when the package initializes
+var startTime = time.Now()
+
 // healthInfo contains some runtime and system usage details.
 type healthInfo struct {
 	Status       string  `json:"status"`
@@ -29,6 +32,7 @@ type healthInfo struct {
 	CPUPercent   float64 `json:"cpu_percent,omitempty"`
 	ServerTime   string  `json:"server_time,omitempty"`
 	Timezone     string  `json:"timezone,omitempty"`
+	StartTime    string  `json:"start_time,omitempty"`
 	PasswordAuth bool    `json:"password_auth"`
 	AuthRequired bool    `json:"auth_required"`
 }
@@ -45,10 +49,11 @@ func Health(passwordAuth bool, authRequired bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var info healthInfo
 		info.Status = "ok"
-		info.Version = "0.3.0"
+		info.Version = "0.3.1"
 		info.PasswordAuth = passwordAuth
 		info.AuthRequired = authRequired
 		info.PID = os.Getpid()
+		info.StartTime = startTime.Format("2006-01-02 15:04:05")
 		if hn, err := os.Hostname(); err == nil {
 			info.Host = hn
 		}

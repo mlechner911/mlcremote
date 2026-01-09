@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 
 
+## [1.1.0] - 2026-01-09
+
+### Added
+- **Authentication Overlay**: Extracted authentication logic into `AuthOverlay` component with full localization support.
+- **Internationalization**: Added complete translations for English, German, French, and Spanish.
+- **Improved Status Bar**: Status bar now displays "Connected since: [Time] [Timezone]" derived from the remote server start time.
+
+### Changed
+- **Frontend Refactor**: Split monolithic `App.tsx` into `useAppSettings`, `AppHeader`, and `useWorkspace` for better maintainability.
+- **Backend Version**: Bumped backend and frontend requirement to `0.3.1`.
+
 ## [1.0.1] - 2026-01-08
 
 ### Added

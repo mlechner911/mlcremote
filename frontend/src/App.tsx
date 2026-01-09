@@ -1,7 +1,10 @@
 import React from 'react'
-import type { Health, Settings } from './api'
-import { statPath, saveSettings, getSettings } from './api'
+import { statPath, type Health } from './api'
 import { useAuth } from './context/AuthContext'
+import { useAppSettings } from './hooks/useAppSettings'
+import { useWorkspace } from './hooks/useWorkspace'
+import AppHeader from './components/AppHeader'
+import AuthOverlay from './components/AuthOverlay'
 import FileExplorer from './components/FileExplorer'
 import SettingsPopup from './components/SettingsPopup'
 import { useTranslation } from 'react-i18next'
@@ -13,7 +16,7 @@ import BinaryView from './components/BinaryView'
 import FileDetailsView from './components/FileDetailsView'
 const TerminalTab = React.lazy(() => import('./components/TerminalTab'))
 import TabBarComponent from './components/TabBar'
-import SetupWizard from './components/SetupWizard'
+
 
 import LogOverlay from './components/LogOverlay'
 import { formatBytes } from './utils/bytes'
@@ -32,14 +35,10 @@ import SplitPane from './components/SplitPane'
 import type { LayoutNode, PaneId, PaneState } from './types/layout'
 
 export default function App() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
 
   const {
-    health, isOnline, lastHealthAt, refreshHealth,
-    login, setToken, logout,
-    showLogin, setShowLogin,
-    showTokenInput, setShowTokenInput,
-    showAuthChooser, setShowAuthChooser
+    health, isOnline, lastHealthAt, refreshHealth
   } = useAuth()
 
 
@@ -60,92 +59,49 @@ export default function App() {
   const [explorerDir, setExplorerDir] = React.useState<string>('')
   const handleExplorerDirChange = React.useCallback((d: string) => setExplorerDir(d), [])
   const [focusRequest, setFocusRequest] = React.useState<number>(0)
-  const [logoVisible, setLogoVisible] = React.useState<boolean>(true)
+
 
   // -- Layout State --
-  // We initialize with one root pane
-  const [panes, setPanes] = React.useState<Record<PaneId, PaneState>>({
-    'root': { id: 'root', files: [], activeFile: null }
-  })
-  const [layout, setLayout] = React.useState<LayoutNode>({ type: 'leaf', paneId: 'root' })
-  const [activePaneId, setActivePaneId] = React.useState<PaneId>('root')
 
-  // Helpers to get current active file/files for legacy compatibility
-  const openFiles = panes[activePaneId]?.files || []
-  const activeFile = panes[activePaneId]?.activeFile || ''
+  /* Hook Integration */
+  const {
+    settings, loadedSettings,
+    theme, setTheme,
+    autoOpen, setAutoOpen,
+    showHidden, setShowHidden,
+    showLogs, toggleLogs: setShowLogs,
+    hideMemoryUsage, toggleHideMemoryUsage,
+    canChangeRoot,
+    maxEditorSize, updateMaxEditorSize,
+    i18n
+  } = useAppSettings()
 
-  // Derived setters for legacy compatibility (careful with these!)
-  // We'll need to update usage sites to use specific pane logic. element
-  const setOpenFiles = (fn: (files: string[]) => string[]) => {
-    setPanes(prev => {
-      const p = prev[activePaneId]
-      if (!p) return prev
-      const newFiles = fn(p.files)
-      return { ...prev, [activePaneId]: { ...p, files: newFiles } }
-    })
-  }
-  const setActiveFile = (file: string) => {
-    setPanes(prev => {
-      const p = prev[activePaneId]
-      if (!p) return prev
-      return { ...prev, [activePaneId]: { ...p, activeFile: file } }
-    })
-  }
+  const {
+    panes, setPanes,
+    layout, setLayout,
+    activePaneId, setActivePaneId,
+    openFiles, setOpenFiles,
+    activeFile, setActiveFile,
+    openFile,
+    splitPane, closePane, handleLayoutResize,
+    fileMetas, setFileMetas,
+    evictedTabs
+  } = useWorkspace()
 
-  const [evictedTabs, setEvictedTabs] = React.useState<string[]>([])
-  const [binaryPath, setBinaryPath] = React.useState<string | null>(null)
-  const [autoOpen, setAutoOpenState] = React.useState<boolean>(true)
-  const setAutoOpen = (v: boolean) => { setAutoOpenState(v); saveSettings({ autoOpen: v }).catch(console.error) }
-  const maxTabs = 8
-  // openFile ensures we don't exceed maxTabs by closing the oldest when necessary
-  /**
-   * Open a path in a persistent tab. If the maximum number of tabs is
-   * exceeded the oldest tab is closed (simple LRU-like eviction).
-   */
-  function openFile(path: string) {
-    setOpenFiles(of => {
-      if (of.includes(path)) return of
-      const next = [...of, path]
-      if (next.length <= maxTabs) return next
-      // close the oldest opened (first) tab and record it in evictedTabs
-      const evicted = next[0]
-      try {
-        setEvictedTabs(prev => {
-          if (prev.includes(evicted)) return prev
-          return [...prev, evicted]
-        })
-      } catch (_) { }
-      return next.slice(1)
-    })
-    setActiveFile(path)
-    // fetch and cache metadata for this file (size, modTime, mime)
-    statPath(path).then(m => {
-      setFileMetas(fm => ({ ...fm, [path]: m }))
-    }).catch(() => {
-      // ignore stat errors
-    })
-  }
-  const [shellCwds, setShellCwds] = React.useState<Record<string, string>>({})
-  const [showHidden, setShowHiddenState] = React.useState<boolean>(false)
-  const setShowHidden = (v: boolean) => { setShowHiddenState(v); saveSettings({ showHidden: v }).catch(console.error) }
-  const [canChangeRoot, setCanChangeRoot] = React.useState<boolean>(false)
-  const [showLogs, setShowLogs] = React.useState<boolean>(false)
-  const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
-  const [settingsOpen, setSettingsOpen] = React.useState<boolean>(false)
-  const [hideMemoryUsage, setHideMemoryUsage] = React.useState<boolean>(false)
-  const [serverInfoOpen, setServerInfoOpen] = React.useState<boolean>(false)
-  const [settings, setSettings] = React.useState<Settings | null>(null)
-  const [setupComplete, setSetupComplete] = React.useState<boolean>(true)
+  /* Local UI State */
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
-  const [theme, setTheme] = React.useState<'dark' | 'light'>('dark')
-  const [maxEditorSize, setMaxEditorSize] = React.useState<number>(0) // 0 means not yet loaded or default
+  const [logoVisible, setLogoVisible] = React.useState<boolean>(true)
+  const [settingsOpen, setSettingsOpen] = React.useState<boolean>(false)
+  const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
+  const [shellCwds, setShellCwds] = React.useState<Record<string, string>>({})
+
+  // These were local state, now derived or managed by hook. 
+  // We keep `now` for clock if needed (where is it used?) - it was for StatusBar maybe?
   const [now, setNow] = React.useState<Date>(new Date())
   const [messageBox, setMessageBox] = React.useState<{ title: string; message: string } | null>(null)
-  const [loadedSettings, setLoadedSettings] = React.useState(false)
 
   const isControlled = React.useMemo(() => {
     const p = new URLSearchParams(window.location.search)
-    // Check for 'controlled' flag or fallback to legacy 'theme' existence check
     return !!p.get('controlled') || !!p.get('theme')
   }, [])
 
@@ -176,7 +132,7 @@ export default function App() {
 
   const [reloadTriggers, setReloadTriggers] = React.useState<Record<string, number>>({})
   const [unsavedChanges, setUnsavedChanges] = React.useState<Record<string, boolean>>({})
-  const [fileMetas, setFileMetas] = React.useState<Record<string, any>>({})
+  // fileMetas moved to useWorkspace
 
   // Stable handler for child editors to report unsaved status. Using
   // `useCallback` keeps the reference stable so we can pass the same
@@ -197,184 +153,11 @@ export default function App() {
     return () => window.clearInterval(id)
   }, [])
 
-  // fetch runtime settings once on mount
-  // fetch runtime settings once on mount and apply user prefs
-  React.useEffect(() => {
-    getSettings()
-      .then(s => {
-        setSettings(s)
-        if (typeof s.allowDelete !== 'undefined') setCanChangeRoot(!!s.allowDelete)
 
-        // Setup Wizard Logic
-        if (typeof s.setupCompleted !== 'undefined') {
-          setSetupComplete(s.setupCompleted)
-        } else {
-          // If undefined, assume false (show wizard) implies new user or upgrade needing confirmation
-          setSetupComplete(!!s.setupCompleted)
-        }
 
-        // Apply user prefs
-        if (s.theme) setTheme(s.theme as any)
-        if (typeof s.autoOpen !== 'undefined') setAutoOpenState(s.autoOpen)
-        if (typeof s.showHidden !== 'undefined') setShowHiddenState(s.showHidden)
-        if (typeof s.showLogs !== 'undefined') setShowLogs(s.showLogs)
-        if (typeof s.hideMemoryUsage !== 'undefined') setHideMemoryUsage(s.hideMemoryUsage)
-        if (s.maxEditorSize) {
-          setMaxEditorSize(s.maxEditorSize)
-          localStorage.setItem('mlc_max_editor_size', s.maxEditorSize.toString())
-        }
+  const [binaryPath, setBinaryPath] = React.useState<string | null>(null)
 
-        // Language Sync Logic: Desktop Launcher (URL param) overrides Server Settings
-        const params = new URLSearchParams(window.location.search)
 
-        // Theme Sync
-        const urlTheme = params.get('theme')
-        if (urlTheme === 'light' || urlTheme === 'dark') {
-          setTheme(urlTheme as any)
-          if (urlTheme === 'light') document.documentElement.classList.add('theme-light')
-          else document.documentElement.classList.remove('theme-light')
-        }
-
-        const urlLang = params.get('lng') || params.get('lang')
-
-        if (urlLang && urlLang !== s.language) {
-          console.log(`[i18n] Syncing language from Desktop (${urlLang}) -> Server`)
-          // Update server settings and apply
-          saveSettings({ language: urlLang }).catch(console.error)
-          if (i18n.language !== urlLang) i18n.changeLanguage(urlLang)
-        } else if (s.language && i18n.language !== s.language) {
-          // Fallback to server setting
-          i18n.changeLanguage(s.language)
-        }
-        setLoadedSettings(true)
-      })
-      .catch(() => {
-        setSettings({ allowDelete: false, defaultShell: 'bash' })
-        setLoadedSettings(true)
-      })
-
-    // Restore state if profileId is present
-    const params = new URLSearchParams(window.location.search)
-    const pid = params.get('profileId')
-    if (pid) {
-      console.log("Restoring state for profile:", pid)
-      try {
-        const saved = localStorage.getItem(`workspace_state_${pid}`)
-        if (saved) {
-          const state = JSON.parse(saved)
-          if (state.panes) setPanes(state.panes)
-          if (state.layout) setLayout(state.layout)
-          if (state.activePaneId) setActivePaneId(state.activePaneId)
-        }
-      } catch (e) {
-        console.error("Failed to restore workspace state", e)
-      }
-    }
-  }, [])
-
-  // Persist state when it changes
-  React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const pid = params.get('profileId')
-    if (pid) {
-      const state = { panes, layout, activePaneId }
-      localStorage.setItem(`workspace_state_${pid}`, JSON.stringify(state))
-    }
-  }, [panes, layout, activePaneId])
-
-  // apply theme whenever it changes
-  React.useEffect(() => {
-    if (theme === 'light') document.documentElement.classList.add('theme-light')
-    else document.documentElement.classList.remove('theme-light')
-  }, [theme])
-
-  // listen for online/offline events
-  // Effects removed as they are now handled in AuthContext
-
-  // -- Layout Helpers --
-
-  const splitPane = (direction: 'horizontal' | 'vertical') => {
-    const newPaneId = `pane-${Date.now()}`
-    const currentP = panes[activePaneId]
-    const currentFile = currentP?.activeFile
-
-    setPanes(prev => ({
-      ...prev,
-      [newPaneId]: {
-        id: newPaneId,
-        files: currentFile ? [currentFile] : [],
-        activeFile: currentFile || null
-      }
-    }))
-
-    setLayout(prev => {
-      const replace = (node: LayoutNode): LayoutNode => {
-        if (node.type === 'leaf') {
-          if (node.paneId === activePaneId) {
-            return {
-              type: 'branch',
-              direction,
-              size: 50,
-              children: [
-                node,
-                { type: 'leaf', paneId: newPaneId }
-              ]
-            }
-          }
-          return node
-        }
-        return { ...node, children: [replace(node.children[0]), replace(node.children[1])] } as LayoutNode
-      }
-      return replace(prev)
-    })
-    setActivePaneId(newPaneId)
-  }
-
-  const closePane = (id: PaneId) => {
-    // Find parent branch and replace with sibling
-    // If root, do nothing (or clear files?)
-    if (id === 'root' && layout.type === 'leaf') return // cannot close single root
-
-    setLayout(prev => {
-      const prune = (node: LayoutNode): LayoutNode | null => {
-        if (node.type === 'leaf') {
-          return node.paneId === id ? null : node
-        }
-        const c0 = prune(node.children[0])
-        const c1 = prune(node.children[1])
-        if (!c0 && !c1) return null // should not happen
-        if (!c0) return c1 // promote sibling
-        if (!c1) return c0 // promote sibling
-        return { ...node, children: [c0, c1] } as LayoutNode
-      }
-      const res = prune(prev)
-      return res || { type: 'leaf', paneId: 'root' } // fallback
-    })
-
-    setPanes(prev => {
-      const next = { ...prev }
-      delete next[id]
-      return next
-    })
-
-    // If we closed the active pane, reset activePaneId?
-    // We need to calculate the new active pane. 
-    // Simplified: set to 'root' or whatever fallback.
-    if (activePaneId === id) setActivePaneId('root') // simplistic
-  }
-
-  const handleLayoutResize = (node: LayoutNode, newSize: number) => {
-    setLayout(prev => {
-      const update = (n: LayoutNode): LayoutNode => {
-        if (n === node) return { ...n, size: newSize } as any
-        if (n.type === 'branch') {
-          return { ...n, children: [update(n.children[0]), update(n.children[1])] } as any
-        }
-        return n
-      }
-      return update(prev)
-    })
-  }
 
   // Recursive renderer
   const renderLayout = (node: LayoutNode): React.ReactNode => {
@@ -580,150 +363,101 @@ export default function App() {
 
   if (!loadedSettings) return null // or loading spinner
 
-  if (!setupComplete) {
-    return <SetupWizard onComplete={() => {
-      setSetupComplete(true)
-      saveSettings({ setupCompleted: true }).catch(console.error)
-    }} />
-  }
+
 
   return (
     <div className="app">
-      <header className="app-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <img src="/logo.png" alt="MLCRemote logo" style={{ height: 28, display: 'block' }} onLoad={() => setLogoVisible(true)} onError={() => setLogoVisible(false)} />
-          {!logoVisible && <h1 style={{ margin: 0 }}>MLCRemote</h1>}
-        </div>
-        <div className="status">
-          {/* Status indicators moved to StatusBar */}
+      <AppHeader
+        logoVisible={logoVisible}
+        setLogoVisible={setLogoVisible}
 
-          {/* cwd display removed (visible in Files sidebar) */}
-          <button className="link icon-btn" onClick={async () => {
-            // determine cwd: prefer selectedPath; if none, fall back to active file's directory
-            let cwd = selectedPath || ''
-            try {
-              if (cwd) {
-                const st = await statPath(cwd)
-                if (!st.isDir && st.path) {
-                  // if a file, use its directory
-                  const parts = st.path.split('/').filter(Boolean)
-                  parts.pop()
-                  cwd = parts.length ? `/${parts.join('/')}` : ''
-                }
-              } else if (activeFile && !activeFile.startsWith('shell-')) {
-                try {
-                  const st2 = await statPath(activeFile)
-                  if (st2.isDir) {
-                    cwd = st2.path || activeFile
-                  } else if (st2.path) {
-                    const parts = st2.path.split('/').filter(Boolean)
-                    parts.pop()
-                    cwd = parts.length ? `/${parts.join('/')}` : ''
-                  }
-                } catch (e) {
-                  // if stat fails, derive directory from activeFile string as a fallback
-                  const parts = activeFile.split('/').filter(Boolean)
-                  parts.pop()
-                  cwd = parts.length ? `/${parts.join('/')}` : ''
-                }
+        isControlled={isControlled}
+        theme={theme}
+        onToggleTheme={() => {
+          const next = theme === 'dark' ? 'light' : 'dark'
+          setTheme(next)
+          defaultStore.set('theme', next, strSerializer as any)
+        }}
+
+        onOpenTerminal={async () => {
+          // determine cwd: prefer selectedPath; if none, fall back to active file's directory
+          let cwd = selectedPath || ''
+          try {
+            if (cwd) {
+              const st = await statPath(cwd)
+              if (!st.isDir && st.path) {
+                // if a file, use its directory
+                const parts = st.path.split('/').filter(Boolean)
+                parts.pop()
+                cwd = parts.length ? `/${parts.join('/')}` : ''
               }
-            } catch (e) {
-              // ignore stat errors and fall back to selected/derived path
-            }
-            const shellName = `shell-${Date.now()}`
-            // normalize: ensure stored cwd is a directory (if it looks like a file, use parent)
-            let norm = cwd || ''
-            if (norm && norm.split('/').pop()?.includes('.')) {
-              const parts = norm.split('/').filter(Boolean)
-              parts.pop()
-              norm = parts.length ? `/${parts.join('/')}` : '/'
-            }
-            setShellCwds(s => ({ ...s, [shellName]: norm }))
-            openFile(shellName)
-          }} title={t('terminal')} aria-label={t('terminal')}><Icon name={getIcon('terminal')} title={t('terminal')} size={16} /></button>
-
-          {/* Settings moved to popup (icon at the right). */}
-          {/* Settings moved to popup (icon at the right). */}
-          {!isControlled && (
-            <button className="link icon-btn" aria-label="Toggle theme" onClick={() => {
-              const next = theme === 'dark' ? 'light' : 'dark'
-              setTheme(next)
-              defaultStore.set('theme', next, strSerializer as any)
-              if (next === 'light') document.documentElement.classList.add('theme-light')
-              else document.documentElement.classList.remove('theme-light')
-            }}>
-              {theme === 'dark' ? <Icon name={getIcon('moon')} title={t('theme')} size={16} /> : <Icon name={getIcon('sun')} title={t('theme')} size={16} />}
-            </button>
-          )}
-          {/* Logs toggle moved into settings popup */}
-          <button className="link icon-btn" title={t('about')} aria-label={t('about')} onClick={() => setAboutOpen(true)}><Icon name={getIcon('info')} title={t('about')} size={16} /></button>
-          {!isControlled && (
-            <button className="link icon-btn" title="Screenshot" aria-label="Screenshot" onClick={async () => {
-              const root = document.querySelector('.app') as HTMLElement | null
-              if (!root) return
+            } else if (activeFile && !activeFile.startsWith('shell-')) {
               try {
-                await captureElementToPng(root, 'mlcremote-screenshot.png')
+                const st2 = await statPath(activeFile)
+                if (st2.isDir) {
+                  cwd = st2.path || activeFile
+                } else if (st2.path) {
+                  const parts = st2.path.split('/').filter(Boolean)
+                  parts.pop()
+                  cwd = parts.length ? `/${parts.join('/')}` : ''
+                }
               } catch (e) {
-                console.error('Screenshot failed', e)
+                // if stat fails, derive directory from activeFile string as a fallback
+                const parts = activeFile.split('/').filter(Boolean)
+                parts.pop()
+                cwd = parts.length ? `/${parts.join('/')}` : ''
               }
-            }}><Icon name={getIcon('screenshot')} title="Screenshot" size={16} /></button>
-          )}
-          <button className="link icon-btn" title="Trash" aria-label="Trash" onClick={() => {
-            // open a single trash tab
-            if (!openFiles.includes('trash')) {
-              openFile('trash')
             }
-            setActiveFile('trash')
-          }}><Icon name="icon-trash" title="Trash" size={16} /></button>
+          } catch (e) {
+            // ignore stat errors and fall back to selected/derived path
+          }
+          const shellName = `shell-${Date.now()}`
+          // normalize: ensure stored cwd is a directory (if it looks like a file, use parent)
+          let norm = cwd || ''
+          if (norm && norm.split('/').pop()?.includes('.')) {
+            const parts = norm.split('/').filter(Boolean)
+            parts.pop()
+            norm = parts.length ? `/${parts.join('/')}` : '/'
+          }
+          setShellCwds(s => ({ ...s, [shellName]: norm }))
+          openFile(shellName)
+        }}
 
+        onOpenTrash={() => {
+          if (!openFiles.includes('trash')) openFile('trash')
+          setActiveFile('trash')
+        }}
+        onScreenshot={async () => {
+          const root = document.querySelector('.app') as HTMLElement | null
+          if (!root) return
+          try {
+            await captureElementToPng(root, 'mlcremote-screenshot.png')
+          } catch (e) {
+            console.error('Screenshot failed', e)
+          }
+        }}
 
-          <button className="link icon-btn" title="Split Right" aria-label="Split Right" onClick={() => splitPane('vertical')}>
-            {/* Split Horizontal Icon (Vertical Split) */}
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ display: 'block' }}>
-              <path fillRule="evenodd" d="M14 3H2a1 1 0 00-1 1v8a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1zM2 2a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H2z" clipRule="evenodd" />
-              <path d="M8 4v8H7V4h1z" />
-            </svg>
-          </button>
-          <button className="link icon-btn" title="Split Down" aria-label="Split Down" onClick={() => splitPane('horizontal')}>
-            {/* Split Vertical Icon (Horizontal Split) */}
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ display: 'block' }}>
-              <path fillRule="evenodd" d="M14 3H2a1 1 0 00-1 1v8a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1zM2 2a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H2z" clipRule="evenodd" />
-              <path d="M2 8h12v1H2V8z" />
-            </svg>
-          </button>
+        onSplitPane={splitPane}
+        onCloseActivePane={() => closePane(activePaneId)}
+        canCloseActivePane={layout.type !== 'leaf'}
 
-          {layout.type !== 'leaf' && (
-            <button className="link icon-btn" title="Close Active Pane" aria-label="Close Active Pane" onClick={() => closePane(activePaneId)} style={{ marginLeft: 4 }}>
-              <Icon name={getIcon('close')} size={16} />
-            </button>
-          )}
-          <button className="link icon-btn" aria-label={t('settings')} title={t('settings')} onClick={() => setSettingsOpen(s => !s)}><Icon name={getIcon('settings')} title={t('settings')} size={16} /></button>
-        </div>
-        {settingsOpen && (
-          <SettingsPopup
-            autoOpen={autoOpen}
-            showHidden={showHidden}
-            onToggleAutoOpen={(v) => setAutoOpen(v)}
-            onToggleShowHidden={(v) => setShowHidden(v)}
-            showLogs={showLogs}
-            onToggleLogs={(v) => { setShowLogs(v); saveSettings({ showLogs: v }).catch(console.error) }}
-            hideMemoryUsage={hideMemoryUsage}
-            onToggleHideMemoryUsage={(v) => { setHideMemoryUsage(v); saveSettings({ hideMemoryUsage: v }).catch(console.error) }}
-            onClose={() => setSettingsOpen(false)}
-            onLanguageChange={(l) => {
-              if (l !== i18n.language) {
-                i18n.changeLanguage(l)
-                saveSettings({ language: l }).catch(console.error)
-              }
-            }}
-            maxEditorSize={maxEditorSize}
-            onMaxFileSizeChange={(sz) => {
-              setMaxEditorSize(sz)
-              saveSettings({ maxEditorSize: sz }).catch(console.error)
-            }}
-          />
-        )}
-      </header>
+        settingsOpen={settingsOpen}
+        setSettingsOpen={setSettingsOpen}
+        aboutOpen={aboutOpen}
+        setAboutOpen={setAboutOpen}
+
+        autoOpen={autoOpen}
+        setAutoOpen={setAutoOpen}
+        showHidden={showHidden}
+        setShowHidden={setShowHidden}
+        showLogs={showLogs}
+        toggleLogs={setShowLogs}
+        hideMemoryUsage={hideMemoryUsage}
+        toggleHideMemoryUsage={toggleHideMemoryUsage}
+        maxEditorSize={maxEditorSize}
+        updateMaxEditorSize={updateMaxEditorSize}
+        i18n={i18n}
+      />
       <div className="app-body" style={{ alignItems: 'stretch' }}>
         <aside className="sidebar" style={{ width: sidebarWidth }}>
           <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} reloadSignal={reloadSignal} onSelect={(p, isDir) => {
@@ -816,62 +550,8 @@ export default function App() {
         <main className="main">
           <div className="main-content">
             {/* Unified authentication chooser/modal */}
-            {showAuthChooser && (
-              <div className="login-overlay">
-                <div className="login-box">
-                  <h3>Not Authenticated</h3>
-                  <p>You need to sign in or provide an access key to continue.</p>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <button className="btn" onClick={() => { setShowAuthChooser(false); setShowLogin(true) }}>{t('open')} (password)</button>
-                    <button className="btn" onClick={() => { setShowAuthChooser(false); setShowTokenInput(true) }}>I have an access key</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Password input modal (shown when user chooses to sign in) */}
-            {showLogin && (
-              <div className="login-overlay">
-                <div className="login-box">
-                  <h3>Sign in</h3>
-                  <p>Please enter the server password to obtain an access token.</p>
-                  <input id="mlc-login-pwd" type="password" placeholder="Password" />
-                  <div style={{ marginTop: 8 }}>
-                    <button className="btn" onClick={async () => {
-                      const el = document.getElementById('mlc-login-pwd') as HTMLInputElement | null
-                      if (!el) return
-                      try {
-                        await login(el.value)
-                      } catch (e: any) {
-                        alert('Login failed: ' + (e?.message || e))
-                      }
-                    }}>{t('open')}</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Token input modal (shown when user chooses to provide an access key) */}
-            {showTokenInput && (
-              <div className="login-overlay">
-                <div className="login-box">
-                  <h3>Enter Access Token</h3>
-                  <p>The server requires an access token. Paste it here to continue.</p>
-                  <input id="mlc-token-input" type="text" placeholder="token" />
-                  <div style={{ marginTop: 8 }}>
-                    <button className="btn" onClick={async () => {
-                      const el = document.getElementById('mlc-token-input') as HTMLInputElement | null
-                      if (!el) return
-                      try {
-                        setToken(el.value.trim())
-                      } catch (e: any) {
-                        alert('Failed to store token: ' + (e?.message || e))
-                      }
-                    }}>Use token</button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Authentication Overlay */}
+            <AuthOverlay />
             {/* New Generic MessageBox */}
             {messageBox && (
               <MessageBox title={messageBox.title} message={messageBox.message} onClose={() => setMessageBox(null)} />

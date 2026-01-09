@@ -1,6 +1,6 @@
 {
   "name": "MLCRemote",
-  "description": "Lightweight Remote Dev Environment desktop wrapper",
+  "description": "Lightweight Remote Environment desktop wrapper",
   "author": {
     "name": "Michael Lechner",
     "email": "lechner.altenstadt@web.de"
@@ -20,7 +20,6 @@
     "productName": "MLCRemote",
     "productVersion": "1.0.1",
     "copyright": "Copyright (c) 2025 Michael Lechner",
-    "comments": "Lightweight Remote Dev Environment"
-  },
-  "nsisType": "windows"
+    "comments": "Lightweight Remote Environment"
+  }
 }

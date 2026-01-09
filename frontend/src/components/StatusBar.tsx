@@ -57,8 +57,9 @@ export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealt
                                 <span title={`OS: ${health.os} ${health.distro || ''}`}>{health.distro || health.os}</span>
                             </>
                         )}
+
                         <span className="sep" />
-                        <span title={t('server_time', 'Server Time')}>{health.server_time ? new Date(health.server_time).toLocaleTimeString() : ''}</span>
+                        <span title={t('connected_since', 'Connected since')}>{t('connected_since', 'Connected since')}: {health.start_time} {health.timezone}</span>
                     </>
                 )}
             </div>

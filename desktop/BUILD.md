@@ -20,37 +20,6 @@ cd ..\
 wails build
 ```
 
-If `wails build` fails with a JSON unmarshal error like:
-
-  ERROR   json: cannot unmarshal string into Go struct field Project.Author of type project.Author
-
-The project `wails.json` contains an `author` field which the Wails CLI
-expects to be a structured object, not a plain string. See the fix below.
-
-Fixing `wails.json`
--------------------
-Open `desktop/wails.json` and locate the `author` field. If it is a
-string (for example, `"author": ""`), replace it with a small object
-structure. Example:
-
-```json
-  "author": {
-    "name": "",
-    "email": ""
-  },
-```
-
-This gives the Wails CLI the expected shape and prevents the unmarshal
-error. You can fill `name` and `email` if you prefer, or leave them
-empty.
-
-Why this happens
------------------
-Wails reads `wails.json` into a strongly-typed Go struct. The `author`
-property is defined as a nested object (with `name`, `email`, etc.), so
-providing a plain string causes a JSON type mismatch and the CLI fails
-with the error shown above.
-
 Other troubleshooting
 ---------------------
 - If `wails` is not on PATH, ensure `%USERPROFILE%\go\bin` is added to
