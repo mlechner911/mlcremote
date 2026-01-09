@@ -108,5 +108,7 @@
     "sys": "sys",
     "used": "used",
     "unsaved_changes_title": "Unsaved changes",
-    "confirm_reload_unsaved": "You have unsaved changes. Reloading will discard them. Continue?"
+    "confirm_reload_unsaved": "You have unsaved changes. Reloading will discard them. Continue?",
+    "confirm_close_unsaved": "You have unsaved changes. Close anyway?",
+    "close_discard": "Close & Discard"
 }

@@ -104,5 +104,7 @@
     "sys": "sys",
     "used": "utilisé",
     "unsaved_changes_title": "Modifications non enregistrées",
-    "confirm_reload_unsaved": "Vous avez des modifications non enregistrées. Le rechargement les annulera. Continuer ?"
+    "confirm_reload_unsaved": "Vous avez des modifications non enregistrées. Le rechargement les annulera. Continuer ?",
+    "confirm_close_unsaved": "Vous avez des modifications non enregistrées. Fermer quand même ?",
+    "close_discard": "Fermer et Annuler"
 }

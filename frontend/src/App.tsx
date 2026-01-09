@@ -99,7 +99,7 @@ export default function App() {
   // These were local state, now derived or managed by hook. 
   // We keep `now` for clock if needed (where is it used?) - it was for StatusBar maybe?
   const [now, setNow] = React.useState<Date>(new Date())
-  const [messageBox, setMessageBox] = React.useState<{ title: string; message: string } | null>(null)
+  const [messageBox, setMessageBox] = React.useState<{ title: string; message: string; onConfirm?: () => void; confirmLabel?: string; cancelLabel?: string } | null>(null)
 
   const isControlled = React.useMemo(() => {
     const p = new URLSearchParams(window.location.search)
@@ -214,28 +214,55 @@ export default function App() {
       setFocusRequest(Date.now())
     }
 
+
+
+
     const onClose = (path: string) => {
       // close tab logic
       const p = panes[paneId]
       if (!p) return
 
-      // logic: if this is the last tab in the pane, AND we are not root, close the pane
-      if (p.files.length === 1 && p.files[0] === path && paneId !== 'root') {
-        closePane(paneId)
+      const doClose = () => {
+        // logic: if this is the last tab in the pane, AND we are not root, close the pane
+        if (p.files.length === 1 && p.files[0] === path && paneId !== 'root') {
+          closePane(paneId)
+          return
+        }
+
+        setPanes(prev => {
+          const p2 = prev[paneId]
+          if (!p2) return prev
+          const nextFiles = p2.files.filter(x => x !== path)
+          // if closing active
+          let nextActive = p2.activeFile
+          if (p2.activeFile === path) {
+            nextActive = nextFiles[0] || null
+          }
+          return { ...prev, [paneId]: { ...p2, files: nextFiles, activeFile: nextActive } }
+        })
+      }
+
+      const hasUnsaved = unsavedChanges[path]
+      if (hasUnsaved) {
+        setMessageBox({
+          title: t('unsaved_changes_title', 'Unsaved Changes'),
+          message: t('confirm_close_unsaved', 'You have unsaved changes. Close anyway?'),
+          confirmLabel: t('close_discard', 'Close & Discard'),
+          onConfirm: () => {
+            setMessageBox(null)
+            // Force clear unsaved status so it doesn't persist if re-opened
+            setUnsavedChanges(prev => {
+              const next = { ...prev }
+              delete next[path]
+              return next
+            })
+            doClose()
+          }
+        })
         return
       }
 
-      setPanes(prev => {
-        const p = prev[paneId]
-        if (!p) return prev
-        const nextFiles = p.files.filter(x => x !== path)
-        // if closing active
-        let nextActive = p.activeFile
-        if (p.activeFile === path) {
-          nextActive = nextFiles[0] || null
-        }
-        return { ...prev, [paneId]: { ...p, files: nextFiles, activeFile: nextActive } }
-      })
+      doClose()
     }
 
     // Titles / Types logic repeated for this pane
@@ -555,7 +582,14 @@ export default function App() {
             <AuthOverlay />
             {/* New Generic MessageBox */}
             {messageBox && (
-              <MessageBox title={messageBox.title} message={messageBox.message} onClose={() => setMessageBox(null)} />
+              <MessageBox
+                title={messageBox.title}
+                message={messageBox.message}
+                onClose={() => setMessageBox(null)}
+                onConfirm={messageBox.onConfirm}
+                confirmLabel={messageBox.confirmLabel}
+                cancelLabel={messageBox.cancelLabel}
+              />
             )}
 
             {/* Recursive Layout Renderer */}

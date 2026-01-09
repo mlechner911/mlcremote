@@ -107,5 +107,7 @@
     "sys": "sys",
     "used": "benutzt",
     "unsaved_changes_title": "Ungespeicherte Änderungen",
-    "confirm_reload_unsaved": "Sie haben ungespeicherte Änderungen. Beim Neuladen gehen diese verloren. Fortfahren?"
+    "confirm_reload_unsaved": "Sie haben ungespeicherte Änderungen. Beim Neuladen gehen diese verloren. Fortfahren?",
+    "confirm_close_unsaved": "Sie haben ungespeicherte Änderungen. Trotzdem schließen?",
+    "close_discard": "Schließen & Verwerfen"
 }
