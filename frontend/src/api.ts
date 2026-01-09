@@ -58,6 +58,7 @@ export type DirEntry = {
     isBroken?: boolean
     isExternal?: boolean
     isReadOnly?: boolean
+    isRestricted?: boolean
     mode?: string
     size: number
     modTime: string

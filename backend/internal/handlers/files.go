@@ -198,16 +198,17 @@ func EmptyTrashHandler(trashDir string, allowDelete bool) http.HandlerFunc {
 }
 
 type dirEntry struct {
-	Name       string    `json:"name"`
-	Path       string    `json:"path"`
-	IsDir      bool      `json:"isDir"`
-	IsSymlink  bool      `json:"isSymlink"`
-	IsBroken   bool      `json:"isBroken"`
-	IsExternal bool      `json:"isExternal"`
-	IsReadOnly bool      `json:"isReadOnly"` // Heuristic: mode & 0200 == 0
-	Mode       string    `json:"mode"`       // Human readable mode string
-	Size       int64     `json:"size"`
-	ModTime    time.Time `json:"modTime"`
+	Name         string    `json:"name"`
+	Path         string    `json:"path"`
+	IsDir        bool      `json:"isDir"`
+	IsSymlink    bool      `json:"isSymlink"`
+	IsBroken     bool      `json:"isBroken"`
+	IsExternal   bool      `json:"isExternal"`
+	IsReadOnly   bool      `json:"isReadOnly"`   // !canWrite
+	IsRestricted bool      `json:"isRestricted"` // !canRead || (IsDir && !canExec)
+	Mode         string    `json:"mode"`         // Human readable mode string
+	Size         int64     `json:"size"`
+	ModTime      time.Time `json:"modTime"`
 }
 
 // TreeHandler lists directory entries under the given path.
@@ -300,17 +301,24 @@ func TreeHandler(root string) http.HandlerFunc {
 				}
 			}
 
+			canRead, canWrite, canExec := resolveAccess(e)
+			isRestricted := !canRead
+			if e.IsDir() && !canExec {
+				isRestricted = true
+			}
+
 			entries = append(entries, dirEntry{
-				Name:       e.Name(),
-				Path:       "/" + rel,
-				IsDir:      e.IsDir(),
-				IsSymlink:  isSymlink,
-				IsBroken:   isBroken,
-				IsExternal: isExternal,
-				IsReadOnly: e.Mode().Perm()&0200 == 0,
-				Mode:       e.Mode().String(),
-				Size:       e.Size(),
-				ModTime:    e.ModTime(),
+				Name:         e.Name(),
+				Path:         "/" + rel,
+				IsDir:        e.IsDir(),
+				IsSymlink:    isSymlink,
+				IsBroken:     isBroken,
+				IsExternal:   isExternal,
+				IsReadOnly:   !canWrite,
+				IsRestricted: isRestricted,
+				Mode:         e.Mode().String(),
+				Size:         e.Size(),
+				ModTime:      e.ModTime(),
 			})
 		}
 		w.Header().Set("Content-Type", "application/json")
