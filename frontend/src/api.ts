@@ -57,6 +57,8 @@ export type DirEntry = {
     isSymlink?: boolean
     isBroken?: boolean
     isExternal?: boolean
+    isReadOnly?: boolean
+    mode?: string
     size: number
     modTime: string
 }

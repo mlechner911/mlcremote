@@ -281,11 +281,18 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
             {entries.map(e => (
               <li key={e.path} onContextMenu={(ev) => handleContextMenu(ev, e)}>
                 {e.isDir ? (
-                  <button data-path={e.path} type="button" className={"entry" + (selectedPath === e.path ? ' selected' : '')} onClick={(ev) => { ev.stopPropagation(); onSelect(e.path, true) }} onDoubleClick={() => load(e.path)} onDrop={(ev) => onDrop(ev, e.path)} onDragOver={(ev) => onDragOver(ev, e.path)} onDragLeave={onDragLeave}>
+                  <button data-path={e.path} type="button" className={"entry" + (selectedPath === e.path ? ' selected' : '')} onClick={(ev) => { ev.stopPropagation(); onSelect(e.path, true) }} onDoubleClick={() => {
+                    if (e.isReadOnly) {
+                      alert(t('permission_denied'))
+                      return
+                    }
+                    load(e.path)
+                  }} onDrop={(ev) => onDrop(ev, e.path)} onDragOver={(ev) => onDragOver(ev, e.path)} onDragLeave={onDragLeave}>
                     <span className="icon"><Icon name={iconForExtension('dir') || getIcon('dir')} /></span> {e.name}
                     {e.isSymlink && <span title="Symbolic Link" style={{ marginLeft: 4, opacity: 0.5 }}>🔗</span>}
                     {e.isBroken && <span title="Broken Link" style={{ marginLeft: 4 }}>❌</span>}
                     {e.isExternal && <span title="External Link" style={{ marginLeft: 4 }}>↗️</span>}
+                    {e.isReadOnly && <span title={t('permission_denied')} style={{ marginLeft: 4 }}>🔒</span>}
 
                     {dragOver === e.path ? <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>{t('drop_to_upload')}</span> : null}
                   </button>
@@ -304,6 +311,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
                       {e.isSymlink && <span title="Symbolic Link" style={{ marginLeft: 4, opacity: 0.5 }}>🔗</span>}
                       {e.isBroken && <span title="Broken Link" style={{ marginLeft: 4 }}>❌</span>}
                       {e.isExternal && <span title="External Link" style={{ marginLeft: 4 }}>↗️</span>}
+                      {e.isReadOnly && <span title={t('permission_denied')} style={{ marginLeft: 4 }}>🔒</span>}
 
                     </button>
                     {!autoOpen ? (

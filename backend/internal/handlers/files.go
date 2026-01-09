@@ -204,6 +204,8 @@ type dirEntry struct {
 	IsSymlink  bool      `json:"isSymlink"`
 	IsBroken   bool      `json:"isBroken"`
 	IsExternal bool      `json:"isExternal"`
+	IsReadOnly bool      `json:"isReadOnly"` // Heuristic: mode & 0200 == 0
+	Mode       string    `json:"mode"`       // Human readable mode string
 	Size       int64     `json:"size"`
 	ModTime    time.Time `json:"modTime"`
 }
@@ -305,6 +307,8 @@ func TreeHandler(root string) http.HandlerFunc {
 				IsSymlink:  isSymlink,
 				IsBroken:   isBroken,
 				IsExternal: isExternal,
+				IsReadOnly: e.Mode().Perm()&0200 == 0,
+				Mode:       e.Mode().String(),
 				Size:       e.Size(),
 				ModTime:    e.ModTime(),
 			})
