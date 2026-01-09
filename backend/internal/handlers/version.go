@@ -15,5 +15,5 @@ import (
 func VersionHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"backend":"0.3.1","frontendCompatible":"^0.3"}`))
+	_, _ = w.Write([]byte(`{"backend":"0.3.2","frontendCompatible":"^0.3"}`))
 }
