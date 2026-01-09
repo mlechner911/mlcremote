@@ -89,5 +89,20 @@
     "login_failed": "Échec de la connexion",
     "token_failed": "Échec de l'enregistrement du jeton",
     "use_token": "Utiliser le jeton",
-    "connected_since": "Connecté depuis"
+    "connected_since": "Connecté depuis",
+    "host": "Hôte",
+    "pid": "PID",
+    "app_memory": "Mémoire App",
+    "permission_denied": "Permission refusée",
+    "read_only_file": "Fichier en lecture seule",
+    "system_memory": "Mémoire Système",
+    "cpu": "CPU",
+    "timezone": "Fuseau horaire",
+    "last_refresh": "Dernière actualisation",
+    "unknown": "inconnu",
+    "alloc": "alloc",
+    "sys": "sys",
+    "used": "utilisé",
+    "unsaved_changes_title": "Modifications non enregistrées",
+    "confirm_reload_unsaved": "Vous avez des modifications non enregistrées. Le rechargement les annulera. Continuer ?"
 }

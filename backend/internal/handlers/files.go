@@ -246,12 +246,20 @@ func TreeHandler(root string) http.HandlerFunc {
 		}
 		f, err := os.Open(target)
 		if err != nil {
+			if os.IsPermission(err) {
+				http.Error(w, "permission denied", http.StatusForbidden)
+				return
+			}
 			http.Error(w, "cannot open dir", http.StatusInternalServerError)
 			return
 		}
 		defer f.Close()
 		files, err := f.Readdir(0)
 		if err != nil {
+			if os.IsPermission(err) {
+				http.Error(w, "permission denied", http.StatusForbidden)
+				return
+			}
 			http.Error(w, "cannot read dir", http.StatusInternalServerError)
 			return
 		}
@@ -338,6 +346,10 @@ func GetFileHandler(root string) http.HandlerFunc {
 		}
 		f, err := os.Open(target)
 		if err != nil {
+			if os.IsPermission(err) {
+				http.Error(w, "permission denied", http.StatusForbidden)
+				return
+			}
 			http.Error(w, "cannot open file", http.StatusInternalServerError)
 			return
 		}
@@ -461,15 +473,30 @@ func DeleteFileHandler(root string, trashDir string, allowDelete bool) http.Hand
 	}
 }
 
+// FileStat represents extended file metadata.
+type FileStat struct {
+	IsDir         bool      `json:"isDir"`
+	Size          int64     `json:"size"`
+	Mode          string    `json:"mode"`
+	ModTime       time.Time `json:"modTime"`
+	AbsPath       string    `json:"absPath"`
+	Mime          string    `json:"mime"`
+	IsBlockDevice bool      `json:"isBlockDevice"`
+	IsCharDevice  bool      `json:"isCharDevice"`
+	IsSocket      bool      `json:"isSocket"`
+	IsNamedPipe   bool      `json:"isNamedPipe"`
+	IsReadOnly    bool      `json:"isReadOnly"`
+}
+
 // StatHandler returns basic file metadata: mime, permissions, modTime
 // @Summary Get file metadata
-// @Description Returns file size, mode, time, etc.
+// @Description Returns file size, mode, time, and flags.
 // @ID getFileStat
 // @Tags file
 // @Security TokenAuth
 // @Param path query string true "File path"
 // @Produce json
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} FileStat
 // @Router /api/stat [get]
 func StatHandler(root string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -485,6 +512,10 @@ func StatHandler(root string) http.HandlerFunc {
 		}
 		fi, err := os.Stat(target)
 		if err != nil {
+			if os.IsPermission(err) {
+				http.Error(w, "permission denied", http.StatusForbidden)
+				return
+			}
 			if os.IsNotExist(err) {
 				util.RecordMissingAccess(target)
 			}
@@ -499,16 +530,30 @@ func StatHandler(root string) http.HandlerFunc {
 				buf := make([]byte, 4100)
 				n, _ := f.Read(buf)
 				mime = http.DetectContentType(buf[:n])
+			} else if os.IsPermission(err) {
+				// if we can't open it to read mime, that's fine, just leave mime empty
+				// but strictly speaking we might want to flag it?
+				// For stat, getting the info is enough.
 			}
 		}
-		resp := map[string]interface{}{
-			"isDir":   fi.IsDir(),
-			"size":    fi.Size(),
-			"mode":    fi.Mode().String(),
-			"modTime": fi.ModTime(),
-			"absPath": target,
-			"mime":    mime,
+
+		mode := fi.Mode()
+		resp := FileStat{
+			IsDir:         fi.IsDir(),
+			Size:          fi.Size(),
+			Mode:          mode.String(),
+			ModTime:       fi.ModTime(),
+			AbsPath:       target,
+			Mime:          mime,
+			IsBlockDevice: mode&os.ModeDevice != 0 && mode&os.ModeCharDevice == 0,
+			IsCharDevice:  mode&os.ModeCharDevice != 0,
+			IsSocket:      mode&os.ModeSocket != 0,
+			IsNamedPipe:   mode&os.ModeNamedPipe != 0,
+			// Simple heuristic: if owner write bit is missing, mark as read-only.
+			// This works for Windows (Read-Only attribute) and Unix (w-------).
+			IsReadOnly: mode&0200 == 0,
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resp)
 	}

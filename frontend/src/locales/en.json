@@ -93,5 +93,20 @@
     "login_failed": "Login failed",
     "token_failed": "Failed to store token",
     "use_token": "Use token",
-    "connected_since": "Connected since"
+    "connected_since": "Connected since",
+    "host": "Host",
+    "pid": "PID",
+    "app_memory": "App Memory",
+    "permission_denied": "Permission denied",
+    "read_only_file": "Read only file",
+    "system_memory": "System Memory",
+    "cpu": "CPU",
+    "timezone": "Timezone",
+    "last_refresh": "Last refresh",
+    "unknown": "unknown",
+    "alloc": "alloc",
+    "sys": "sys",
+    "used": "used",
+    "unsaved_changes_title": "Unsaved changes",
+    "confirm_reload_unsaved": "You have unsaved changes. Reloading will discard them. Continue?"
 }

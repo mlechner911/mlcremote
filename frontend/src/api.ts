@@ -76,6 +76,7 @@ export async function getHealth(): Promise<Health> {
 }
 
 // If a token is provided via URL query (e.g., ?token=XXX) set it into storage
+// this is now our default method of setting the token, so we should never end up with unauthenticated endpointds
 export function captureTokenFromURL() {
     try {
         const params = new URLSearchParams(window.location.search)
@@ -88,7 +89,7 @@ export function captureTokenFromURL() {
 
         const api = params.get('api')
         if (api) {
-            info(`[Debug] Found API param: ${api}`)
+            //     info(`[Debug] Found API param: ${api}`)
             try {
                 const apiObj = new URL(api)
                 // Set base URL without query params and without trailing slash
@@ -98,7 +99,7 @@ export function captureTokenFromURL() {
                 }
                 // DEBUG: Alert the resolved base URL
                 // window.alert(`MLCRemote Debug: API Base set to ${base}`)
-                info(`[Debug] Setting Base URL: ${base}`)
+                //     info(`[Debug] Setting Base URL: ${base}`)
                 setApiBaseUrl(base)
 
                 // Extract token from api url params
@@ -108,11 +109,11 @@ export function captureTokenFromURL() {
                 }
             } catch (e) {
                 // if parsing fails, fallback to raw string (though likely broken if it had params)
-                console.error("Failed to parse API URL", e)
+                //     console.error("Failed to parse API URL", e)
                 setApiBaseUrl(api)
             }
         } else {
-            info('[Debug] No API param found')
+            // info('[Debug] No API param found')
         }
 
         return !!t
@@ -141,6 +142,9 @@ export async function listTree(path = '', opts?: { showHidden?: boolean }): Prom
     info(`GET /api/tree${q}`)
     const r = await authedFetch(`/api/tree${q}`)
     info(`/api/tree${q} => ${r.status}`)
+    if (r.status === 403) {
+        throw new Error('Permission denied')
+    }
     if (!r.ok) {
         warn('/api/tree not ok')
         throw new Error('tree failed')
@@ -155,6 +159,7 @@ export async function readFile(path: string): Promise<string> {
     info(`GET /api/file?path=${path}`)
     const r = await authedFetch(`/api/file?path=${encodeURIComponent(path)}`)
     info(`/api/file?path=${path} => ${r.status}`)
+    if (r.status === 403) throw new Error('Permission denied')
     if (!r.ok) {
         warn('/api/file read failed')
         throw new Error('read failed')
@@ -163,13 +168,31 @@ export async function readFile(path: string): Promise<string> {
 }
 
 /**
- * Retrieve metadata for `path`. The server returns an object describing the
- * file (mime, size, mode, modTime, etc.). Caller treats the result as `any`.
+ * FileStat represents extended file metadata returned by `/api/stat`.
  */
-export async function statPath(path: string): Promise<any> {
+export interface FileStat {
+    isDir: boolean
+    size: number
+    mode: string
+    modTime: string
+    absPath: string
+    mime: string
+    isBlockDevice: boolean
+    isCharDevice: boolean
+    isSocket: boolean
+    isNamedPipe: boolean
+    isReadOnly: boolean
+}
+
+/**
+ * Retrieve metadata for `path`. The server returns an object describing the
+ * file (mime, size, mode, modTime, etc.).
+ */
+export async function statPath(path: string): Promise<FileStat> {
     info(`GET /api/stat?path=${path}`)
     const r = await authedFetch(`/api/stat?path=${encodeURIComponent(path)}`)
     info(`/api/stat?path=${path} => ${r.status}`)
+    if (r.status === 403) throw new Error('Permission denied')
     if (!r.ok) throw new Error('stat failed')
     return r.json()
 }

@@ -19,6 +19,8 @@ type Props = {
   onMeta?: (m: any) => void
 }
 
+import MessageBox from './MessageBox'
+
 export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta }: Props) {
   const { t } = useTranslation()
   const [content, setContent] = React.useState<string>('')
@@ -36,6 +38,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
   const preRef = React.useRef<HTMLElement | null>(null)
   const prevUnsavedRef = React.useRef<boolean | null>(null)
+  const [confirmDialog, setConfirmDialog] = React.useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
 
   const handler = getHandler({ path, meta, probe })
   const HandlerView = handler.view
@@ -232,17 +235,29 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
 
   const onReload = async () => {
     if (!path) return
+    const doReload = async () => {
+      setStatus(t('reloading', 'Reloading...'))
+      try {
+        await loadFile(true)
+        setStatus(t('reloaded', 'Reloaded'))
+        setTimeout(() => setStatus(s => s === t('reloaded', 'Reloaded') ? '' : s), 1500)
+      } catch (e) {
+        setStatus(t('reload_failed', 'Reload failed'))
+      }
+    }
+
     if (content !== origContent) {
-      if (!confirm(t('confirm_reload_unsaved', 'You have unsaved changes. Reloading will discard them. Continue?'))) return
+      setConfirmDialog({
+        title: t('unsaved_changes_title', 'Unsaved Changes'),
+        message: t('confirm_reload_unsaved', 'You have unsaved changes. Reloading will discard them. Continue?'),
+        onConfirm: () => {
+          setConfirmDialog(null)
+          doReload()
+        }
+      })
+      return
     }
-    setStatus(t('reloading', 'Reloading...'))
-    try {
-      await loadFile(true)
-      setStatus(t('reloaded', 'Reloaded'))
-      setTimeout(() => setStatus(s => s === t('reloaded', 'Reloaded') ? '' : s), 1500)
-    } catch (e) {
-      setStatus(t('reload_failed', 'Reload failed'))
-    }
+    doReload()
   }
 
   React.useEffect(() => {
@@ -258,6 +273,14 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
 
   return (
     <div className="editor">
+      {confirmDialog && (
+        <MessageBox
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          onClose={() => setConfirmDialog(null)}
+          onConfirm={confirmDialog.onConfirm}
+        />
+      )}
       <div className="editor-header">
         <strong>{t('editor')}</strong>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -281,7 +304,14 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
 
           {/* Only show Save if handler supports editing and content changed */}
           {handler.isEditable && content !== origContent && (
-            <button className="link icon-btn" title={t('save')} aria-label={t('save')} onClick={onSave} disabled={!path}>
+            <button
+              className="link icon-btn"
+              title={meta?.isReadOnly ? t('read_only_file') : t('save')}
+              aria-label={t('save')}
+              onClick={onSave}
+              disabled={!path || meta?.isReadOnly}
+              style={meta?.isReadOnly ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            >
               <Icon name={iconForExtension('upload') || 'icon-upload'} title={t('save')} size={16} />
             </button>
           )}

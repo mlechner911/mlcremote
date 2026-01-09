@@ -5,6 +5,7 @@ import { useAppSettings } from './hooks/useAppSettings'
 import { useWorkspace } from './hooks/useWorkspace'
 import AppHeader from './components/AppHeader'
 import AuthOverlay from './components/AuthOverlay'
+import AboutPopup from './components/AboutPopup'
 import FileExplorer from './components/FileExplorer'
 import SettingsPopup from './components/SettingsPopup'
 import { useTranslation } from 'react-i18next'
@@ -385,9 +386,9 @@ export default function App() {
           try {
             if (cwd) {
               const st = await statPath(cwd)
-              if (!st.isDir && st.path) {
+              if (!st.isDir && st.absPath) {
                 // if a file, use its directory
-                const parts = st.path.split('/').filter(Boolean)
+                const parts = st.absPath.split('/').filter(Boolean)
                 parts.pop()
                 cwd = parts.length ? `/${parts.join('/')}` : ''
               }
@@ -395,9 +396,9 @@ export default function App() {
               try {
                 const st2 = await statPath(activeFile)
                 if (st2.isDir) {
-                  cwd = st2.path || activeFile
-                } else if (st2.path) {
-                  const parts = st2.path.split('/').filter(Boolean)
+                  cwd = st2.absPath || activeFile
+                } else if (st2.absPath) {
+                  const parts = st2.absPath.split('/').filter(Boolean)
                   parts.pop()
                   cwd = parts.length ? `/${parts.join('/')}` : ''
                 }
@@ -569,30 +570,11 @@ export default function App() {
       {/* Server time and timezone are shown inside the main About popup now. */}
 
       {aboutOpen && (
-        <div className="about-backdrop" onClick={() => setAboutOpen(false)}>
-          <div className="about-modal" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0 }}>MLCRemote</h3>
-              <button aria-label={t('close')} title={t('close')} onClick={() => setAboutOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><Icon name="icon-close" size={16} /></button>
-            </div>
-            <div style={{ marginBottom: 8 }}>Copyright © {new Date().getFullYear()} Michael Lechner</div>
-            <div style={{ marginBottom: 8 }}>Version: {health ? `${health.status}@${health.version}` : 'unknown'}</div>
-            {health && (
-              <div style={{ maxHeight: '40vh', overflow: 'auto', background: '#0b0b0b', color: 'white', padding: 12, borderRadius: 6 }}>
-                <div><strong>Host:</strong> {health.host}</div>
-                <div><strong>PID:</strong> {health.pid}</div>
-                <div><strong>Version:</strong> {health.version}</div>
-                <div><strong>App Memory:</strong> {formatBytes(health.go_alloc_bytes)} (alloc) / {formatBytes(health.go_sys_bytes)} (sys)</div>
-                <div><strong>System Memory:</strong> {formatBytes((health.sys_mem_total_bytes || 0) - (health.sys_mem_free_bytes || 0))} / {formatBytes(health.sys_mem_total_bytes || 0)} used</div>
-                <div><strong>CPU:</strong> {Math.round((health.cpu_percent || 0) * 10) / 10}%</div>
-                <div style={{ marginTop: 8 }}><strong>Server time:</strong> {health.server_time}</div>
-                <div style={{ marginTop: 4 }}><strong>Timezone:</strong> {health.timezone}</div>
-                <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>Last refresh: {lastHealthAt ? new Date(lastHealthAt).toLocaleString() : 'n/a'}</div>
-              </div>
-            )}
-            {/* Close button moved to top-right X for consistency with Settings popup */}
-          </div>
-        </div>
+        <AboutPopup
+          onClose={() => setAboutOpen(false)}
+          health={health}
+          lastHealthAt={lastHealthAt}
+        />
       )}
     </div>
   )

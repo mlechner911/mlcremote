@@ -7,9 +7,12 @@ type Props = {
     title: string
     message: string
     onClose: () => void
+    onConfirm?: () => void
+    confirmLabel?: string
+    cancelLabel?: string
 }
 
-export default function MessageBox({ title, message, onClose }: Props) {
+export default function MessageBox({ title, message, onClose, onConfirm, confirmLabel, cancelLabel }: Props) {
     const { t } = useTranslation()
     // close on escape key
     React.useEffect(() => {
@@ -30,8 +33,15 @@ export default function MessageBox({ title, message, onClose }: Props) {
                 <div style={{ marginBottom: 24, fontSize: 14, lineHeight: '1.5', color: 'var(--text-muted)' }}>
                     {message}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <button className="btn" onClick={onClose}>{t('close')}</button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                    {onConfirm ? (
+                        <>
+                            <button className="btn" onClick={onClose}>{cancelLabel || t('cancel')}</button>
+                            <button className="btn primary" onClick={onConfirm}>{confirmLabel || t('continue')}</button>
+                        </>
+                    ) : (
+                        <button className="btn" onClick={onClose}>{t('close')}</button>
+                    )}
                 </div>
             </div>
         </div>

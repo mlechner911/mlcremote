@@ -89,5 +89,20 @@
     "login_failed": "Error de inicio de sesión",
     "token_failed": "Error al guardar el token",
     "use_token": "Usar token",
-    "connected_since": "Conectado desde"
+    "connected_since": "Conectado desde",
+    "host": "Host",
+    "pid": "PID",
+    "app_memory": "Memoria App",
+    "permission_denied": "Permiso denegado",
+    "read_only_file": "Archivo de solo lectura",
+    "system_memory": "Memoria Sistema",
+    "cpu": "CPU",
+    "timezone": "Zona horaria",
+    "last_refresh": "Última actualización",
+    "unknown": "desconocido",
+    "alloc": "alloc",
+    "sys": "sys",
+    "used": "usado",
+    "unsaved_changes_title": "Cambios no guardados",
+    "confirm_reload_unsaved": "Tiene cambios no guardados. Recargar los descartará. ¿Continuar?"
 }

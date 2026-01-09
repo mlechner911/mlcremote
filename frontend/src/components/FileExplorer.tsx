@@ -78,7 +78,11 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
         // ignore
       }
     } catch (e: any) {
-      setError(e.message || t('status_failed'))
+      if (e.message === 'Permission denied') {
+        setError(t('permission_denied'))
+      } else {
+        setError(e.message || t('status_failed'))
+      }
     } finally {
       setLoading(false)
     }
@@ -99,6 +103,18 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
   // reload when parent signals a change (explicit refresh requests from parent)
   React.useEffect(() => {
     load(path || '')
+    const onKeyDown = (e: KeyboardEvent) => {
+      // allow Backspace to go up if not typing in an input
+      if (e.key === 'Backspace') {
+        // check if active element is an input
+        const active = document.activeElement as HTMLElement
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return
+        e.preventDefault()
+        up()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [path, load, reloadSignal])
 
   const up = (): void => {
