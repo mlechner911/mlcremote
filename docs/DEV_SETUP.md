@@ -69,3 +69,52 @@ ssh -L 8443:localhost:8443 user@remote
 ```bash
 make backend && cd frontend && npm run build
 ```
+
+## Desktop (Wails) on Linux
+
+To build and run the desktop app on Linux, install native GUI dev packages first:
+
+- Quick install via helper:
+```bash
+sudo desktop/wails/scripts/install-linux-deps.sh
+```
+- Or use Make:
+```bash
+make desktop-deps
+```
+
+Then build:
+```bash
+# Build desktop (auto-detects WebKitGTK version and tags)
+make desktop-build
+
+# Development mode (runs Wails dev + Vite dev server)
+make debug
+```
+
+If you prefer Docker for a Linux binary without local GUI deps:
+```bash
+make build-linux
+ls dist/linux
+```
+
+Headless environments:
+- Install `xvfb` and run the app with `xvfb-run` if no display server is available.
+
+Remote desktop testing (Windows → Linux)
+- Start xpra on the remote and attach from Windows:
+```bash
+# On remote Linux (bind to localhost; use SSH tunnel)
+xpra start :100 --start=./dist/desktop-linux-$(uname -m)/MLCRemote --bind-tcp=127.0.0.1:10000 --exit-with-children
+```
+```powershell
+# On Windows (SSH tunnel + attach)
+ssh -L 10000:127.0.0.1:10000 user@remote-host
+xpra.exe attach tcp:localhost:10000
+```
+- Convenience target:
+```bash
+make remote-xpra REMOTE=user@remote-host REMOTE_DIR=/full/path/to/mlcremote
+# Bind to all interfaces (no tunnel; ensure firewall):
+make remote-xpra REMOTE=user@remote-host REMOTE_DIR=/full/path/to/mlcremote REMOTE_BIND=0.0.0.0:10000
+```

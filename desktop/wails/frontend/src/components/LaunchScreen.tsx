@@ -131,16 +131,23 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
     }
 
     useEffect(() => {
-        // Listen for backend connection status updates
-        // @ts-ignore
-        window.runtime.EventsOn("connection-status", (msg: string) => {
-            if (loading) {
-                // If msg matches a key, translate it
-                const key = `status_${msg.toLowerCase().replace(' ', '_')}` as any
-                setStatus(t(key) || msg)
-            }
-        })
+        // Listen for backend connection status updates (only in Wails runtime)
+        const rt: any = (typeof window !== 'undefined') ? (window as any).runtime : null
+        let unsubscribe: (() => void) | undefined
+        if (rt && typeof rt.EventsOn === 'function') {
+            unsubscribe = rt.EventsOn("connection-status", (msg: string) => {
+                if (loading) {
+                    const key = `status_${msg.toLowerCase().replace(' ', '_')}` as any
+                    setStatus(t(key) || msg)
+                }
+            })
+        }
         return () => {
+            if (rt && typeof rt.EventsOff === 'function') {
+                rt.EventsOff("connection-status")
+            } else if (typeof unsubscribe === 'function') {
+                try { unsubscribe() } catch { /* noop */ }
+            }
         }
     }, [loading, t])
 
@@ -260,7 +267,13 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 setStatus(t('status_failed'))
             }
         } finally {
-            EventsOff("connection-status")
+            // Ensure we only attempt to remove the event in Wails runtime
+            const rt: any = (typeof window !== 'undefined') ? (window as any).runtime : null
+            if (rt && typeof rt.EventsOff === 'function') {
+                rt.EventsOff("connection-status")
+            } else {
+                try { EventsOff("connection-status") } catch { /* noop */ }
+            }
             setLoading(false)
         }
     }

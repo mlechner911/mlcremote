@@ -21,12 +21,12 @@ else
     include Makefile.unix
 endif
 
-.PHONY: help backend frontend run docs install connect clean desktop-dev desktop-build desktop-dist desktop-dist-zip dist docker-build docker-run test-env-up test-env-down build-linux backend-linux-payload prepare-payload
+.PHONY: help backend frontend run docs install connect clean desktop-dev desktop-build desktop-dist desktop-dist-zip dist docker-build docker-run test-env-up test-env-down build-linux backend-linux-payload prepare-payload desktop-deps remote-xpra
 
 # ... (help targets omitted) ...
 
 help: ## Show this help
-	@$(HELP_CMD)
+	@grep -h '^##' Makefile Makefile.win Makefile.unix | sed "s/^## //g"
 
 ## backend - Build the Go backend
 backend:
@@ -76,12 +76,12 @@ prepare-payload: backend-linux-payload backend-windows-payload backend-darwin-am
 	@$(CLEAN_PAYLOAD_FRONTEND)
 	@$(MKDIR_PAYLOAD_FRONTEND)
 	@$(COPY_PAYLOAD_FRONTEND)
-	
+
 	@echo "Updating desktop local IDE assets..."
 	@$(CLEAN_DESKTOP_IDE)
 	@$(MKDIR_DESKTOP_IDE)
 	@$(COPY_DESKTOP_IDE)
-	
+
 	@echo "Building verification tool..."
 	@$(ENSURE_BIN)
 	@cd $(BACKEND_DIR) && go build -o ../$(BIN_DIR)/build-util$(EXT) ./cmd/build-util
@@ -100,7 +100,7 @@ desktop-build: prepare-payload
 	@$(ENSURE_BIN)
 	cd $(BACKEND_DIR) && go build -o ../$(BIN_DIR)/build-util$(EXT) ./cmd/build-util
 	cd $(FRONTEND_DIR) && npm run build
-	cd $(DESKTOP_DIR)/wails && wails build
+	cd $(DESKTOP_DIR)/wails && (wails build -tags webkit2_41 || wails build -tags webkit2 || wails build)
 	@echo "---------------------------------------------------"
 	@$(BIN_DIR)/build-util$(EXT) size $(DESKTOP_DIR)/wails/build/bin/MLCRemote$(EXT)
 	@echo "---------------------------------------------------"
@@ -116,17 +116,15 @@ desktop-upgrade-wails:
 desktop-dist:
 	@echo "Building frontend and desktop (wails build)"
 	cd $(FRONTEND_DIR) && npm run build
-	cd $(DESKTOP_DIR)/wails && wails build -s -tags "desktop,production"
+	cd $(DESKTOP_DIR)/wails && (wails build -s -tags "desktop,production,webkit2_41" || wails build -s -tags "desktop,production,webkit2" || wails build -s -tags "desktop,production")
 	@echo "Packaging desktop artifacts into dist/"
-	@mkdir -p dist
-	OSNAME=`uname -s | tr '[:upper:]' '[:lower:]'` || OSNAME=unknown; \
-	ARCH=`uname -m` || ARCH=unknown; \
-	OUTDIR=dist/desktop-$${OSNAME}-$${ARCH}; \
-	mkdir -p $$OUTDIR; \
-	# copy Wails build output (default: build/bin or build/ for some setups)
-	if [ -d "$(DESKTOP_DIR)/wails/build/bin" ]; then cp -r $(DESKTOP_DIR)/wails/build/bin/* $$OUTDIR/; fi; \
-	if [ -d "$(DESKTOP_DIR)/wails/build" ]; then cp -r $(DESKTOP_DIR)/wails/build/* $$OUTDIR/; fi; \
-	@echo "Packaged to $$OUTDIR"
+	@mkdir -p $(OUTDIR)
+	@if [ -d "$(DESKTOP_DIR)/wails/build/bin" ]; then \
+		cp -r "$(DESKTOP_DIR)/wails/build/bin"/* "$(OUTDIR)/"; \
+	elif [ -d "$(DESKTOP_DIR)/wails/build" ]; then \
+		cp -r "$(DESKTOP_DIR)/wails/build"/* "$(OUTDIR)/"; \
+	fi
+	@echo "Packaged to $(OUTDIR)"
 
 .PHONY: desktop-dist-zip
 ## desktop-dist-zip - Create a zip archive of the desktop distribution
@@ -176,8 +174,50 @@ clean:
 ## dist - Package full distribution (icons, backend, frontend) into build/dist
 dist: icons backend frontend
 	@echo "Packaging distribution into build/dist"
+
+ifeq ($(OS),Windows_NT)
 	@powershell -noprofile -ExecutionPolicy Bypass -File scripts/dist.ps1
+else
+	@rm -rf build/dist
+	@mkdir -p build/dist/bin build/dist/frontend
+	@echo "Copying binaries"
+	@if [ -f "$(BIN_DIR)/dev-server$(EXT)" ]; then cp -f "$(BIN_DIR)/dev-server$(EXT)" build/dist/bin/; else echo "Warning: dev-server binary not found at $(BIN_DIR)/dev-server$(EXT)"; fi
+	@if [ -f "$(BIN_DIR)/icon-gen$(EXT)" ]; then cp -f "$(BIN_DIR)/icon-gen$(EXT)" build/dist/bin/; fi
+	@echo "Copying frontend"
+	@if [ -d "$(FRONTEND_DIR)/dist" ]; then cp -r "$(FRONTEND_DIR)/dist"/* build/dist/frontend/; else echo "Error: No frontend dist found at $(FRONTEND_DIR)/dist"; exit 1; fi
+endif
 	@echo "Packaged distribution to build/dist"
+
+## remote-xpra - Start xpra on remote Linux and print SSH tunnel/attach commands
+remote-xpra:
+	@if [ -z "$(REMOTE)" ]; then echo "Set REMOTE=user@host (e.g., make remote-xpra REMOTE=user@server)"; exit 1; fi
+	@echo "Starting xpra on $(REMOTE) (display :100, TCP 127.0.0.1:10000)"
+	@ssh $(REMOTE) 'set -e; \
+		RDIR="$(if $(REMOTE_DIR),$(REMOTE_DIR),$(PWD))"; \
+		APP_PATH=$$(ls -1 "$${RDIR}/dist/desktop-linux-"*"/MLCRemote" 2>/dev/null | head -n1); \
+		if [ -z "$$APP_PATH" ]; then echo "App not found under $$RDIR/dist"; exit 1; fi; \
+		command -v xpra >/dev/null 2>&1 || { echo "xpra not installed. Install with: sudo apt install xpra xvfb (Debian/Ubuntu)"; exit 1; }; \
+		xpra stop :100 >/dev/null 2>&1 || true; \
+		BINDADDR="$(if $(REMOTE_BIND),$(REMOTE_BIND),127.0.0.1:10000)"; \
+		xpra start :100 --start-child="$$APP_PATH" --bind-tcp="$$BINDADDR" --exit-with-children'
+	@echo "----------------------------------------"
+	@echo "Bind address: $(if $(REMOTE_BIND),$(REMOTE_BIND),127.0.0.1:10000)"
+	@echo "If bound to localhost, open SSH tunnel on Windows:"
+	@echo "  ssh -L 10000:127.0.0.1:10000 $(REMOTE)"
+	@echo "  xpra.exe attach tcp:localhost:10000"
+	@echo "If bound to 0.0.0.0 (no tunnel), attach directly:"
+	@echo "  xpra.exe attach tcp:<remote-host>:<port>  (use the port from REMOTE_BIND, default 10000)"
+	@echo "Security note: direct TCP exposes the session; prefer SSH tunnel or restrict with firewall."
+
+.PHONY: desktop-deps
+## desktop-deps - Install desktop build dependencies for your OS
+desktop-deps:
+ifeq ($(OS),Windows_NT)
+	@echo "Windows: Install WebView2 runtime and Wails CLI. See desktop/BUILD.md."
+else
+	@echo "Installing Linux desktop build dependencies..."
+	@if [ $$(id -u) -ne 0 ]; then sudo desktop/wails/scripts/install-linux-deps.sh; else desktop/wails/scripts/install-linux-deps.sh; fi
+endif
 
 # Docker Targets
 .PHONY: icons
