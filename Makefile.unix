@@ -7,8 +7,8 @@ ENSURE_BIN = mkdir -p $(BIN_DIR)
 SERVER_BIN = ./$(BIN_DIR)/dev-server
 ICON_GEN_BIN = ./$(BIN_DIR)/icon-gen
 
-# sed/grep command to extract generic help text from Makefiles
-HELP_CMD = grep -h "^##" Makefile Makefile.win Makefile.unix | sed 's/^## //g'
+# sed/grep command to extract generic help text from Makefiles (use double quotes to avoid shell quoting issues)
+HELP_CMD = grep -h '^##' Makefile Makefile.win Makefile.unix | sed "s/^## //g"
 
 # Payload Utilities
 MKDIR_PAYLOAD = mkdir -p $(DESKTOP_DIR)/wails/assets/payload
@@ -28,3 +28,8 @@ ENSURE_DIST_LINUX = mkdir -p dist/linux
 # Clean Utilities
 RM_F = rm -f
 RM_RF = rm -rf
+
+# Packaging identifiers (Linux/macOS)
+OSNAME := $(shell uname -s 2>/dev/null | tr '[:upper:]' '[:lower:]' || echo unknown)
+ARCH := $(shell uname -m 2>/dev/null || echo unknown)
+OUTDIR := dist/desktop-$(OSNAME)-$(ARCH)

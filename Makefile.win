@@ -32,3 +32,9 @@ ENSURE_DIST_LINUX = if not exist dist\linux mkdir dist\linux
 # Clean Utilities
 RM_F = del /f /q
 RM_RF = powershell -noprofile -command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
+
+# Packaging identifiers (Windows)
+OSNAME := windows
+# Use PROCESSOR_ARCHITECTURE if available, else default to amd64
+ARCH := $(PROCESSOR_ARCHITECTURE)
+OUTDIR := dist/desktop-$(OSNAME)-$(ARCH)
