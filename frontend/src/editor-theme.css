@@ -3,7 +3,7 @@
 /* Prepend body to override imported prism themes */
 body code[class*="language-"],
 body pre[class*="language-"] {
-    color: var(--token-text, #ccc);
+    color: var(--token-text, #c21616);
     background: none;
 
     /* Layout properties removed: strict reliance on editor.css */

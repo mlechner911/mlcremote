@@ -4,8 +4,10 @@ import { langForExt, aliasForExt } from '../grammar'
 import { useTranslation } from 'react-i18next'
 // Prism language components and theme — keep these imports local to TextView
 // to avoid loading them for non-text previews.
-// @ts-ignore: allow side-effect CSS import without type declarations
-import 'prismjs/themes/prism-tomorrow.css'
+
+// Note: We use our own editor-theme.css (imported in main.tsx) which handles light/dark mode.
+// Do NOT import a default prism theme here as it will override our custom colors.
+
 import 'prismjs/components/prism-javascript'
 import 'prismjs/components/prism-typescript'
 import 'prismjs/components/prism-go'
