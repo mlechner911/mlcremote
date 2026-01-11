@@ -36,10 +36,14 @@ Lightweight remote development environment for small servers, wrapped in a nativ
   <img src="screenshots/image_preview.png" width="45%" alt="Image Preview">
 </p>
 
-## Quick Start (Desktop)
+## Quick Start (Desktop) - **Recommended**
 
-1.  **Download** the latest release for your OS.
-2.  **Run** the application.
+> [!IMPORTANT]
+> **Windows Users:** Please use the pre-built installer (`MLCRemote-amd64-installer.exe`) available in the [Releases](https://github.com/mlechner911/mlcremote/releases) section or the `dist/` folder.
+> Building from source is **not required** and is intended for contributors only.
+
+1.  **Download** the latest installer for your OS (Windows).
+2.  **Run** the installer and launch the application.
 3.  **Connect** to your server:
     -   Enter `User` (e.g., `root` or `ubuntu`) and `Host` (IP or domain).
     -   **Authentication:**
