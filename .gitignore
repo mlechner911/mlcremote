@@ -10,6 +10,7 @@ public/js
 *.exe~
 *.dll
 *.so
+*.tar.gz
 
 # Local npm auth token for frontend (do not commit)
 frontend/.npmrc
