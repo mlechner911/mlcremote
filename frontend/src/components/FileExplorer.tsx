@@ -128,7 +128,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
 
   const doUpload = async (targetDir: string, files: FileList | null) => {
     if (!files || files.length === 0) return
-    console.log('Dropping files:', files.length, 'to', targetDir)
+
 
     const processUpload = async () => {
       setUploading(true)

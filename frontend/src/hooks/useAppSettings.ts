@@ -61,7 +61,7 @@ export function useAppSettings() {
 
                 const urlLang = params.get('lng') || params.get('lang')
                 if (urlLang && urlLang !== s.language) {
-                    console.log(`[i18n] Syncing language from Desktop (${urlLang}) -> Server`)
+
                     saveSettings({ language: urlLang }).catch(console.error)
                     if (i18n.language !== urlLang) i18n.changeLanguage(urlLang)
                 } else if (s.language && i18n.language !== s.language) {

@@ -21,7 +21,7 @@ export default function EditorCodeMirror({ path, onSaved }: Props) {
   React.useEffect(() => {
     let mounted = true
       ; (async () => {
-        console.log('Loading CodeMirror...')
+
         try {
           const cmMod = await import('@uiw/react-codemirror')
           const themeMod = await import('@codemirror/theme-one-dark')

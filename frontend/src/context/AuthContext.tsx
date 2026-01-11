@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const params = new URLSearchParams(window.location.search)
         const urlToken = params.get('token')
         if (urlToken) {
-            console.log('[Auth] Token found in URL (sync init):', urlToken)
+
             localStorage.setItem('mlcremote_token', urlToken)
             // Remove token from URL for cleaner history
             const newUrl = window.location.protocol + '//' + window.location.host + window.location.pathname
