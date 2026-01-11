@@ -96,8 +96,8 @@
     padding: 10px;
     border-radius: 8px;
     border: none;
-    background: transparent;
-    color: transparent;
+    background: transparent !important;
+    color: transparent !important;
     caret-color: var(--text);
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     font-size: 13px;
