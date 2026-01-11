@@ -1,5 +1,5 @@
 import React from 'react'
-import { statPath, type Health } from './api'
+import { statPath, type Health, saveSettings } from './api'
 import { useAuth } from './context/AuthContext'
 import { useAppSettings } from './hooks/useAppSettings'
 import { useWorkspace } from './hooks/useWorkspace'
@@ -7,6 +7,7 @@ import AppHeader from './components/AppHeader'
 import AuthOverlay from './components/AuthOverlay'
 import AboutPopup from './components/AboutPopup'
 import FileExplorer from './components/FileExplorer'
+import ModernSidebar from './components/ModernSidebar'
 import SettingsPopup from './components/SettingsPopup'
 import { useTranslation } from 'react-i18next'
 import { Icon } from './generated/icons'
@@ -20,6 +21,7 @@ import TabBarComponent from './components/TabBar'
 
 
 import LogOverlay from './components/LogOverlay'
+import './modern.css'
 import { formatBytes } from './utils/bytes'
 import { captureElementToPng } from './utils/capture'
 import { defaultStore, boolSerializer, strSerializer } from './utils/storage'
@@ -74,6 +76,7 @@ export default function App() {
     hideMemoryUsage, toggleHideMemoryUsage,
     canChangeRoot,
     maxEditorSize, updateMaxEditorSize,
+    uiMode, setUiMode,
     i18n
   } = useAppSettings()
 
@@ -303,7 +306,7 @@ export default function App() {
     const isActivePane = paneId === activePaneId
 
     return (
-      <div className="pane-content"
+      <div className={`pane-content ${uiMode === 'modern' ? 'modern-tabs' : ''}`}
         style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}
         onClick={() => { if (!isActivePane) setActivePaneId(paneId) }}
       >
@@ -395,172 +398,269 @@ export default function App() {
 
   return (
     <div className="app">
-      <AppHeader
-        logoVisible={logoVisible}
-        setLogoVisible={setLogoVisible}
+      {uiMode !== 'modern' && (
+        <AppHeader
+          logoVisible={logoVisible}
+          setLogoVisible={setLogoVisible}
 
-        isControlled={isControlled}
-        theme={theme}
-        onToggleTheme={() => {
-          const next = theme === 'dark' ? 'light' : 'dark'
-          setTheme(next)
-          defaultStore.set('theme', next, strSerializer as any)
-        }}
+          isControlled={isControlled}
+          theme={theme}
+          onToggleTheme={() => {
+            const next = theme === 'dark' ? 'light' : 'dark'
+            setTheme(next)
+            defaultStore.set('theme', next, strSerializer as any)
+          }}
 
-        onOpenTerminal={async () => {
-          // determine cwd: prefer selectedPath; if none, fall back to active file's directory
-          let cwd = selectedPath || ''
-          try {
-            if (cwd) {
-              const st = await statPath(cwd)
-              if (!st.isDir && st.absPath) {
-                // if a file, use its directory
-                const parts = st.absPath.split('/').filter(Boolean)
-                parts.pop()
-                cwd = parts.length ? `/${parts.join('/')}` : ''
-              }
-            } else if (activeFile && !activeFile.startsWith('shell-')) {
-              try {
-                const st2 = await statPath(activeFile)
-                if (st2.isDir) {
-                  cwd = st2.absPath || activeFile
-                } else if (st2.absPath) {
-                  const parts = st2.absPath.split('/').filter(Boolean)
+          onOpenTerminal={async () => {
+            // determine cwd: prefer selectedPath; if none, fall back to active file's directory
+            let cwd = selectedPath || ''
+            try {
+              if (cwd) {
+                const st = await statPath(cwd)
+                if (!st.isDir && st.absPath) {
+                  // if a file, use its directory
+                  const parts = st.absPath.split('/').filter(Boolean)
                   parts.pop()
                   cwd = parts.length ? `/${parts.join('/')}` : ''
                 }
-              } catch (e) {
-                // if stat fails, derive directory from activeFile string as a fallback
-                const parts = activeFile.split('/').filter(Boolean)
-                parts.pop()
-                cwd = parts.length ? `/${parts.join('/')}` : ''
+              } else if (activeFile && !activeFile.startsWith('shell-')) {
+                try {
+                  const st2 = await statPath(activeFile)
+                  if (st2.isDir) {
+                    cwd = st2.absPath || activeFile
+                  } else if (st2.absPath) {
+                    const parts = st2.absPath.split('/').filter(Boolean)
+                    parts.pop()
+                    cwd = parts.length ? `/${parts.join('/')}` : ''
+                  }
+                } catch (e) {
+                  // if stat fails, derive directory from activeFile string as a fallback
+                  const parts = activeFile.split('/').filter(Boolean)
+                  parts.pop()
+                  cwd = parts.length ? `/${parts.join('/')}` : ''
+                }
               }
+            } catch (e) {
+              // ignore stat errors and fall back to selected/derived path
             }
-          } catch (e) {
-            // ignore stat errors and fall back to selected/derived path
-          }
-          const shellName = `shell-${Date.now()}`
-          // normalize: ensure stored cwd is a directory (if it looks like a file, use parent)
-          let norm = cwd || ''
-          if (norm && norm.split('/').pop()?.includes('.')) {
-            const parts = norm.split('/').filter(Boolean)
-            parts.pop()
-            norm = parts.length ? `/${parts.join('/')}` : '/'
-          }
-          setShellCwds(s => ({ ...s, [shellName]: norm }))
-          openFile(shellName)
-        }}
+            const shellName = `shell-${Date.now()}`
+            // normalize: ensure stored cwd is a directory (if it looks like a file, use parent)
+            let norm = cwd || ''
+            if (norm && norm.split('/').pop()?.includes('.')) {
+              const parts = norm.split('/').filter(Boolean)
+              parts.pop()
+              norm = parts.length ? `/${parts.join('/')}` : '/'
+            }
+            setShellCwds(s => ({ ...s, [shellName]: norm }))
+            openFile(shellName)
+          }}
 
-        onOpenTrash={() => {
-          if (!openFiles.includes('trash')) openFile('trash')
-          setActiveFile('trash')
-        }}
-        onScreenshot={async () => {
-          const root = document.querySelector('.app') as HTMLElement | null
-          if (!root) return
-          try {
-            await captureElementToPng(root, 'mlcremote-screenshot.png')
-          } catch (e) {
-            console.error('Screenshot failed', e)
-          }
-        }}
+          onOpenTrash={() => {
+            if (!openFiles.includes('trash')) openFile('trash')
+            setActiveFile('trash')
+          }}
+          onScreenshot={async () => {
+            const root = document.querySelector('.app') as HTMLElement | null
+            if (!root) return
+            try {
+              await captureElementToPng(root, 'mlcremote-screenshot.png')
+            } catch (e) {
+              console.error('Screenshot failed', e)
+            }
+          }}
 
-        onSplitPane={splitPane}
-        onCloseActivePane={() => closePane(activePaneId)}
-        canCloseActivePane={layout.type !== 'leaf'}
+          onSplitPane={splitPane}
+          onCloseActivePane={() => closePane(activePaneId)}
+          canCloseActivePane={layout.type !== 'leaf'}
 
-        settingsOpen={settingsOpen}
-        setSettingsOpen={setSettingsOpen}
-        aboutOpen={aboutOpen}
-        setAboutOpen={setAboutOpen}
+          settingsOpen={settingsOpen}
+          setSettingsOpen={setSettingsOpen}
+          aboutOpen={aboutOpen}
+          setAboutOpen={setAboutOpen}
 
-        autoOpen={autoOpen}
-        setAutoOpen={setAutoOpen}
-        showHidden={showHidden}
-        setShowHidden={setShowHidden}
-        showLogs={showLogs}
-        toggleLogs={setShowLogs}
-        hideMemoryUsage={hideMemoryUsage}
-        toggleHideMemoryUsage={toggleHideMemoryUsage}
-        maxEditorSize={maxEditorSize}
-        updateMaxEditorSize={updateMaxEditorSize}
-        i18n={i18n}
-      />
+          autoOpen={autoOpen}
+          setAutoOpen={setAutoOpen}
+          showHidden={showHidden}
+          setShowHidden={setShowHidden}
+          showLogs={showLogs}
+          toggleLogs={setShowLogs}
+          hideMemoryUsage={hideMemoryUsage}
+          toggleHideMemoryUsage={toggleHideMemoryUsage}
+          maxEditorSize={maxEditorSize}
+          updateMaxEditorSize={updateMaxEditorSize}
+          uiMode={uiMode}
+          onToggleUiMode={setUiMode}
+          i18n={i18n}
+        />
+      )}
       <div className="app-body" style={{ alignItems: 'stretch' }}>
-        <aside className="sidebar" style={{ width: sidebarWidth }}>
-          <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} reloadSignal={reloadSignal} showMessageBox={(t, m, c, l) => setMessageBox({ title: t, message: m, onConfirm: c, confirmLabel: l })} onSelect={(p, isDir) => {
-            setSelectedPath(p)
-            if (isDir) {
-              // Auto-open metadata view for directories
-              openFile('metadata')
-              return
-            }
-            // file: open editor tab (respect autoOpen)
-            // file: decide if it should open as a shared binary view or normal editor
-            (async () => {
-              try {
-                const st = await statPath(p)
-                const h = getHandler({ path: p, meta: st })
-
-                // If it's the Binary or Unsupported handler, open the shared binary tab
-                if (h.name === 'Binary' || h.name === 'Unsupported') {
-                  if (!openFiles.includes('binary')) openFile('binary')
-                  setBinaryPath(p)
-                  setActiveFile('binary')
+        <aside className="sidebar" style={{ width: sidebarWidth, padding: uiMode === 'modern' ? 0 : 8 }}>
+          {uiMode === 'modern' ? (
+            <ModernSidebar
+              showHidden={showHidden}
+              selectedPath={selectedPath}
+              root={explorerDir || '/'}
+              onSelect={(p, isDir) => {
+                /* Reusing existing selection logic */
+                setSelectedPath(p)
+                if (isDir) {
+                  // Modern sidebar might handle dir selection differently (toggle), but here we open metadata
+                  openFile('metadata')
                   return
                 }
-              } catch (e: any) {
-                // if stat fails, do not attempt to open the file (it might be a broken link)
-                setMessageBox({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
-                return
-              }
-              // otherwise open as normal file tab
-              if (autoOpen) {
+                // Open file logic copied from FileExplorer handle
+                (async () => {
+                  try {
+                    const st = await statPath(p)
+                    const h = getHandler({ path: p, meta: st })
+                    if (h.name === 'Binary' || h.name === 'Unsupported') {
+                      if (!openFiles.includes('binary')) openFile('binary')
+                      setBinaryPath(p)
+                      setActiveFile('binary')
+                      return
+                    }
+                  } catch (e: any) {
+                    setMessageBox({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
+                    return
+                  }
+                  if (autoOpen) {
+                    openFile(p)
+                  } else {
+                    if (openFiles.includes(p)) setActiveFile(p)
+                  }
+                })()
+                checkHealthStatus()
+              }}
+              onOpen={(p) => {
                 openFile(p)
-              } else {
-                if (openFiles.includes(p)) setActiveFile(p)
-              }
-            })()
-            // check health status since backend interaction succeeded
-            checkHealthStatus()
-          }} onView={(p) => {
-            // if the file is already open, activate it; otherwise open it as a new persistent tab
-            if (openFiles.includes(p)) {
-              setActiveFile(p)
-            } else {
-              openFile(p)
-            }
-            if (p !== 'metadata') setSelectedPath(p)
-            // check health status since backend interaction succeeded
-            checkHealthStatus()
-          }} onBackendActive={checkHealthStatus} onChangeRoot={async () => {
-            // Prompt-only flow: we cannot browse remote server; ask for a path and validate it via the server
-            if (!canChangeRoot) {
-              // eslint-disable-next-line no-alert
-              alert('Changing root is not permitted by the server settings')
-              return
-            }
-            // eslint-disable-next-line no-alert
-            const p = window.prompt('Enter the server directory path to use as new root (e.g. /home/user/project):', selectedPath || '/')
-            if (!p) return
-            const chosen = p.trim()
-            try {
-              const st = await statPath(chosen)
-              if (!st.isDir) {
-                // eslint-disable-next-line no-alert
-                alert('Selected path is not a directory')
+              }}
+              onOpenTerminal={() => {
+                /* Duplicate logic from AppHeader onOpenTerminal */
+                /* Wait, we can extract the onOpenTerminal logic in App.tsx and reuse it */
+                /* But wait, I can access the handler defined in the render but it is passed to AppHeader props inline... */
+                /* Actually, the current App structure defines onOpenTerminal inside the AppHeader props. */
+                /* I should promote it to a variable or copy it. */
+                /* Let's see lines 413-455 of App.tsx again. It is defined inline in the props. */
+                /* I will copy the logic here for now or refactor. Copying is safer to avoid breaking changes in a big refactor. */
+                (async () => {
+                  let cwd = selectedPath || ''
+                  try {
+                    if (cwd) {
+                      const st = await statPath(cwd)
+                      if (!st.isDir && st.absPath) {
+                        const parts = st.absPath.split('/').filter(Boolean)
+                        parts.pop()
+                        cwd = parts.length ? `/${parts.join('/')}` : ''
+                      }
+                    } else if (activeFile && !activeFile.startsWith('shell-')) {
+                      try {
+                        const st2 = await statPath(activeFile)
+                        if (st2.isDir) {
+                          cwd = st2.absPath || activeFile
+                        } else if (st2.absPath) {
+                          const parts = st2.absPath.split('/').filter(Boolean)
+                          parts.pop()
+                          cwd = parts.length ? `/${parts.join('/')}` : ''
+                        }
+                      } catch (e) {
+                        const parts = activeFile.split('/').filter(Boolean)
+                        parts.pop()
+                        cwd = parts.length ? `/${parts.join('/')}` : ''
+                      }
+                    }
+                  } catch (e) { }
+                  const shellName = `shell-${Date.now()}`
+                  let norm = cwd || ''
+                  if (norm && norm.split('/').pop()?.includes('.')) {
+                    const parts = norm.split('/').filter(Boolean)
+                    parts.pop()
+                    norm = parts.length ? `/${parts.join('/')}` : '/'
+                  }
+                  setShellCwds(s => ({ ...s, [shellName]: norm }))
+                  openFile(shellName)
+                })()
+              }}
+              onToggleSettings={() => setSettingsOpen(s => !s)}
+              onOpenTrash={() => {
+                if (!openFiles.includes('trash')) openFile('trash')
+                setActiveFile('trash')
+              }}
+            />
+          ) : (
+            <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} reloadSignal={reloadSignal} showMessageBox={(t, m, c, l) => setMessageBox({ title: t, message: m, onConfirm: c, confirmLabel: l })} onSelect={(p, isDir) => {
+              setSelectedPath(p)
+              if (isDir) {
+                // Auto-open metadata view for directories
+                openFile('metadata')
                 return
               }
-              // set as selected path and persist
-              setSelectedPath(chosen)
-              try { defaultStore.set('lastRoot', chosen, strSerializer) } catch { }
-              // trigger a reload of explorer by forcing a small setting write (FileExplorer will re-read)
-              try { const cur = defaultStore.getOrDefault('showHidden', boolSerializer, false); defaultStore.set('showHidden', cur, boolSerializer) } catch { }
-            } catch (e: any) {
+              // file: open editor tab (respect autoOpen)
+              // file: decide if it should open as a shared binary view or normal editor
+              (async () => {
+                try {
+                  const st = await statPath(p)
+                  const h = getHandler({ path: p, meta: st })
+
+                  // If it's the Binary or Unsupported handler, open the shared binary tab
+                  if (h.name === 'Binary' || h.name === 'Unsupported') {
+                    if (!openFiles.includes('binary')) openFile('binary')
+                    setBinaryPath(p)
+                    setActiveFile('binary')
+                    return
+                  }
+                } catch (e: any) {
+                  // if stat fails, do not attempt to open the file (it might be a broken link)
+                  setMessageBox({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
+                  return
+                }
+                // otherwise open as normal file tab
+                if (autoOpen) {
+                  openFile(p)
+                } else {
+                  if (openFiles.includes(p)) setActiveFile(p)
+                }
+              })()
+              // check health status since backend interaction succeeded
+              checkHealthStatus()
+            }} onView={(p) => {
+              // if the file is already open, activate it; otherwise open it as a new persistent tab
+              if (openFiles.includes(p)) {
+                setActiveFile(p)
+              } else {
+                openFile(p)
+              }
+              if (p !== 'metadata') setSelectedPath(p)
+              // check health status since backend interaction succeeded
+              checkHealthStatus()
+            }} onBackendActive={checkHealthStatus} onChangeRoot={async () => {
+              // Prompt-only flow: we cannot browse remote server; ask for a path and validate it via the server
+              if (!canChangeRoot) {
+                // eslint-disable-next-line no-alert
+                alert('Changing root is not permitted by the server settings')
+                return
+              }
               // eslint-disable-next-line no-alert
-              alert('Cannot access selected path: ' + (e?.message || e))
-            }
-          }} />
+              const p = window.prompt('Enter the server directory path to use as new root (e.g. /home/user/project):', selectedPath || '/')
+              if (!p) return
+              const chosen = p.trim()
+              try {
+                const st = await statPath(chosen)
+                if (!st.isDir) {
+                  // eslint-disable-next-line no-alert
+                  alert('Selected path is not a directory')
+                  return
+                }
+                // set as selected path and persist
+                setSelectedPath(chosen)
+                try { defaultStore.set('lastRoot', chosen, strSerializer) } catch { }
+                // trigger a reload of explorer by forcing a small setting write (FileExplorer will re-read)
+                try { const cur = defaultStore.getOrDefault('showHidden', boolSerializer, false); defaultStore.set('showHidden', cur, boolSerializer) } catch { }
+              } catch (e: any) {
+                // eslint-disable-next-line no-alert
+                alert('Cannot access selected path: ' + (e?.message || e))
+              }
+            }} />
+          )}
         </aside>
         <div className="resizer" onMouseDown={(e) => {
           const startX = e.clientX
@@ -589,6 +689,31 @@ export default function App() {
                 onConfirm={messageBox.onConfirm}
                 confirmLabel={messageBox.confirmLabel}
                 cancelLabel={messageBox.cancelLabel}
+              />
+            )}
+
+            {/* Global Settings Popup (rendered here to work even if AppHeader is hidden) */}
+            {settingsOpen && (
+              <SettingsPopup
+                autoOpen={autoOpen}
+                showHidden={showHidden}
+                onToggleAutoOpen={setAutoOpen}
+                onToggleShowHidden={setShowHidden}
+                showLogs={showLogs}
+                onToggleLogs={setShowLogs}
+                hideMemoryUsage={hideMemoryUsage}
+                onToggleHideMemoryUsage={toggleHideMemoryUsage}
+                onClose={() => setSettingsOpen(false)}
+                onLanguageChange={(l) => {
+                  if (l !== i18n.language) {
+                    i18n.changeLanguage(l)
+                    saveSettings({ language: l }).catch(console.error)
+                  }
+                }}
+                maxEditorSize={maxEditorSize}
+                onMaxFileSizeChange={updateMaxEditorSize}
+                uiMode={uiMode}
+                onToggleUiMode={setUiMode}
               />
             )}
 

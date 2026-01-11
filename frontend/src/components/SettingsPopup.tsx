@@ -16,9 +16,11 @@ type Props = {
   onLanguageChange?: (lang: string) => void
   maxEditorSize?: number
   onMaxFileSizeChange?: (size: number) => void
+  uiMode: 'classic' | 'modern'
+  onToggleUiMode: (m: 'classic' | 'modern') => void
 }
 
-export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, onToggleShowHidden, showLogs, onToggleLogs, hideMemoryUsage, onToggleHideMemoryUsage, onClose, onLanguageChange, maxEditorSize, onMaxFileSizeChange }: Props) {
+export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, onToggleShowHidden, showLogs, onToggleLogs, hideMemoryUsage, onToggleHideMemoryUsage, onClose, onLanguageChange, maxEditorSize, onMaxFileSizeChange, uiMode, onToggleUiMode }: Props) {
   const { t, i18n } = useTranslation()
   const [localHideMemoryUsage, setLocalHideMemoryUsage] = React.useState<boolean>(hideMemoryUsage)
 
@@ -35,7 +37,7 @@ export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, 
   ]
 
   return (
-    <div style={{ position: 'absolute', right: 12, top: 40, zIndex: 60 }}>
+    <div style={{ position: 'absolute', right: 12, top: 40, zIndex: 5000 }}>
       <div style={{ width: 320, background: 'var(--bg)', border: '1px solid var(--muted)', borderRadius: 6, boxShadow: '0 6px 20px rgba(0,0,0,0.12)', padding: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <strong>{t('settings')}</strong>
@@ -127,7 +129,23 @@ export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, 
             />
           </div>
         </div>
-      </div>
-    </div>
+
+        <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+          <label style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>UI Mode</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="btn"
+              style={{ flex: 1, background: uiMode === 'classic' ? 'var(--accent)' : 'transparent', color: uiMode === 'classic' ? '#fff' : 'var(--text)', border: '1px solid var(--border)' }}
+              onClick={() => onToggleUiMode('classic')}
+            >Classic</button>
+            <button
+              className="btn"
+              style={{ flex: 1, background: uiMode === 'modern' ? 'var(--accent)' : 'transparent', color: uiMode === 'modern' ? '#fff' : 'var(--text)', border: '1px solid var(--border)' }}
+              onClick={() => onToggleUiMode('modern')}
+            >Modern (Beta)</button>
+          </div>
+        </div>
+      </div >
+    </div >
   )
 }

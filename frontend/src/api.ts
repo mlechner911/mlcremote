@@ -245,6 +245,7 @@ export interface Settings {
     maxEditorSize?: number
     allowDelete?: boolean
     defaultShell?: string
+    uiMode?: 'classic' | 'modern'
 
 }
 

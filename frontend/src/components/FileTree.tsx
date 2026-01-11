@@ -1,0 +1,211 @@
+import React from 'react'
+import { DirEntry, listTree } from '../api'
+import { Icon, iconForExtension, iconForMimeOrFilename } from '../generated/icons'
+import { getIcon } from '../generated/icon-helpers'
+import { useTranslation } from 'react-i18next'
+
+type FileTreeProps = {
+    selectedPath?: string
+    onSelect: (path: string, isDir: boolean) => void
+    root?: string
+    showHidden?: boolean
+}
+
+type TreeNodeProps = {
+    entry: DirEntry
+    depth: number
+    expanded: boolean
+    onToggle: (path: string) => void
+    onSelect: (path: string, isDir: boolean) => void
+    selectedPath?: string
+    showHidden?: boolean
+    childrenCache?: DirEntry[]
+}
+
+const TreeNode = ({ entry, depth, expanded, onToggle, onSelect, selectedPath, showHidden, childrenCache }: TreeNodeProps) => {
+    const isSelected = selectedPath === entry.path
+    const paddingLeft = depth * 16 + 8
+
+    const handleClick = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        onSelect(entry.path, entry.isDir)
+        if (entry.isDir) {
+            onToggle(entry.path)
+        }
+    }
+
+    return (
+        <>
+            <div
+                className={`tree-node ${isSelected ? 'selected' : ''}`}
+                style={{ paddingLeft }}
+                onClick={handleClick}
+            >
+                <div className="tree-arrow">
+                    {entry.isDir && (
+                        <span className={`codicon codicon-chevron-${expanded ? 'down' : 'right'}`} style={{ fontSize: 12, opacity: 0.8 }}>
+                            {expanded ? '▼' : '▶'}
+                        </span>
+                    )}
+                </div>
+                <div className="tree-icon">
+                    <Icon name={entry.isDir ? getIcon('dir') : (iconForMimeOrFilename(undefined, entry.name) || iconForExtension(entry.name.split('.').pop() || '') || getIcon('view'))} />
+                </div>
+                <div className="tree-label">{entry.name}</div>
+            </div>
+            {expanded && childrenCache && (
+                <div className="tree-children">
+                    {childrenCache.map(child => (
+                        <FileTreeItem
+                            key={child.path}
+                            entry={child}
+                            depth={depth + 1}
+                            onToggle={onToggle}
+                            onSelect={onSelect}
+                            selectedPath={selectedPath}
+                            showHidden={showHidden}
+                        />
+                    ))}
+                </div>
+            )}
+        </>
+    )
+}
+
+// Wrapper to handle state storage for cache lookups from the main tree
+// But wait, the recursion needs access to the global cache state to render children.
+// The simplest way strictly for React is to have the parent pass the cache, or have the item fetch its own state.
+// Fetching its own state allows true lazy loading at the node level.
+
+const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, showHidden }: {
+    entry: DirEntry
+    depth: number
+    onToggle: (p: string) => void
+    onSelect: (p: string, d: boolean) => void
+    onOpen?: (p: string) => void
+    selectedPath?: string
+    showHidden?: boolean
+}) => {
+    const [children, setChildren] = React.useState<DirEntry[] | null>(null)
+    const [expanded, setExpanded] = React.useState(false)
+    const [loading, setLoading] = React.useState(false)
+
+    // Clear children cache when showHidden changes so we reload
+    React.useEffect(() => {
+        if (expanded) {
+            setChildren(null) // invalidate
+            loadChildren()
+        }
+    }, [showHidden])
+
+    const loadChildren = async () => {
+        setLoading(true)
+        try {
+            const list = await listTree(entry.path, { showHidden })
+            // Sort: Directories first, then files
+            list.sort((a, b) => {
+                if (a.isDir === b.isDir) return a.name.localeCompare(b.name)
+                return a.isDir ? -1 : 1
+            })
+            setChildren(list)
+        } catch (e) {
+            console.error(e)
+        }
+        setLoading(false)
+    }
+
+    const handleToggle = async (path: string) => {
+        if (!expanded) {
+            setExpanded(true)
+            if (!children) {
+                loadChildren()
+            }
+        } else {
+            setExpanded(false)
+        }
+    }
+
+    const isSelected = selectedPath === entry.path
+
+    return (
+        <div className="tree-item-container">
+            <div
+                className={`tree-node ${selectedPath === entry.path ? 'selected' : ''}`}
+                style={{ paddingLeft: depth * 12 + 8 }}
+                onClick={(e) => {
+                    e.stopPropagation()
+                    onSelect(entry.path, entry.isDir)
+                    if (entry.isDir) handleToggle(entry.path)
+                }}
+                onDoubleClick={(e) => {
+                    e.stopPropagation()
+                    if (!entry.isDir && onOpen) onOpen(entry.path)
+                }}
+            >
+                <div className="tree-arrow">
+                    {entry.isDir && <div className={expanded ? 'rotate-90' : ''}><Icon name={getIcon('chevron-right')} size={14} /></div>}
+                </div>
+                <div className="tree-icon">
+                    <Icon name={entry.isDir ? getIcon('folder') : (iconForMimeOrFilename(undefined, entry.name) || iconForExtension(entry.name.split('.').pop() || '') || getIcon('view'))} />
+                </div>
+                <div className="tree-label">{entry.name}</div>
+            </div>
+            {expanded && (
+                <div>
+                    {loading && <div style={{ paddingLeft: (depth + 1) * 12 + 8, fontStyle: 'italic', opacity: 0.5 }}>Loading...</div>}
+                    {children && children.map(c => (
+                        <FileTreeItem
+                            key={c.path}
+                            entry={c}
+                            depth={depth + 1}
+                            onToggle={onToggle}
+                            onSelect={onSelect}
+                            onOpen={onOpen}
+                            selectedPath={selectedPath}
+                            showHidden={showHidden}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
+export default function FileTree({ selectedPath, onSelect, onOpen, root = '/', showHidden }: { selectedPath?: string, onSelect: (p: string, isDir: boolean) => void, onOpen?: (p: string) => void, root?: string, showHidden?: boolean }) {
+    const { t } = useTranslation()
+    const [entries, setEntries] = React.useState<DirEntry[]>([])
+    const [loading, setLoading] = React.useState(false)
+
+    React.useEffect(() => {
+        setLoading(true)
+        listTree(root, { showHidden })
+            .then(list => {
+                list.sort((a, b) => {
+                    if (a.isDir === b.isDir) return a.name.localeCompare(b.name)
+                    return a.isDir ? -1 : 1
+                })
+                setEntries(list)
+            })
+            .catch(console.error)
+            .finally(() => setLoading(false))
+    }, [root])
+
+    if (loading) return <div className="muted" style={{ padding: 10 }}>{t('loading')}...</div>
+
+    return (
+        <div className="file-tree" style={{ paddingBottom: 20 }}>
+            {entries.map(e => (
+                <FileTreeItem
+                    key={e.path}
+                    entry={e}
+                    depth={0}
+                    onToggle={() => { }}
+                    onSelect={onSelect}
+                    onOpen={onOpen}
+                    selectedPath={selectedPath}
+                    showHidden={showHidden}
+                />
+            ))}
+        </div>
+    )
+}

@@ -1,0 +1,200 @@
+/* Modern UI Styles */
+.modern-sidebar {
+    display: flex;
+    height: 100%;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    font-size: 13px;
+    user-select: none;
+}
+
+.activity-bar {
+    width: 48px;
+    min-width: 48px;
+    /* Prevent shrinking */
+    flex-shrink: 0;
+    background: var(--bg);
+    /* darker? */
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 10px;
+    gap: 10px;
+}
+
+/* Ensure activity bar is visibly distinct if theme allows */
+.theme-light .activity-bar {
+    background: #f3f3f3;
+}
+
+.theme-dark .activity-bar {
+    background: #1e1e1e;
+}
+
+.activity-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0.6;
+    border-left: 2px solid transparent;
+}
+
+.activity-icon:hover {
+    opacity: 1;
+}
+
+.activity-icon.active {
+    opacity: 1;
+    border-left-color: var(--accent);
+    /* VSCode style uses border left usually */
+}
+
+.side-panel {
+    flex: 1;
+    display: grid;
+    /* User requested Grid layout */
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
+}
+
+.panel-title {
+    padding: 10px 20px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.7;
+    display: flex;
+    /* User requested Flex layout for header */
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Modern Sidebar Refinements */
+.modern-sidebar .tree-node:hover {
+    background-color: var(--list-hover-bg, rgba(255, 255, 255, 0.05));
+}
+
+.modern-sidebar .tree-node.selected {
+    background-color: var(--list-active-selection-bg, #04395e) !important;
+    color: var(--list-active-selection-fg, #ffffff) !important;
+    outline: 1px solid var(--accent);
+    /* Focus border */
+    outline-offset: -1px;
+}
+
+.modern-sidebar .tree-node.selected .tree-label {
+    color: inherit;
+}
+
+/* File Tree Node Layout */
+.tree-node {
+    display: flex;
+    align-items: center;
+    height: 22px;
+    cursor: pointer;
+    padding-right: 8px;
+    /* Safe space on right */
+}
+
+.tree-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 100%;
+    opacity: 0.8;
+    flex-shrink: 0;
+}
+
+.tree-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 100%;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.tree-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 22px;
+}
+
+/* Icon Rotation Utility */
+.rotate-90 {
+    transform: rotate(90deg);
+    transform-origin: center;
+    transition: transform 0.1s ease;
+}
+
+/* VSCode Tabs Style Override */
+/* VSCode Tabs Style Override */
+.modern-tabs .tabbar {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    height: 35px;
+    padding: 0;
+    gap: 0;
+    /* Remove gap between tabs */
+}
+
+/* The tab item container - remove padding/borders from here, let button handle it */
+.modern-tabs .tab-item {
+    padding: 0 !important;
+    gap: 0 !important;
+    height: 100%;
+    border: none !important;
+    background: transparent !important;
+    opacity: 1 !important;
+    margin: 0;
+}
+
+/* The actual clickable tab button */
+.modern-tabs .tab-item>button {
+    height: 100%;
+    border-right: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    padding: 0 12px !important;
+    background: var(--bg-secondary) !important;
+    color: var(--text-muted) !important;
+    opacity: 0.8;
+    position: relative;
+    max-width: 200px;
+    min-width: 120px;
+}
+
+.modern-tabs .tab-item>button:hover {
+    background: var(--bg-secondary) !important;
+    opacity: 1;
+}
+
+/* Active Tab (.btn class is used for active in TabBar.tsx) */
+.modern-tabs .tab-item>button.btn {
+    background: var(--bg) !important;
+    color: var(--text) !important;
+    opacity: 1;
+    border-top: 2px solid var(--accent) !important;
+    /* Main active tab indicator */
+    border-bottom: 1px solid var(--bg) !important;
+    /* Blend with editor */
+    margin-bottom: -1px;
+    /* cover bottom border */
+}
+
+/* Remove default focus rings to keep it clean */
+.modern-tabs .tab-item>button:focus {
+    outline: none !important;
+}
+
+.modern-tabs .tab-item .tab-title {
+    font-size: 13px;
+}

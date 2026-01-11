@@ -14,8 +14,9 @@ Lightweight remote development environment for small servers, wrapped in a nativ
     -   Drag & Drop Upload
     -   Context Menu (Download, Delete, Copy Path)
     -   Trash Support (Safety first!)
-    -   Smart Symlinks with visual validation
--   **Integrated Terminal:** Full PTY support with resize handling and correct encoding.
+    - **Modern UI:** Optional VSCode-like interface with sidebar navigation and tab management.
+- **File Management:** Browse, edit, delete, and move files on remote servers.
+- **Terminal:** Integrated SSH terminal with multiple tabs.PTY support with resize handling and correct encoding.
 -   **Profile Manager:**
     -   Save connection details with color-coding
     -   Duplicate profile detection

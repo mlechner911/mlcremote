@@ -16,6 +16,7 @@ export function useAppSettings() {
     const [hideMemoryUsage, setHideMemoryUsage] = React.useState<boolean>(false)
     const [maxEditorSize, setMaxEditorSize] = React.useState<number>(0)
     const [canChangeRoot, setCanChangeRoot] = React.useState<boolean>(false)
+    const [uiMode, setUiModeState] = React.useState<'classic' | 'modern'>('classic')
 
     // Setters that also persist
     const setAutoOpen = (v: boolean) => { setAutoOpenState(v); saveSettings({ autoOpen: v }).catch(console.error) }
@@ -27,6 +28,7 @@ export function useAppSettings() {
         saveSettings({ maxEditorSize: sz }).catch(console.error)
         localStorage.setItem('mlc_max_editor_size', sz.toString()) // Keep local legacy support if needed
     }
+    const setUiMode = (m: 'classic' | 'modern') => { setUiModeState(m); saveSettings({ uiMode: m }).catch(console.error) }
 
     // Load settings on mount
     React.useEffect(() => {
@@ -40,11 +42,13 @@ export function useAppSettings() {
                 if (typeof s.autoOpen !== 'undefined') setAutoOpenState(s.autoOpen)
                 if (typeof s.showHidden !== 'undefined') setShowHiddenState(s.showHidden)
                 if (typeof s.showLogs !== 'undefined') setShowLogs(s.showLogs)
-                if (typeof s.hideMemoryUsage !== 'undefined') setHideMemoryUsage(s.hideMemoryUsage)
+                if (s.hideMemoryUsage) setHideMemoryUsage(s.hideMemoryUsage)
                 if (s.maxEditorSize) {
                     setMaxEditorSize(s.maxEditorSize)
                     localStorage.setItem('mlc_max_editor_size', s.maxEditorSize.toString())
                 }
+                // Persist uiMode
+                if (s.uiMode) setUiModeState(s.uiMode as any)
 
                 // URL Param Syncing
                 const params = new URLSearchParams(window.location.search)
@@ -98,6 +102,7 @@ export function useAppSettings() {
         hideMemoryUsage, toggleHideMemoryUsage,
         maxEditorSize, updateMaxEditorSize,
         canChangeRoot,
+        uiMode, setUiMode,
         i18n
     }
 }

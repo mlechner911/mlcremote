@@ -35,6 +35,8 @@ interface AppHeaderProps {
     toggleHideMemoryUsage: (v: boolean) => void
     maxEditorSize: number
     updateMaxEditorSize: (v: number) => void
+    uiMode: 'classic' | 'modern'
+    onToggleUiMode: (v: 'classic' | 'modern') => void
     i18n: any
 }
 
@@ -57,7 +59,10 @@ export default function AppHeader(props: AppHeaderProps) {
         showHidden, setShowHidden,
         showLogs, toggleLogs,
         hideMemoryUsage, toggleHideMemoryUsage,
+
+
         maxEditorSize, updateMaxEditorSize,
+        uiMode, onToggleUiMode,
         i18n
     } = props
 
@@ -105,27 +110,6 @@ export default function AppHeader(props: AppHeaderProps) {
                 )}
                 <button className="link icon-btn" aria-label={t('settings')} title={t('settings')} onClick={() => setSettingsOpen(s => !s)}><Icon name={getIcon('settings')} title={t('settings')} size={16} /></button>
             </div>
-            {settingsOpen && (
-                <SettingsPopup
-                    autoOpen={autoOpen}
-                    showHidden={showHidden}
-                    onToggleAutoOpen={setAutoOpen}
-                    onToggleShowHidden={setShowHidden}
-                    showLogs={showLogs}
-                    onToggleLogs={toggleLogs}
-                    hideMemoryUsage={hideMemoryUsage}
-                    onToggleHideMemoryUsage={toggleHideMemoryUsage}
-                    onClose={() => setSettingsOpen(false)}
-                    onLanguageChange={(l) => {
-                        if (l !== i18n.language) {
-                            i18n.changeLanguage(l)
-                            saveSettings({ language: l }).catch(console.error)
-                        }
-                    }}
-                    maxEditorSize={maxEditorSize}
-                    onMaxFileSizeChange={updateMaxEditorSize}
-                />
-            )}
         </header>
     )
 }
