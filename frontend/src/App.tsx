@@ -488,7 +488,7 @@ export default function App() {
       />
       <div className="app-body" style={{ alignItems: 'stretch' }}>
         <aside className="sidebar" style={{ width: sidebarWidth }}>
-          <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} reloadSignal={reloadSignal} onSelect={(p, isDir) => {
+          <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} reloadSignal={reloadSignal} showMessageBox={(t, m, c, l) => setMessageBox({ title: t, message: m, onConfirm: c, confirmLabel: l })} onSelect={(p, isDir) => {
             setSelectedPath(p)
             if (isDir) {
               // Auto-open metadata view for directories

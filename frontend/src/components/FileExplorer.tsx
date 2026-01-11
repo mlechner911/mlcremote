@@ -20,6 +20,7 @@ type Props = {
   onDirChange?: (dir: string) => void
   focusRequest?: number
   reloadSignal?: number
+  showMessageBox?: (title: string, message: string, onConfirm?: () => void, confirmLabel?: string) => void
 }
 
 /**
@@ -27,7 +28,7 @@ type Props = {
  * and supports navigation, drag-and-drop upload, and lightweight actions
  * such as Download and (when `autoOpen` is false) a View button.
  */
-export default function FileExplorer({ onSelect, showHidden, onToggleHidden, autoOpen = true, onView, onBackendActive, onChangeRoot, canChangeRoot, selectedPath, activeDir, onDirChange, focusRequest, reloadSignal }: Props): React.ReactElement {
+export default function FileExplorer({ onSelect, showHidden, onToggleHidden, autoOpen = true, onView, onBackendActive, onChangeRoot, canChangeRoot, selectedPath, activeDir, onDirChange, focusRequest, reloadSignal, showMessageBox }: Props): React.ReactElement {
   const { t } = useTranslation()
   const [path, setPath] = React.useState<string>('')
   const [entries, setEntries] = React.useState<DirEntry[]>([])
@@ -129,23 +130,30 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
     if (!files || files.length === 0) return
     console.log('Dropping files:', files.length, 'to', targetDir)
 
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm(t('upload_confirm', `Upload ${files.length} file(s) to ${targetDir}?`))) return
+    const processUpload = async () => {
+      setUploading(true)
+      setError('')
+      try {
+        const form = new FormData()
+        for (let i = 0; i < files.length; i++) form.append('file', files[i], files[i].name)
+        const q = `?path=${encodeURIComponent(targetDir)}`
+        const res = await authedFetch(`/api/upload${q}`, { method: 'POST', body: form })
+        if (!res.ok) throw new Error(t('status_failed'))
+        // reload directory after upload
+        await load(targetDir)
+      } catch (e: any) {
+        setError(e.message || t('status_failed'))
+      } finally {
+        setUploading(false)
+      }
+    }
 
-    setUploading(true)
-    setError('')
-    try {
-      const form = new FormData()
-      for (let i = 0; i < files.length; i++) form.append('file', files[i], files[i].name)
-      const q = `?path=${encodeURIComponent(targetDir)}`
-      const res = await authedFetch(`/api/upload${q}`, { method: 'POST', body: form })
-      if (!res.ok) throw new Error(t('status_failed'))
-      // reload directory after upload
-      await load(targetDir)
-    } catch (e: any) {
-      setError(e.message || t('status_failed'))
-    } finally {
-      setUploading(false)
+    if (showMessageBox) {
+      showMessageBox(t('upload'), t('upload_confirm', `Upload ${files.length} file(s) to ${targetDir}?`), processUpload, t('upload'))
+    } else {
+      // eslint-disable-next-line no-restricted-globals
+      if (!confirm(t('upload_confirm', `Upload ${files.length} file(s) to ${targetDir}?`))) return
+      processUpload()
     }
   }
 
@@ -212,13 +220,22 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
   }, [focusRequest, selectedPath])
 
   const handleDelete = async (p: string) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm(t('delete_confirm', { path: p }))) return
-    try {
-      await deleteFile(p)
-      load(path)
-    } catch (e: any) {
-      alert(t('status_failed') + ': ' + e.message)
+    const doDelete = async () => {
+      try {
+        await deleteFile(p)
+        load(path)
+      } catch (e: any) {
+        if (showMessageBox) showMessageBox(t('error'), t('status_failed') + ': ' + e.message)
+        else alert(t('status_failed') + ': ' + e.message)
+      }
+    }
+
+    if (showMessageBox) {
+      showMessageBox(t('delete'), t('delete_confirm', { path: p }), doDelete, t('delete'))
+    } else {
+      // eslint-disable-next-line no-restricted-globals
+      if (!confirm(t('delete_confirm', { path: p }))) return
+      doDelete()
     }
   }
 
@@ -283,7 +300,8 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
                 {e.isDir ? (
                   <button data-path={e.path} type="button" className={"entry" + (selectedPath === e.path ? ' selected' : '')} onClick={(ev) => { ev.stopPropagation(); onSelect(e.path, true) }} onDoubleClick={() => {
                     if (e.isRestricted) {
-                      alert(t('permission_denied'))
+                      if (showMessageBox) showMessageBox(t('error'), t('permission_denied'))
+                      else alert(t('permission_denied'))
                       return
                     }
                     load(e.path)
