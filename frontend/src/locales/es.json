@@ -105,6 +105,7 @@
     "used": "usado",
     "unsaved_changes_title": "Cambios no guardados",
     "confirm_reload_unsaved": "Tiene cambios no guardados. Recargar los descartará. ¿Continuar?",
-    "confirm_close_unsaved": "Tiene cambios no guardados. ¿Cerrar de todos modos?",
-    "close_discard": "Cerrar y Descartar"
+    "confirm_close_unsaved": "¿Tiene cambios no guardados. Cerrar de todos modos?",
+    "close_discard": "Cerrar y descartar",
+    "error": "Error"
 }
