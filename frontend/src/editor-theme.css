@@ -1,7 +1,8 @@
 /* PrismJS theme using CSS variables for easy light/dark switching */
 
-code[class*="language-"],
-pre[class*="language-"] {
+/* Prepend body to override imported prism themes */
+body code[class*="language-"],
+body pre[class*="language-"] {
     color: var(--token-text, #ccc);
     background: none;
 
@@ -18,92 +19,90 @@ pre[class*="language-"] {
     hyphens: none;
 }
 
-/* Code blocks */
-/* pre[class*="language-"] rules removed as they conflict with editor.css layout */
 
-:not(pre)>code[class*="language-"],
-pre[class*="language-"] {
+body :not(pre)>code[class*="language-"],
+body pre[class*="language-"] {
     background: var(--token-bg, #2d2d2d);
 }
 
 /* Inline code */
-:not(pre)>code[class*="language-"] {
+body :not(pre)>code[class*="language-"] {
     padding: .1em;
     border-radius: .3em;
     white-space: normal;
 }
 
-.token.comment,
-.token.block-comment,
-.token.prolog,
-.token.doctype,
-.token.cdata {
+body .token.comment,
+body .token.block-comment,
+body .token.prolog,
+body .token.doctype,
+body .token.cdata {
     color: var(--token-comment, #999);
 }
 
-.token.punctuation {
+body .token.punctuation {
     color: var(--token-punctuation, #ccc);
 }
 
-.token.tag,
-.token.attr-name,
-.token.namespace,
-.token.deleted {
+body .token.tag,
+body .token.attr-name,
+body .token.namespace,
+body .token.deleted {
     color: var(--token-tag, #e2777a);
 }
 
-.token.function-name {
+body .token.function-name {
     color: var(--token-function-name, #6196cc);
 }
 
-.token.boolean,
-.token.number,
-.token.function {
+body .token.boolean,
+body .token.number,
+body .token.function {
     color: var(--token-function, #f08d49);
 }
 
-.token.property,
-.token.class-name,
-.token.constant,
-.token.symbol {
+body .token.property,
+body .token.class-name,
+body .token.constant,
+body .token.symbol {
     color: var(--token-property, #f8c555);
 }
 
-.token.selector,
-.token.important,
-.token.atrule,
-.token.keyword,
-.token.builtin {
+body .token.selector,
+body .token.important,
+body .token.atrule,
+body .token.keyword,
+body .token.builtin {
     color: var(--token-keyword, #cc99cd);
 }
 
-.token.string,
-.token.char,
-.token.attr-value,
-.token.regex,
-.token.variable {
+body .token.string,
+body .token.char,
+body .token.attr-value,
+body .token.regex,
+body .token.variable {
     color: var(--token-string, #7ec699);
 }
 
-.token.operator,
-.token.entity,
-.token.url {
+body .token.operator,
+body .token.entity,
+body .token.url {
     color: var(--token-operator, #67cdcc);
 }
 
-.token.important,
-.token.bold {
+body .token.important,
+body .token.bold {
     font-weight: bold;
 }
 
-.token.italic {
+body .token.italic {
     font-style: italic;
 }
 
-.token.entity {
+body .token.entity {
     cursor: help;
 }
 
-.token.inserted {
+body .token.inserted {
     color: var(--token-inserted, green);
 }
