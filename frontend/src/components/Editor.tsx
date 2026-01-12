@@ -316,7 +316,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
               title={intent === 'view' ? t('edit') : t('preview')}
               onClick={() => onOpen(path, undefined, undefined, intent === 'view' ? 'edit' : 'view')}
             >
-              <Icon name={getIcon(intent === 'view' ? 'edit' : 'view') || 'view'} size={16} />
+              <Icon name={getIcon(intent === 'view' ? 'terminal' : 'view') || 'view'} size={16} />
             </button>
           )}
 
