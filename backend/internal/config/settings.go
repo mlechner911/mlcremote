@@ -16,7 +16,7 @@ type UserSettings struct {
 	HideMemoryUsage bool   `json:"hideMemoryUsage"`
 	MaxEditorSize   int64  `json:"maxEditorSize"`
 	Language        string `json:"language"`
-	Mode            string `json:"mode"`
+	UiMode          string `json:"uiMode"`
 }
 
 // DefaultSettings returns the default user settings.
@@ -29,7 +29,7 @@ func DefaultSettings() *UserSettings {
 		HideMemoryUsage: false,
 		MaxEditorSize:   1024 * 1024, // 1MB
 		Language:        "en",
-		Mode:            "standard",
+		UiMode:          "classic",
 	}
 }
 
@@ -66,8 +66,8 @@ func LoadSettings(path string) (*UserSettings, error) {
 	if s.Language == "" {
 		s.Language = defaults.Language
 	}
-	if s.Mode == "" {
-		s.Mode = defaults.Mode
+	if s.UiMode == "" {
+		s.UiMode = defaults.UiMode
 	}
 
 	return &s, nil

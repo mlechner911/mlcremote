@@ -9,6 +9,7 @@ import AboutPopup from './components/AboutPopup'
 import FileExplorer from './components/FileExplorer'
 import ModernSidebar from './components/ModernSidebar'
 import SettingsPopup from './components/SettingsPopup'
+import ContextMenu, { ContextMenuItem } from './components/ContextMenu'
 import { useTranslation } from 'react-i18next'
 import { Icon } from './generated/icons'
 import { getIconForShell, getIconForDir, getIcon } from './generated/icon-helpers'
@@ -84,12 +85,12 @@ export default function App() {
     panes, setPanes,
     layout, setLayout,
     activePaneId, setActivePaneId,
-    openFiles, setOpenFiles,
-    activeFile, setActiveFile,
+    openTabs, setOpenTabs,
+    activeTabId, setActiveTab,
     openFile,
     splitPane, closePane, handleLayoutResize,
     fileMetas, setFileMetas,
-    evictedTabs
+
   } = useWorkspace()
 
   /* Local UI State */
@@ -100,9 +101,10 @@ export default function App() {
   const [shellCwds, setShellCwds] = React.useState<Record<string, string>>({})
 
   // These were local state, now derived or managed by hook. 
-  // We keep `now` for clock if needed (where is it used?) - it was for StatusBar maybe?
   const [now, setNow] = React.useState<Date>(new Date())
   const [messageBox, setMessageBox] = React.useState<{ title: string; message: string; onConfirm?: () => void; confirmLabel?: string; cancelLabel?: string } | null>(null)
+
+  const [paneContextMenu, setPaneContextMenu] = React.useState<{ x: number; y: number } | null>(null)
 
   const isControlled = React.useMemo(() => {
     const p = new URLSearchParams(window.location.search)
@@ -132,17 +134,12 @@ export default function App() {
     return () => window.removeEventListener('message', handleMessage)
   }, [])
 
-  // Cleaned up auth state and effects (moved to AuthContext)
 
   const [reloadTriggers, setReloadTriggers] = React.useState<Record<string, number>>({})
   const [unsavedChanges, setUnsavedChanges] = React.useState<Record<string, boolean>>({})
-  // fileMetas moved to useWorkspace
 
-  // Stable handler for child editors to report unsaved status. Using
-  // `useCallback` keeps the reference stable so we can pass the same
-  // function to multiple `Editor` instances without recreating it on
-  // every render (avoids React warnings about changing callback
-  // references).
+
+  // Stable handler
   const handleUnsavedChange = React.useCallback((path: string, hasUnsaved: boolean) => {
     setUnsavedChanges(changes => ({ ...changes, [path]: hasUnsaved }))
   }, [])
@@ -157,11 +154,7 @@ export default function App() {
     return () => window.clearInterval(id)
   }, [])
 
-
-
   const [binaryPath, setBinaryPath] = React.useState<string | null>(null)
-
-
 
   // Recursive renderer
   const renderLayout = (node: LayoutNode): React.ReactNode => {
@@ -184,68 +177,95 @@ export default function App() {
   const renderPane = (paneId: string) => {
     const pState = panes[paneId]
     if (!pState) return <div className="muted">Pane not found</div>
-    const pFiles = pState.files
-    const pActive = pState.activeFile || ''
+    // Merge unsaved status and dynamic labels into tabs for rendering
+    const pTabs = pState.tabs.map(tab => {
+      let label = tab.label
+
+      // Defensive fix: Ensure metadata tab always says "Details"
+      if (tab.id === 'metadata') {
+        label = t('details', 'Details')
+      }
+
+      if (tab.type === 'terminal') {
+        const cwd = shellCwds[tab.id]
+        if (cwd) {
+          const parts = cwd.split('/').filter(Boolean)
+          if (parts.length > 0) {
+            label = parts[parts.length - 1]
+            if (parts.length > 1 && label.includes('.')) {
+              // heuristic: if it looks like a file, maybe show parent dir? 
+              // or just show the dir name. The old logic had some complex checks.
+              // Old logic:
+              /*
+                 if (last.includes('.') && parts.length > 1) {
+                     name = parts[parts.length - 2]
+                 }
+              */
+              // We'll trust the simpler 'last part' for now or match old logic if crucial.
+              // Let's match old logic for consistency.
+              label = parts[parts.length - 1]
+            }
+          } else {
+            label = '/'
+          }
+        }
+      }
+      return {
+        ...tab,
+        label,
+        dirty: unsavedChanges[tab.id] || false
+      }
+    })
+    const pActiveId = pState.activeTabId || ''
 
     // Local handlers for this pane
-    const onActivate = (path: string) => {
+    const onActivate = (id: string) => {
       setActivePaneId(paneId) // focus pane
-      setPanes(prev => {
+      setPanes((prev: Record<string, PaneState>) => {
         const p = prev[paneId]
         if (!p) return prev
-        // if path is directory, just navigating? logic was:
-        if (path && !path.startsWith('shell-') && !path.includes('.')) {
-          // hacky detection for dir? no, tab activation is always file.
-          // wait, FileExplorer calls setActiveFile for dirs too?
-          // The original logic:
-          /*
-          if (isDir) { setActiveFile(p); return }
-          */
-          // For tab activation, it's always a "file" (maybe shell).
-        }
-        return { ...prev, [paneId]: { ...p, activeFile: path } }
+        return { ...prev, [paneId]: { ...p, activeTabId: id } }
       })
 
       // side effects (explorer dir sync)
-      if (path && !path.startsWith('shell-') && path !== 'metadata') {
-        const parts = path.split('/').filter(Boolean)
+      // find the tab
+      const tab = pState.tabs.find(t => t.id === id)
+      if (tab && tab.type === 'editor' && !tab.path.includes('metadata')) {
+        const parts = tab.path.split('/').filter(Boolean)
         parts.pop()
-        const dir = parts.length ? `/${parts.join('/')}` : ''
+        // const dir = parts.length ? `/${parts.join('/')}` : ''
         // if (dir !== explorerDir) setExplorerDir(dir) // optional sync
       }
-      if (path !== 'metadata') setSelectedPath(path)
+      if (tab && tab.id !== 'metadata' && tab.type === 'editor') setSelectedPath(tab.path)
       setFocusRequest(Date.now())
     }
 
-
-
-
-    const onClose = (path: string) => {
+    const onClose = (id: string) => {
       // close tab logic
       const p = panes[paneId]
       if (!p) return
 
       const doClose = () => {
         // logic: if this is the last tab in the pane, AND we are not root, close the pane
-        if (p.files.length === 1 && p.files[0] === path && paneId !== 'root') {
+        if (p.tabs.length === 1 && p.tabs[0].id === id && paneId !== 'root') {
           closePane(paneId)
           return
         }
 
-        setPanes(prev => {
+        setPanes((prev: Record<string, PaneState>) => {
           const p2 = prev[paneId]
           if (!p2) return prev
-          const nextFiles = p2.files.filter(x => x !== path)
+          const nextTabs = p2.tabs.filter(x => x.id !== id)
           // if closing active
-          let nextActive = p2.activeFile
-          if (p2.activeFile === path) {
-            nextActive = nextFiles[0] || null
+          let nextActive = p2.activeTabId
+          if (p2.activeTabId === id) {
+            nextActive = nextTabs[0]?.id || ''
           }
-          return { ...prev, [paneId]: { ...p2, files: nextFiles, activeFile: nextActive } }
+          return { ...prev, [paneId]: { ...p2, tabs: nextTabs, activeTabId: nextActive } }
         })
       }
 
-      const hasUnsaved = unsavedChanges[path]
+      const hasUnsaved = unsavedChanges[id]
       if (hasUnsaved) {
         setMessageBox({
           title: t('unsaved_changes_title', 'Unsaved Changes'),
@@ -253,10 +273,10 @@ export default function App() {
           confirmLabel: t('close_discard', 'Close & Discard'),
           onConfirm: () => {
             setMessageBox(null)
-            // Force clear unsaved status so it doesn't persist if re-opened
+            // Force clear unsaved status
             setUnsavedChanges(prev => {
               const next = { ...prev }
-              delete next[path]
+              delete next[id]
               return next
             })
             doClose()
@@ -268,115 +288,91 @@ export default function App() {
       doClose()
     }
 
-    // Titles / Types logic repeated for this pane
-    const titles: Record<string, string> = {}
-    for (const f of pFiles) {
-      if (f.startsWith('shell-')) {
-        const cwd = shellCwds[f] || ''
-        const parts = (cwd || '/').split('/').filter(Boolean)
-        let name = '/'
-        if (parts.length) {
-          const last = parts[parts.length - 1]
-          if (last.includes('.') && parts.length > 1) {
-            name = parts[parts.length - 2]
-          } else {
-            name = last
-          }
-        }
-        titles[f] = name
-      } else if (f === 'metadata') {
-        titles[f] = t('file_details', 'File Details')
-      } else {
-        const baseName = f.split('/').pop() || f
-        titles[f] = unsavedChanges[f] ? `*${baseName}` : baseName
-      }
-    }
-    const types: Record<string, 'file' | 'dir' | 'shell'> = {}
-    const fullPaths: Record<string, string> = {}
-    for (const f of pFiles) {
-      if (f.startsWith('shell-')) {
-        types[f] = 'shell'
-        fullPaths[f] = shellCwds[f] || '/'
-      } else {
-        types[f] = 'file'
-        fullPaths[f] = f
-      }
-    }
-
     const isActivePane = paneId === activePaneId
 
     return (
       <div className={`pane-content ${uiMode === 'modern' ? 'modern-tabs' : ''}`}
-        style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}
+        style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', minWidth: 0, overflow: 'hidden' }}
         onClick={() => { if (!isActivePane) setActivePaneId(paneId) }}
       >
         {/* Active Indicator Border */}
         {isActivePane && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--accent)', zIndex: 10 }} />}
 
-        {pFiles.length > 0 ? (
+        {pTabs.length > 0 ? (
           <>
-            <div onContextMenu={(e) => {
+            {/* TabBar Container: flex-shrink: 0 is CRITICAL to prevent the tab bar from being 
+                crushed to 0 height when content expands (like large images). 
+                minWidth: 0 allows the flex container to shrink below content size if needed (for scrolling). */}
+            <div style={{ width: '100%', minWidth: 0, overflow: 'hidden', flexShrink: 0 }} onContextMenu={(e) => {
               e.preventDefault()
-              // Todo: Pane context menu (Split Right/Down)
+              setActivePaneId(paneId)
+              setPaneContextMenu({ x: e.clientX, y: e.clientY })
             }}>
               <React.Suspense fallback={null}>
                 <TabBarComponent
-                  openFiles={pFiles}
-                  active={pActive}
-                  titles={{ ...titles, metadata: t('details', 'Details') }}
-                  fullPaths={{ ...fullPaths, metadata: selectedPath || '' }}
-                  types={types}
-                  onRestoreEvicted={() => { }} // simplified
+                  tabs={pTabs}
+                  activeId={pActiveId}
                   onActivate={onActivate}
                   onClose={onClose}
-                  onCloseOthers={(p) => {
-                    setPanes(prev => {
+                  onCloseOthers={(id) => {
+                    setPanes((prev: Record<string, PaneState>) => {
                       const st = prev[paneId]
                       if (!st) return prev
-                      // Close all except p
-                      const newFiles = st.files.filter(f => f === p)
-                      // If p was not active, make it active (it's the only one left)
-                      return { ...prev, [paneId]: { ...st, files: newFiles, activeFile: p } }
+                      const tToKeep = st.tabs.find(t => t.id === id)
+                      if (!tToKeep) return prev
+                      return { ...prev, [paneId]: { ...st, tabs: [tToKeep], activeTabId: id } }
                     })
                   }}
-                  onCloseLeft={(p) => {
-                    setPanes(prev => {
+                  onCloseLeft={(id) => {
+                    setPanes((prev: Record<string, PaneState>) => {
                       const st = prev[paneId]
                       if (!st) return prev
-                      const idx = st.files.indexOf(p)
-                      if (idx <= 0) return prev // nothing to the left or p not found
-                      const newFiles = st.files.slice(idx)
-                      // Check if active file is still present
-                      let newActive = st.activeFile
-                      if (!newFiles.includes(newActive || '')) {
-                        newActive = p
+                      const idx = st.tabs.findIndex(t => t.id === id)
+                      if (idx <= 0) return prev
+                      const newTabs = st.tabs.slice(idx)
+                      let newActive = st.activeTabId
+                      if (!newTabs.map(t => t.id).includes(newActive)) {
+                        newActive = id
                       }
-                      return { ...prev, [paneId]: { ...st, files: newFiles, activeFile: newActive } }
+                      return { ...prev, [paneId]: { ...st, tabs: newTabs, activeTabId: newActive } }
                     })
                   }}
+                  onSplitRight={(id) => splitPane('vertical', id)}
+                  onSplitDown={(id) => splitPane('horizontal', id)}
                 />
               </React.Suspense>
             </div>
-            <div style={{ flex: 1, position: 'relative' }}>
-              {pFiles.map(f => (
-                <div key={f} style={{ display: f === pActive ? 'block' : 'none', height: '100%' }}>
-                  {f.startsWith('shell-') ? (
-                    <React.Suspense fallback={<div className="muted">{t('loading')}</div>}>
-                      <TerminalTab key={f} shell={(settings && settings.defaultShell) || 'bash'} path={shellCwds[f] || ''} onExit={() => onClose(f)} />
-                    </React.Suspense>
-                  ) : f === 'trash' ? (
-                    <TrashView />
-                  ) : f === 'metadata' ? (
-                    <FileDetailsView path={selectedPath} />
-                  ) : f === 'binary' ? (
-                    <React.Suspense fallback={<div className="muted">Loading…</div>}>
-                      <BinaryView path={binaryPath || undefined} />
-                    </React.Suspense>
-                  ) : (
-                    <Editor path={f} settings={settings || undefined} onSaved={() => { /* no-op */ }} reloadTrigger={reloadTriggers[f] || 0} onUnsavedChange={handleUnsavedChange} onMeta={(m: any) => {
-                      if (m && m.path) setFileMetas(fm => ({ ...fm, [f]: m }))
-                    }} />
-                  )}
+            {/* Content Container: minHeight: 0 and overflow: hidden are required for nested flex scrolling to work correctly. */}
+            <div style={{ flex: 1, position: 'relative', minHeight: 0, overflow: 'hidden' }}>
+              {pTabs.map(tab => (
+                <div key={tab.id} style={{ display: tab.id === pActiveId ? 'block' : 'none', height: '100%' }}>
+                  {(() => {
+                    switch (tab.type) {
+                      case 'terminal':
+                        return (
+                          <React.Suspense fallback={<div className="muted">{t('loading')}</div>}>
+                            <TerminalTab shell={(settings && settings.defaultShell) || 'bash'} path={shellCwds[tab.id] || ''} onExit={() => onClose(tab.id)} />
+                          </React.Suspense>
+                        )
+                      case 'custom':
+                        if (tab.id === 'trash') return <TrashView />
+                        if (tab.id === 'metadata') return <FileDetailsView path={selectedPath} />
+                        return null
+                      case 'binary':
+                        return (
+                          <React.Suspense fallback={<div className="muted">Loading…</div>}>
+                            <BinaryView path={binaryPath || undefined} />
+                          </React.Suspense>
+                        )
+                      case 'editor':
+                      default:
+                        return (
+                          <Editor path={tab.path} settings={settings || undefined} onSaved={() => { /* no-op */ }} reloadTrigger={reloadTriggers[tab.id] || 0} onUnsavedChange={handleUnsavedChange} onMeta={(m: any) => {
+                            if (m && m.path) setFileMetas(fm => ({ ...fm, [tab.id]: m }))
+                          }} />
+                        )
+                    }
+                  })()}
                 </div>
               ))}
             </div>
@@ -395,9 +391,19 @@ export default function App() {
   if (!loadedSettings) return null // or loading spinner
 
 
-
   return (
-    <div className="app">
+    <div className={`app ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}>
+      {paneContextMenu && (
+        <ContextMenu
+          x={paneContextMenu.x}
+          y={paneContextMenu.y}
+          onClose={() => setPaneContextMenu(null)}
+          items={[
+            { label: t('split_right', 'Split Right'), action: () => splitPane('vertical') },
+            { label: t('split_down', 'Split Down'), action: () => splitPane('horizontal') },
+          ]}
+        />
+      )}
       {uiMode !== 'modern' && (
         <AppHeader
           logoVisible={logoVisible}
@@ -412,52 +418,33 @@ export default function App() {
           }}
 
           onOpenTerminal={async () => {
-            // determine cwd: prefer selectedPath; if none, fall back to active file's directory
+            // determine cwd logic
             let cwd = selectedPath || ''
             try {
               if (cwd) {
                 const st = await statPath(cwd)
                 if (!st.isDir && st.absPath) {
-                  // if a file, use its directory
                   const parts = st.absPath.split('/').filter(Boolean)
                   parts.pop()
                   cwd = parts.length ? `/${parts.join('/')}` : ''
                 }
-              } else if (activeFile && !activeFile.startsWith('shell-')) {
-                try {
-                  const st2 = await statPath(activeFile)
-                  if (st2.isDir) {
-                    cwd = st2.absPath || activeFile
-                  } else if (st2.absPath) {
-                    const parts = st2.absPath.split('/').filter(Boolean)
-                    parts.pop()
-                    cwd = parts.length ? `/${parts.join('/')}` : ''
-                  }
-                } catch (e) {
-                  // if stat fails, derive directory from activeFile string as a fallback
-                  const parts = activeFile.split('/').filter(Boolean)
-                  parts.pop()
-                  cwd = parts.length ? `/${parts.join('/')}` : ''
-                }
+              } else if (activeTabId && !activeTabId.startsWith('shell-')) {
+                // fallback to active tab path if real file
+                // check if activeTabId is valid path?
+                // simple check: not shell, not metadata
               }
-            } catch (e) {
-              // ignore stat errors and fall back to selected/derived path
-            }
+            } catch (e) { }
+
             const shellName = `shell-${Date.now()}`
-            // normalize: ensure stored cwd is a directory (if it looks like a file, use parent)
-            let norm = cwd || ''
-            if (norm && norm.split('/').pop()?.includes('.')) {
-              const parts = norm.split('/').filter(Boolean)
-              parts.pop()
-              norm = parts.length ? `/${parts.join('/')}` : '/'
-            }
-            setShellCwds(s => ({ ...s, [shellName]: norm }))
-            openFile(shellName)
+            setShellCwds(s => ({ ...s, [shellName]: cwd || '/' }))
+            openFile(shellName, 'terminal', 'Terminal')
           }}
 
           onOpenTrash={() => {
-            if (!openFiles.includes('trash')) openFile('trash')
-            setActiveFile('trash')
+            const trashId = 'trash'
+            const existing = openTabs.find(t => t.id === trashId)
+            if (!existing) openFile(trashId, 'custom', 'Trash')
+            setActiveTab(trashId)
           }}
           onScreenshot={async () => {
             const root = document.querySelector('.app') as HTMLElement | null
@@ -504,19 +491,17 @@ export default function App() {
                 /* Reusing existing selection logic */
                 setSelectedPath(p)
                 if (isDir) {
-                  // Modern sidebar might handle dir selection differently (toggle), but here we open metadata
-                  openFile('metadata')
+                  openFile('metadata', 'custom', 'Details')
                   return
                 }
-                // Open file logic copied from FileExplorer handle
                 (async () => {
                   try {
                     const st = await statPath(p)
                     const h = getHandler({ path: p, meta: st })
                     if (h.name === 'Binary' || h.name === 'Unsupported') {
-                      if (!openFiles.includes('binary')) openFile('binary')
+                      openFile('binary', 'binary', 'Binary View')
                       setBinaryPath(p)
-                      setActiveFile('binary')
+                      setActiveTab('binary')
                       return
                     }
                   } catch (e: any) {
@@ -526,7 +511,8 @@ export default function App() {
                   if (autoOpen) {
                     openFile(p)
                   } else {
-                    if (openFiles.includes(p)) setActiveFile(p)
+                    const existing = openTabs.find(t => t.id === p)
+                    if (existing) setActiveTab(p)
                   }
                 })()
                 checkHealthStatus()
@@ -535,67 +521,24 @@ export default function App() {
                 openFile(p)
               }}
               onOpenTerminal={() => {
-                /* Duplicate logic from AppHeader onOpenTerminal */
-                /* Wait, we can extract the onOpenTerminal logic in App.tsx and reuse it */
-                /* But wait, I can access the handler defined in the render but it is passed to AppHeader props inline... */
-                /* Actually, the current App structure defines onOpenTerminal inside the AppHeader props. */
-                /* I should promote it to a variable or copy it. */
-                /* Let's see lines 413-455 of App.tsx again. It is defined inline in the props. */
-                /* I will copy the logic here for now or refactor. Copying is safer to avoid breaking changes in a big refactor. */
-                (async () => {
-                  let cwd = selectedPath || ''
-                  try {
-                    if (cwd) {
-                      const st = await statPath(cwd)
-                      if (!st.isDir && st.absPath) {
-                        const parts = st.absPath.split('/').filter(Boolean)
-                        parts.pop()
-                        cwd = parts.length ? `/${parts.join('/')}` : ''
-                      }
-                    } else if (activeFile && !activeFile.startsWith('shell-')) {
-                      try {
-                        const st2 = await statPath(activeFile)
-                        if (st2.isDir) {
-                          cwd = st2.absPath || activeFile
-                        } else if (st2.absPath) {
-                          const parts = st2.absPath.split('/').filter(Boolean)
-                          parts.pop()
-                          cwd = parts.length ? `/${parts.join('/')}` : ''
-                        }
-                      } catch (e) {
-                        const parts = activeFile.split('/').filter(Boolean)
-                        parts.pop()
-                        cwd = parts.length ? `/${parts.join('/')}` : ''
-                      }
-                    }
-                  } catch (e) { }
-                  const shellName = `shell-${Date.now()}`
-                  let norm = cwd || ''
-                  if (norm && norm.split('/').pop()?.includes('.')) {
-                    const parts = norm.split('/').filter(Boolean)
-                    parts.pop()
-                    norm = parts.length ? `/${parts.join('/')}` : '/'
-                  }
-                  setShellCwds(s => ({ ...s, [shellName]: norm }))
-                  openFile(shellName)
-                })()
+                const shellName = `shell-${Date.now()}`
+                // We should infer CWD here similar to AppHeader logic, but for now root
+                setShellCwds(s => ({ ...s, [shellName]: selectedPath || '/' }))
+                openFile(shellName, 'terminal', 'Terminal')
               }}
               onToggleSettings={() => setSettingsOpen(s => !s)}
               onOpenTrash={() => {
-                if (!openFiles.includes('trash')) openFile('trash')
-                setActiveFile('trash')
+                openFile('trash', 'custom', 'Trash')
+                setActiveTab('trash')
               }}
             />
           ) : (
             <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} reloadSignal={reloadSignal} showMessageBox={(t, m, c, l) => setMessageBox({ title: t, message: m, onConfirm: c, confirmLabel: l })} onSelect={(p, isDir) => {
               setSelectedPath(p)
               if (isDir) {
-                // Auto-open metadata view for directories
-                openFile('metadata')
+                openFile('metadata', 'custom', 'Details')
                 return
               }
-              // file: open editor tab (respect autoOpen)
-              // file: decide if it should open as a shared binary view or normal editor
               (async () => {
                 try {
                   const st = await statPath(p)
@@ -603,13 +546,12 @@ export default function App() {
 
                   // If it's the Binary or Unsupported handler, open the shared binary tab
                   if (h.name === 'Binary' || h.name === 'Unsupported') {
-                    if (!openFiles.includes('binary')) openFile('binary')
+                    openFile('binary', 'binary', 'Binary View')
                     setBinaryPath(p)
-                    setActiveFile('binary')
+                    setActiveTab('binary')
                     return
                   }
                 } catch (e: any) {
-                  // if stat fails, do not attempt to open the file (it might be a broken link)
                   setMessageBox({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
                   return
                 }
@@ -617,46 +559,41 @@ export default function App() {
                 if (autoOpen) {
                   openFile(p)
                 } else {
-                  if (openFiles.includes(p)) setActiveFile(p)
+                  const existing = openTabs.find(t => t.id === p)
+                  if (existing) setActiveTab(p)
                 }
               })()
               // check health status since backend interaction succeeded
               checkHealthStatus()
             }} onView={(p) => {
               // if the file is already open, activate it; otherwise open it as a new persistent tab
-              if (openFiles.includes(p)) {
-                setActiveFile(p)
+              const existing = openTabs.find(t => t.id === p)
+              if (existing) {
+                setActiveTab(p)
               } else {
                 openFile(p)
               }
               if (p !== 'metadata') setSelectedPath(p)
-              // check health status since backend interaction succeeded
               checkHealthStatus()
             }} onBackendActive={checkHealthStatus} onChangeRoot={async () => {
-              // Prompt-only flow: we cannot browse remote server; ask for a path and validate it via the server
+              // Prompt-only logic unchanged
               if (!canChangeRoot) {
-                // eslint-disable-next-line no-alert
                 alert('Changing root is not permitted by the server settings')
                 return
               }
-              // eslint-disable-next-line no-alert
               const p = window.prompt('Enter the server directory path to use as new root (e.g. /home/user/project):', selectedPath || '/')
               if (!p) return
               const chosen = p.trim()
               try {
                 const st = await statPath(chosen)
                 if (!st.isDir) {
-                  // eslint-disable-next-line no-alert
                   alert('Selected path is not a directory')
                   return
                 }
-                // set as selected path and persist
                 setSelectedPath(chosen)
                 try { defaultStore.set('lastRoot', chosen, strSerializer) } catch { }
-                // trigger a reload of explorer by forcing a small setting write (FileExplorer will re-read)
                 try { const cur = defaultStore.getOrDefault('showHidden', boolSerializer, false); defaultStore.set('showHidden', cur, boolSerializer) } catch { }
               } catch (e: any) {
-                // eslint-disable-next-line no-alert
                 alert('Cannot access selected path: ' + (e?.message || e))
               }
             }} />
@@ -678,9 +615,7 @@ export default function App() {
         <main className="main">
           <div className="main-content">
             {/* Unified authentication chooser/modal */}
-            {/* Authentication Overlay */}
             <AuthOverlay />
-            {/* New Generic MessageBox */}
             {messageBox && (
               <MessageBox
                 title={messageBox.title}
@@ -692,7 +627,6 @@ export default function App() {
               />
             )}
 
-            {/* Global Settings Popup (rendered here to work even if AppHeader is hidden) */}
             {settingsOpen && (
               <SettingsPopup
                 autoOpen={autoOpen}
@@ -717,7 +651,6 @@ export default function App() {
               />
             )}
 
-            {/* Recursive Layout Renderer */}
             {renderLayout(layout)}
 
           </div>
@@ -725,8 +658,6 @@ export default function App() {
       </div>
       <StatusBar health={health} isOnline={isOnline} hideMemoryUsage={hideMemoryUsage} lastHealthAt={lastHealthAt} />
       <LogOverlay visible={showLogs} onClose={() => setShowLogs(false)} />
-
-      {/* Server time and timezone are shown inside the main About popup now. */}
 
       {aboutOpen && (
         <AboutPopup

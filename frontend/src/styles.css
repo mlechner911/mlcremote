@@ -504,20 +504,22 @@ body {
 /* TabBar styles */
 .tabbar {
     display: flex;
+    align-items: center;
     gap: 8px;
     padding: 8px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     background: var(--panel);
-}
-
-.tabbar {
-    display: flex;
-    align-items: center;
     position: relative;
+    width: 100%;
+    min-width: 0;
 }
 
 .tab-scroll-area {
     display: flex;
+    flex: 1;
+    /* Take available space */
+    min-width: 0;
+    /* Allow shrinking below content width to trigger overflow */
     gap: 4px;
     overflow-x: auto;
     scrollbar-width: none;

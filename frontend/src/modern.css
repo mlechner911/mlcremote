@@ -142,7 +142,11 @@
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
     height: 35px;
-    padding: 0;
+    height: 35px;
+    padding-top: 4px;
+    /* Add top spacing */
+    padding-left: 0;
+    padding-right: 0;
     gap: 0;
     /* Remove gap between tabs */
 }
@@ -156,6 +160,7 @@
     background: transparent !important;
     opacity: 1 !important;
     margin: 0;
+    flex-shrink: 0;
 }
 
 /* The actual clickable tab button */
@@ -197,4 +202,11 @@
 
 .modern-tabs .tab-item .tab-title {
     font-size: 13px;
+}
+
+/* Fix for unwanted borders in empty state */
+.pane-content.modern-tabs,
+.pane-content.modern-tabs .welcome-message {
+    border: none !important;
+    box-shadow: none !important;
 }

@@ -65,7 +65,7 @@ func SettingsHandler(allowDelete bool, settingsPath string) http.HandlerFunc {
 			"hideMemoryUsage": userSettings.HideMemoryUsage,
 			"maxEditorSize":   userSettings.MaxEditorSize,
 			"language":        userSettings.Language,
-			"mode":            userSettings.Mode,
+			"uiMode":          userSettings.UiMode,
 		}
 
 		w.Header().Set("Content-Type", "application/json")
