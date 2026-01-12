@@ -291,6 +291,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="muted">{(meta && meta.absPath) ? meta.absPath : (path || t('select_or_create'))}</span>
             {meta?.isReadOnly && <span className="badge badge-error" style={{ fontSize: 10, padding: '1px 4px' }}>{t('read_only', 'READ ONLY')}</span>}
+            {intent === 'view' && <span className="badge box-accent" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--accent)', color: 'white', borderRadius: 4 }}>{t('preview', 'PREVIEW')}</span>}
           </div>
           {meta && (
             <>
@@ -315,7 +316,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
               title={intent === 'view' ? t('edit') : t('preview')}
               onClick={() => onOpen(path, undefined, undefined, intent === 'view' ? 'edit' : 'view')}
             >
-              <Icon name={getIcon(intent === 'view' ? 'edit' : 'eye')} size={16} />
+              <Icon name={getIcon(intent === 'view' ? 'edit' : 'view') || 'view'} size={16} />
             </button>
           )}
 
@@ -363,6 +364,6 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
           />
         )}
       </div>
-    </div>
+    </div >
   )
 }
