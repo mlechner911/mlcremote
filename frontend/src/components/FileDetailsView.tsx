@@ -3,6 +3,7 @@ import { statPath, makeUrl } from '../api'
 import { formatBytes } from '../utils/bytes'
 import { useTranslation } from 'react-i18next'
 import { Icon, iconForMimeOrFilename, iconForExtension } from '../generated/icons'
+import { getIcon } from '../generated/icon-helpers'
 
 // FileDetailsView props
 interface Props {
@@ -38,11 +39,15 @@ export default function FileDetailsView({ path }: Props) {
     return (
         <div style={{ padding: 24, maxWidth: 600, margin: '0 auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, marginBottom: 32 }}>
-                <div style={{ fontSize: 48, opacity: 0.8 }}>
-                    <Icon name={iconForExtension(path.split('.').pop() || '') || 'icon-file'} size={48} />
+                <div style={{ fontSize: 48, opacity: 0.8, color: (meta?.isRestricted || meta?.isReadOnly) ? 'var(--danger)' : 'inherit' }}>
+                    <Icon name={meta?.isRestricted ? getIcon('lock') : (meta?.isDir ? getIcon('folder') : (iconForExtension(path.split('.').pop() || '') || 'icon-file'))} size={48} />
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                    <h2 style={{ margin: 0, wordBreak: 'break-all' }}>{path.split('/').pop()}</h2>
+                    <h2 style={{ margin: 0, wordBreak: 'break-all', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                        {path.split('/').pop()}
+                        {meta?.isRestricted && <span className="badge badge-error" style={{ fontSize: 12, verticalAlign: 'middle' }}>{t('restricted', 'Restricted')}</span>}
+                        {meta?.isReadOnly && !meta?.isRestricted && <span className="badge badge-error" style={{ fontSize: 12, verticalAlign: 'middle' }}>{t('read_only', 'Read Only')}</span>}
+                    </h2>
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
                     {meta && !meta.isDir && (
@@ -62,11 +67,11 @@ export default function FileDetailsView({ path }: Props) {
                         <tbody>
                             <tr>
                                 <td style={{ width: 120, padding: '8px 0', color: 'var(--text-muted)' }}>{t('path', 'Path')}</td>
-                                <td style={{ padding: '8px 0', wordBreak: 'break-all' }}>{path}</td>
+                                <td style={{ padding: '8px 0', wordBreak: 'break-all' }}>{meta.absPath || path}</td>
                             </tr>
                             <tr>
                                 <td style={{ width: 120, padding: '8px 0', color: 'var(--text-muted)' }}>{t('type')}</td>
-                                <td style={{ padding: '8px 0' }}>{meta.mime || 'unknown'}</td>
+                                <td style={{ padding: '8px 0' }}>{meta.isDir ? t('directory', 'Directory') : (meta.mime || 'unknown')}</td>
                             </tr>
                             <tr>
                                 <td style={{ padding: '8px 0', color: 'var(--text-muted)' }}>{t('size')}</td>

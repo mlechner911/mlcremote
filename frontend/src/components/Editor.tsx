@@ -341,6 +341,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
             alias={alias}
             textareaId={textareaId}
             onDimensions={(w, h) => setImageDims({ w, h })}
+            readOnly={meta?.isReadOnly}
           />
         )}
       </div>

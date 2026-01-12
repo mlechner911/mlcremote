@@ -498,21 +498,32 @@ export default function App() {
                   try {
                     const st = await statPath(p)
                     const h = getHandler({ path: p, meta: st })
+
+                    if (!autoOpen) {
+                      const existing = openTabs.find(t => t.id === p)
+                      if (existing) {
+                        setActiveTab(p)
+                      } else {
+                        // Fallback to details view if not auto-opening
+                        openFile('metadata', 'custom', 'Details')
+                      }
+                      checkHealthStatus()
+                      return
+                    }
+
                     if (h.name === 'Binary' || h.name === 'Unsupported') {
                       openFile('binary', 'binary', 'Binary View')
                       setBinaryPath(p)
                       setActiveTab('binary')
                       return
                     }
+
+                    // if autoOpen is true and not binary
+                    // if autoOpen is true and not binary
+                    openFile(p)
                   } catch (e: any) {
                     setMessageBox({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
                     return
-                  }
-                  if (autoOpen) {
-                    openFile(p)
-                  } else {
-                    const existing = openTabs.find(t => t.id === p)
-                    if (existing) setActiveTab(p)
                   }
                 })()
                 checkHealthStatus()
@@ -544,6 +555,18 @@ export default function App() {
                   const st = await statPath(p)
                   const h = getHandler({ path: p, meta: st })
 
+                  if (!autoOpen) {
+                    const existing = openTabs.find(t => t.id === p)
+                    if (existing) {
+                      setActiveTab(p)
+                    } else {
+                      // Fallback to details view if not auto-opening
+                      openFile('metadata', 'custom', 'Details')
+                    }
+                    checkHealthStatus()
+                    return
+                  }
+
                   // If it's the Binary or Unsupported handler, open the shared binary tab
                   if (h.name === 'Binary' || h.name === 'Unsupported') {
                     openFile('binary', 'binary', 'Binary View')
@@ -555,13 +578,9 @@ export default function App() {
                   setMessageBox({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
                   return
                 }
-                // otherwise open as normal file tab
-                if (autoOpen) {
-                  openFile(p)
-                } else {
-                  const existing = openTabs.find(t => t.id === p)
-                  if (existing) setActiveTab(p)
-                }
+
+                // otherwise open as normal file tab (autoOpen is true here)
+                openFile(p)
               })()
               // check health status since backend interaction succeeded
               checkHealthStatus()

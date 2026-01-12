@@ -185,6 +185,7 @@ export interface FileStat {
     isSocket: boolean
     isNamedPipe: boolean
     isReadOnly: boolean
+    isRestricted?: boolean
 }
 
 /**

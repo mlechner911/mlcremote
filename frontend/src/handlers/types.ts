@@ -16,6 +16,7 @@ export interface ViewProps {
     alias?: string
     textareaId?: string
     onDimensions?: (w: number, h: number) => void
+    readOnly?: boolean
 }
 
 export interface FileHandler {

@@ -44,6 +44,7 @@ type Props = {
     ext: string
     alias?: string
     textareaId: string
+    readOnly?: boolean
 }
 
 function escapeHtml(unsafe: string) {
@@ -63,7 +64,7 @@ function safeHighlight(text: string, ext: string) {
     }
 }
 
-export default function TextView({ content, setContent, origContent, ext, alias, textareaId }: Props) {
+export default function TextView({ content, setContent, origContent, ext, alias, textareaId, readOnly }: Props) {
     const { t } = useTranslation()
     const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
     const preRef = React.useRef<HTMLElement | null>(null)
@@ -112,6 +113,7 @@ export default function TextView({ content, setContent, origContent, ext, alias,
                 autoCorrect="off"
                 autoCapitalize="off"
                 autoComplete="off"
+                readOnly={readOnly}
             />
         </div>
     )

@@ -77,8 +77,8 @@ export const TextHandler: FileHandler = {
         if (opts.path && isProbablyText(opts.path)) return true
         return false
     },
-    view: ({ content, setContent, origContent, ext, alias, textareaId }: ViewProps) => (
-        <TextView content={content || ''} setContent={setContent || (() => { })} origContent={origContent || ''} ext={ext || ''} alias={alias} textareaId={textareaId || 'editor'} />
+    view: ({ content, setContent, origContent, ext, alias, textareaId, readOnly }: ViewProps) => (
+        <TextView content={content || ''} setContent={setContent || (() => { })} origContent={origContent || ''} ext={ext || ''} alias={alias} textareaId={textareaId || 'editor'} readOnly={readOnly} />
     ),
     isEditable: true
 }

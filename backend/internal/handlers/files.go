@@ -498,6 +498,7 @@ type FileStat struct {
 	IsSocket      bool      `json:"isSocket"`
 	IsNamedPipe   bool      `json:"isNamedPipe"`
 	IsReadOnly    bool      `json:"isReadOnly"`
+	IsRestricted  bool      `json:"isRestricted"`
 }
 
 // StatHandler returns basic file metadata: mime, permissions, modTime
@@ -550,6 +551,12 @@ func StatHandler(root string) http.HandlerFunc {
 		}
 
 		mode := fi.Mode()
+		canRead, canWrite, canExec := resolveAccess(fi)
+		isRestricted := !canRead
+		if fi.IsDir() && !canExec {
+			isRestricted = true
+		}
+
 		resp := FileStat{
 			IsDir:         fi.IsDir(),
 			Size:          fi.Size(),
@@ -561,9 +568,8 @@ func StatHandler(root string) http.HandlerFunc {
 			IsCharDevice:  mode&os.ModeCharDevice != 0,
 			IsSocket:      mode&os.ModeSocket != 0,
 			IsNamedPipe:   mode&os.ModeNamedPipe != 0,
-			// Simple heuristic: if owner write bit is missing, mark as read-only.
-			// This works for Windows (Read-Only attribute) and Unix (w-------).
-			IsReadOnly: mode&0200 == 0,
+			IsReadOnly:    !canWrite,
+			IsRestricted:  isRestricted,
 		}
 
 		w.Header().Set("Content-Type", "application/json")
