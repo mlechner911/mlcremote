@@ -110,5 +110,12 @@
     "confirm_reload_unsaved": "Sie haben ungespeicherte Änderungen. Beim Neuladen gehen diese verloren. Fortfahren?",
     "confirm_close_unsaved": "Sie haben ungespeicherte Änderungen. Trotzdem schließen?",
     "close_discard": "Schließen & Verwerfen",
-    "error": "Fehler"
+    "error": "Fehler",
+    "read_only": "Schreibgeschützt",
+    "restricted": "Eingeschränkt",
+    "empty_file": "Leere Datei",
+    "empty_file_readonly": "Leere Datei (Schreibgeschützt)",
+    "path": "Pfad",
+    "type": "Typ",
+    "directory": "Verzeichnis"
 }

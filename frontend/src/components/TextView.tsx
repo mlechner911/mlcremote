@@ -108,7 +108,7 @@ export default function TextView({ content, setContent, origContent, ext, alias,
                         preRef.current.scrollLeft = textareaRef.current.scrollLeft
                     }
                 }}
-                placeholder={t('open_or_create_file')}
+                placeholder={readOnly ? t('empty_file_readonly', 'Empty file (Read Only)') : t('empty_file', 'Empty file')}
                 spellCheck={false}
                 autoCorrect="off"
                 autoCapitalize="off"

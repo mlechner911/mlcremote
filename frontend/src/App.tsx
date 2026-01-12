@@ -503,7 +503,7 @@ export default function App() {
                       const existing = openTabs.find(t => t.id === p)
                       if (existing) {
                         setActiveTab(p)
-                      } else {
+                      } else if (activeTabId !== 'metadata') {
                         // Fallback to details view if not auto-opening
                         openFile('metadata', 'custom', 'Details')
                       }
@@ -559,8 +559,9 @@ export default function App() {
                     const existing = openTabs.find(t => t.id === p)
                     if (existing) {
                       setActiveTab(p)
-                    } else {
+                    } else if (activeTabId !== 'metadata') {
                       // Fallback to details view if not auto-opening
+                      // Only switch if we aren't already there (avoids race with onOpen double-click)
                       openFile('metadata', 'custom', 'Details')
                     }
                     checkHealthStatus()

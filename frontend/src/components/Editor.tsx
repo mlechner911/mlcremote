@@ -284,7 +284,10 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       <div className="editor-header">
         <strong>{t('editor')}</strong>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span className="muted">{(meta && meta.absPath) ? meta.absPath : (path || t('select_or_create'))}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="muted">{(meta && meta.absPath) ? meta.absPath : (path || t('select_or_create'))}</span>
+            {meta?.isReadOnly && <span className="badge badge-error" style={{ fontSize: 10, padding: '1px 4px' }}>{t('read_only', 'READ ONLY')}</span>}
+          </div>
           {meta && (
             <>
               <span className="muted" style={{ fontSize: 11 }}>

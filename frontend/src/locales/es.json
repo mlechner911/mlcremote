@@ -107,5 +107,12 @@
     "confirm_reload_unsaved": "Tiene cambios no guardados. Recargar los descartará. ¿Continuar?",
     "confirm_close_unsaved": "¿Tiene cambios no guardados. Cerrar de todos modos?",
     "close_discard": "Cerrar y descartar",
-    "error": "Error"
+    "error": "Error",
+    "read_only": "Solo lectura",
+    "restricted": "Restringido",
+    "empty_file": "Archivo vacío",
+    "empty_file_readonly": "Archivo vacío (Solo lectura)",
+    "path": "Ruta",
+    "type": "Tipo",
+    "directory": "Directorio"
 }
