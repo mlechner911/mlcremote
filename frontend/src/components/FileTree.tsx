@@ -9,6 +9,7 @@ type FileTreeProps = {
     onSelect: (path: string, isDir: boolean) => void
     root?: string
     showHidden?: boolean
+    onContextMenu?: (entry: DirEntry, x: number, y: number) => void
 }
 
 type TreeNodeProps = {
@@ -77,7 +78,7 @@ const TreeNode = ({ entry, depth, expanded, onToggle, onSelect, selectedPath, sh
 // The simplest way strictly for React is to have the parent pass the cache, or have the item fetch its own state.
 // Fetching its own state allows true lazy loading at the node level.
 
-const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, showHidden }: {
+const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, showHidden, onContextMenu }: {
     entry: DirEntry
     depth: number
     onToggle: (p: string) => void
@@ -85,6 +86,7 @@ const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, 
     onOpen?: (p: string) => void
     selectedPath?: string
     showHidden?: boolean
+    onContextMenu?: (entry: DirEntry, x: number, y: number) => void
 }) => {
     const [children, setChildren] = React.useState<DirEntry[] | null>(null)
     const [expanded, setExpanded] = React.useState(false)
@@ -141,6 +143,11 @@ const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, 
                     e.stopPropagation()
                     if (!entry.isDir && onOpen) onOpen(entry.path)
                 }}
+                onContextMenu={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onContextMenu?.(entry, e.clientX, e.clientY)
+                }}
             >
                 <div className="tree-arrow">
                     {entry.isDir && <div className={expanded ? 'rotate-90' : ''}><Icon name={getIcon('chevron-right')} size={14} /></div>}
@@ -163,6 +170,7 @@ const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, 
                             onOpen={onOpen}
                             selectedPath={selectedPath}
                             showHidden={showHidden}
+                            onContextMenu={onContextMenu}
                         />
                     ))}
                 </div>
@@ -171,7 +179,7 @@ const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, 
     )
 }
 
-export default function FileTree({ selectedPath, onSelect, onOpen, root = '/', showHidden }: { selectedPath?: string, onSelect: (p: string, isDir: boolean) => void, onOpen?: (p: string) => void, root?: string, showHidden?: boolean }) {
+export default function FileTree({ selectedPath, onSelect, onOpen, root = '/', showHidden, onContextMenu }: { selectedPath?: string, onSelect: (p: string, isDir: boolean) => void, onOpen?: (p: string) => void, root?: string, showHidden?: boolean, onContextMenu?: (entry: DirEntry, x: number, y: number) => void }) {
     const { t } = useTranslation()
     const [entries, setEntries] = React.useState<DirEntry[]>([])
     const [loading, setLoading] = React.useState(false)
@@ -204,6 +212,7 @@ export default function FileTree({ selectedPath, onSelect, onOpen, root = '/', s
                     onOpen={onOpen}
                     selectedPath={selectedPath}
                     showHidden={showHidden}
+                    onContextMenu={onContextMenu}
                 />
             ))}
         </div>

@@ -1,5 +1,5 @@
 import React from 'react'
-import { statPath, type Health, saveSettings } from './api'
+import { statPath, type Health, saveSettings, makeUrl, DirEntry } from './api'
 import { useAuth } from './context/AuthContext'
 import { useAppSettings } from './hooks/useAppSettings'
 import { useWorkspace } from './hooks/useWorkspace'
@@ -98,6 +98,7 @@ export default function App() {
   const [logoVisible, setLogoVisible] = React.useState<boolean>(true)
   const [settingsOpen, setSettingsOpen] = React.useState<boolean>(false)
   const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
+  const [contextMenu, setContextMenu] = React.useState<{ x: number, y: number, entry: DirEntry } | null>(null)
   const [shellCwds, setShellCwds] = React.useState<Record<string, string>>({})
 
   // These were local state, now derived or managed by hook. 
@@ -541,6 +542,9 @@ export default function App() {
               onOpenTrash={() => {
                 openFile('trash', 'custom', 'Trash')
                 setActiveTab('trash')
+              }}
+              onContextMenu={(entry, x, y) => {
+                setContextMenu({ x, y, entry })
               }}
             />
           ) : (

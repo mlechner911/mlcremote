@@ -1,5 +1,6 @@
 import React from 'react'
 import FileTree from './FileTree'
+import { DirEntry } from '../api' // imported for type usage
 import { Icon } from '../generated/icons'
 import { getIcon } from '../generated/icon-helpers'
 
@@ -14,6 +15,7 @@ type ModernSidebarProps = {
     onOpenTerminal?: () => void
     onToggleSettings?: () => void
     onOpenTrash?: () => void
+    onContextMenu?: (entry: DirEntry, x: number, y: number) => void
 }
 
 export default function ModernSidebar(props: ModernSidebarProps) {
@@ -59,6 +61,7 @@ export default function ModernSidebar(props: ModernSidebarProps) {
                                 selectedPath={selectedPath}
                                 onSelect={onSelect}
                                 onOpen={props.onOpen}
+                                onContextMenu={props.onContextMenu}
                             />
                         </div>
                     </>
