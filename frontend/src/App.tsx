@@ -98,7 +98,6 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
   const [logoVisible, setLogoVisible] = React.useState<boolean>(true)
   const [settingsOpen, setSettingsOpen] = React.useState<boolean>(false)
-  const [showLogs, setShowLogs] = React.useState(false) // Moved to useAppSettings
   const [refreshSignal, setRefreshSignal] = React.useState<{ path: string, ts: number } | undefined>(undefined)
   const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
   const [contextMenu, setContextMenu] = React.useState<{ x: number, y: number, entry: DirEntry } | null>(null)
@@ -107,6 +106,10 @@ export default function App() {
   // These were local state, now derived or managed by hook. 
   const [now, setNow] = React.useState<Date>(new Date())
   const [messageBox, setMessageBox] = React.useState<{ title: string; message: string; onConfirm?: () => void; confirmLabel?: string; cancelLabel?: string } | null>(null)
+
+  const handleContextMenu = (entry: DirEntry, x: number, y: number) => {
+    setContextMenu({ x, y, entry })
+  }
 
   const [paneContextMenu, setPaneContextMenu] = React.useState<{ x: number; y: number } | null>(null)
 
