@@ -10,6 +10,7 @@ import FileExplorer from './components/FileExplorer'
 import ModernSidebar from './components/ModernSidebar'
 import SettingsPopup from './components/SettingsPopup'
 import ContextMenu, { ContextMenuItem } from './components/ContextMenu'
+import { Intent } from './types/layout'
 import { useTranslation } from 'react-i18next'
 import { Icon } from './generated/icons'
 import { getIconForShell, getIconForDir, getIcon } from './generated/icon-helpers'
@@ -370,7 +371,7 @@ export default function App() {
                         return (
                           <Editor path={tab.path} settings={settings || undefined} onSaved={() => { /* no-op */ }} reloadTrigger={reloadTriggers[tab.id] || 0} onUnsavedChange={handleUnsavedChange} onMeta={(m: any) => {
                             if (m && m.path) setFileMetas(fm => ({ ...fm, [tab.id]: m }))
-                          }} />
+                          }} intent={tab.intent} />
                         )
                     }
                   })()}
@@ -701,7 +702,15 @@ export default function App() {
                 icon: <Icon name={getIcon('edit')} />,
                 action: () => {
                   setSelectedPath(contextMenu.entry.path)
-                  openFile(contextMenu.entry.path)
+                  openFile(contextMenu.entry.path, undefined, undefined, 'edit')
+                }
+              },
+              {
+                label: t('preview', 'Open Preview'),
+                icon: <Icon name={getIcon('view')} />,
+                action: () => {
+                  setSelectedPath(contextMenu.entry.path)
+                  openFile(contextMenu.entry.path, undefined, undefined, 'view')
                 }
               },
               {

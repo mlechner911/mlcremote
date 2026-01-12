@@ -1,5 +1,6 @@
 import React from 'react'
-import { readFile, saveFile, deleteFile, listTree, statPath } from '../api'
+import { readFile, saveFile, deleteFile, listTree, statPath, DirEntry } from '../api' // DirEntry for type if needed
+import { Intent } from '../handlers/types'
 import { formatBytes } from '../utils/bytes'
 import { probeFileType, extFromPath } from '../filetypes'
 import { effectiveExtFromFilename } from '../languageForFilename'
@@ -17,11 +18,12 @@ type Props = {
   reloadTrigger?: number
   onUnsavedChange?: (path: string, hasUnsaved: boolean) => void
   onMeta?: (m: any) => void
+  intent?: Intent
 }
 
 import MessageBox from './MessageBox'
 
-export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta }: Props) {
+export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta, intent }: Props) {
   const { t } = useTranslation()
   const [content, setContent] = React.useState<string>('')
   const [origContent, setOrigContent] = React.useState<string>('')
@@ -40,7 +42,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
   const prevUnsavedRef = React.useRef<boolean | null>(null)
   const [confirmDialog, setConfirmDialog] = React.useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
 
-  const handler = getHandler({ path, meta, probe })
+  const handler = getHandler({ path, meta, probe, intent })
   const HandlerView = handler.view
 
   const loadFile = React.useCallback(async (force = false) => {
@@ -67,7 +69,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
       setProbe(pt)
 
       // Determine handler to decide if we need to load content
-      const handler = getHandler({ path, meta: m, probe: pt })
+      const handler = getHandler({ path, meta: m, probe: pt, intent })
 
       // If it's a directory, listTree is handled in a separate effect for now, 
       // but let's clear content here just in case.
@@ -345,6 +347,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
             textareaId={textareaId}
             onDimensions={(w, h) => setImageDims({ w, h })}
             readOnly={meta?.isReadOnly}
+            intent={intent}
           />
         )}
       </div>

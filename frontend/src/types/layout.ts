@@ -2,6 +2,7 @@
 export type PaneId = string
 
 export type ViewType = 'editor' | 'preview' | 'terminal' | 'binary' | 'diff' | 'custom';
+export type Intent = 'view' | 'edit';
 
 export interface Tab {
     id: string;          // Unique ID (usually path, but unique for terminals)
@@ -11,6 +12,7 @@ export interface Tab {
     icon?: string;       // Optional icon override
     dirty?: boolean;     // Unsaved changes flag
     metadata?: any;      // Extra data (e.g. scroll position, cursor)
+    intent?: Intent;
 }
 
 export type PaneState = {

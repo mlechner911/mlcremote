@@ -1,9 +1,12 @@
 import React from 'react'
 
+export type Intent = 'view' | 'edit'
+
 export interface DecideOpts {
     path?: string | null
     meta?: any | null
     probe?: { mime?: string | null; isText?: boolean; ext?: string } | null
+    intent?: Intent
 }
 
 export interface ViewProps {
@@ -17,6 +20,7 @@ export interface ViewProps {
     textareaId?: string
     onDimensions?: (w: number, h: number) => void
     readOnly?: boolean
+    intent?: Intent
 }
 
 export interface FileHandler {

@@ -1,6 +1,6 @@
 import React from 'react'
 import { statPath } from '../api'
-import type { LayoutNode, PaneId, PaneState, Tab, ViewType } from '../types/layout'
+import type { LayoutNode, PaneId, PaneState, Tab, ViewType, Intent } from '../types/layout'
 
 export function useWorkspace(maxTabs = 8) {
     // -- Layout State --
@@ -39,7 +39,7 @@ export function useWorkspace(maxTabs = 8) {
         })
     }
 
-    function createTab(path: string, type?: ViewType, label?: string): Tab {
+    function createTab(path: string, type?: ViewType, label?: string, intent?: Intent): Tab {
         // Logic to determine type if not provided
         let actualType: ViewType = type || 'editor'
         let actualLabel = label || path.split('/').pop() || path
@@ -70,14 +70,25 @@ export function useWorkspace(maxTabs = 8) {
             path,
             label: actualLabel,
             type: actualType,
-            icon: actualType === 'terminal' ? 'terminal' : undefined
+            icon: actualType === 'terminal' ? 'terminal' : undefined,
+            intent
         }
     }
 
-    function openFile(path: string, type?: ViewType, label?: string) {
+    function openFile(path: string, type?: ViewType, label?: string, intent?: Intent) {
         setOpenTabs(currentTabs => {
-            if (currentTabs.find(t => t.id === path)) return currentTabs
-            return [...currentTabs, createTab(path, type, label)]
+            if (currentTabs.find(t => t.id === path && t.intent === intent)) return currentTabs // Only duplicate if intent differs? Or strict path?
+            // Actually, if we open same file with different intent, we might want a new tab or update existing?
+            // For now, let's treat path as ID, so we update existing if found?
+            // But wait, if I want to "View" a file that is already open for "Edit", do I swap it?
+            // Or do I need a unique ID for view vs edit?
+            // User requirement: "come back with the view etc".
+            // Let's stick to unique ID = path for now, but update intent if passed.
+            // If we find existing tab, we update its intent?
+            // For now, minimal change: if found, we switch to it. Updating intent on existing tab is complex with current state structure.
+            // Let's assume user wants to switch context.
+            // If I specifically ask 'view', I want to see the view.
+            return [...currentTabs.filter(t => t.id !== path), createTab(path, type, label, intent)]
         })
         setActiveTab(path)
 

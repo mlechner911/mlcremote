@@ -8,6 +8,7 @@ import { extFromPath, isProbablyText } from '../filetypes'
 
 // Lazy load ShellView
 const ShellView = React.lazy(() => import('../components/ShellView'))
+const MarkdownPreview = React.lazy(() => import('../components/MarkdownPreview'))
 
 export const ShellHandler: FileHandler = {
     name: 'Shell',
@@ -59,6 +60,21 @@ export const ImageHandler: FileHandler = {
     },
     view: ({ path, onDimensions }: ViewProps) => (
         <ImageView path={path} onDimensions={onDimensions} />
+    ),
+    isEditable: false
+}
+
+export const MarkdownHandler: FileHandler = {
+    name: 'Markdown',
+    priority: 60,
+    matches: (opts: DecideOpts) => {
+        if (opts.intent === 'edit') return false
+        return !!(opts.path && opts.path.toLowerCase().endsWith('.md'))
+    },
+    view: ({ content }: ViewProps) => (
+        <React.Suspense fallback={<div className="muted">Loading preview...</div>}>
+            <MarkdownPreview content={content || ''} />
+        </React.Suspense>
     ),
     isEditable: false
 }
