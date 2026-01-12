@@ -1,5 +1,5 @@
 import React from 'react'
-import { statPath, type Health, saveSettings, makeUrl, DirEntry, getToken } from './api'
+import { statPath, type Health, saveSettings, makeUrl, DirEntry, getToken, uploadFile } from './api'
 import { useAuth } from './context/AuthContext'
 import { useAppSettings } from './hooks/useAppSettings'
 import { useWorkspace } from './hooks/useWorkspace'
@@ -696,7 +696,31 @@ export default function App() {
                 openFile('metadata', 'custom', 'Details')
               }
             },
-            ...(contextMenu.entry.isDir ? [] : [
+            ...(contextMenu.entry.isDir ? [
+              {
+                label: t('upload_file', 'Upload File'),
+                icon: <Icon name="icon-upload" />,
+                action: () => {
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.onchange = async (e: any) => {
+                    const file = e.target.files[0]
+                    if (!file) return
+                    try {
+                      await uploadFile(contextMenu.entry.path, file)
+                      const newPath = (contextMenu.entry.path === '/' ? '' : contextMenu.entry.path) + '/' + file.name
+                      setSelectedPath(newPath)
+                      openFile('metadata', 'custom', 'Details')
+                      // refresh tree? tricky without trigger.
+                    } catch (err) {
+                      console.error(err)
+                      alert(t('upload_failed', 'Upload failed'))
+                    }
+                  }
+                  input.click()
+                }
+              }
+            ] : [
               {
                 label: t('open', 'Open'),
                 icon: <Icon name={getIcon('edit')} />,

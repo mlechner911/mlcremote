@@ -68,8 +68,7 @@ export const MarkdownHandler: FileHandler = {
     name: 'Markdown',
     priority: 60,
     matches: (opts: DecideOpts) => {
-        if (opts.intent === 'edit') return false
-        return !!(opts.path && opts.path.toLowerCase().endsWith('.md'))
+        return opts.intent === 'view' && !!(opts.path && opts.path.toLowerCase().endsWith('.md'))
     },
     view: ({ content }: ViewProps) => (
         <React.Suspense fallback={<div className="muted">Loading preview...</div>}>

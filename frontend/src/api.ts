@@ -230,6 +230,24 @@ export async function deleteFile(path: string): Promise<void> {
         throw new Error('delete failed')
     }
 }
+
+/**
+ * Upload a file to the specified directory.
+ */
+export async function uploadFile(path: string, file: File): Promise<void> {
+    const formData = new FormData()
+    formData.append('file', file)
+    info(`POST /api/upload path=${path} filename=${file.name} size=${file.size}`)
+    const r = await authedFetch(`/api/upload?path=${encodeURIComponent(path)}`, {
+        method: 'POST',
+        body: formData
+    })
+    info(`/api/upload POST => ${r.status}`)
+    if (!r.ok) {
+        warn('/api/upload failed')
+        throw new Error('upload failed')
+    }
+}
 // ... (existing code)
 
 /**
