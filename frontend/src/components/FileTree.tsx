@@ -79,7 +79,7 @@ const TreeNode = ({ entry, depth, expanded, onToggle, onSelect, selectedPath, sh
 // The simplest way strictly for React is to have the parent pass the cache, or have the item fetch its own state.
 // Fetching its own state allows true lazy loading at the node level.
 
-const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, showHidden, onContextMenu, reloadTrigger }: {
+const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, showHidden, onContextMenu, refreshSignal }: {
     entry: DirEntry
     depth: number
     onToggle: (p: string) => void
@@ -208,11 +208,15 @@ export default function FileTree({ selectedPath, onSelect, onOpen, root = '/', s
     }
 
     React.useEffect(() => {
+        fetchRoot()
+    }, [root, showHidden])
+
+    React.useEffect(() => {
         // Root refresh
         if (refreshSignal && refreshSignal.path === root) {
             fetchRoot()
         }
-    }, [root, showHidden, refreshSignal])
+    }, [refreshSignal])
 
     if (loading) return <div className="muted" style={{ padding: 10 }}>{t('loading')}...</div>
 
