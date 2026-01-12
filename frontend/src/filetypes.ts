@@ -1,3 +1,6 @@
+
+import { authedFetch } from './utils/auth'
+
 /**
  * Known textual file extensions. These are treated as text for preview/edit purposes.
  * Keep this list conservative — unknown extensions default to text.
@@ -64,7 +67,6 @@ export function isJson(path: string): boolean {
  */
 export type ProbeResult = { mime: string; isText: boolean; ext: string }
 
-import { authedFetch } from './utils/auth'
 
 /**
  * Probe the file type by contacting the backend `/api/filetype` endpoint.

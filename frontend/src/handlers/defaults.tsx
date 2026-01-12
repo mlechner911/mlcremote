@@ -9,6 +9,7 @@ import { extFromPath, isProbablyText } from '../filetypes'
 // Lazy load ShellView
 const ShellView = React.lazy(() => import('../components/ShellView'))
 const MarkdownPreview = React.lazy(() => import('../components/MarkdownPreview'))
+const ArchiveViewer = React.lazy(() => import('../components/ArchiveViewer'))
 
 export const ShellHandler: FileHandler = {
     name: 'Shell',
@@ -60,6 +61,22 @@ export const ImageHandler: FileHandler = {
     },
     view: ({ path, onDimensions }: ViewProps) => (
         <ImageView path={path} onDimensions={onDimensions} />
+    ),
+    isEditable: false
+}
+
+export const ArchiveHandler: FileHandler = {
+    name: 'Archive',
+    priority: 65,
+    matches: (opts: DecideOpts) => {
+        if (!opts.path) return false
+        const lower = opts.path.toLowerCase()
+        return lower.endsWith('.zip') || lower.endsWith('.tar') || lower.endsWith('.tar.gz') || lower.endsWith('.tgz')
+    },
+    view: ({ path }: ViewProps) => (
+        <React.Suspense fallback={<div className="muted">Loading archive...</div>}>
+            <ArchiveViewer path={path} />
+        </React.Suspense>
     ),
     isEditable: false
 }

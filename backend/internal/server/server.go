@@ -179,6 +179,7 @@ func (s *Server) Routes() {
 	// serve file sections for large-file viewing
 	s.Mux.Handle("/api/file/section", handlers.FileSectionHandler(s.Root))
 	s.Mux.Handle("/api/stat", handlers.StatHandler(s.Root))
+	s.Mux.Handle("/api/archive/list", handlers.ListArchiveHandler(s.Root))
 
 	settingsPath := filepath.Join(s.Root, ".mlcremote", "settings.json")
 	s.Mux.Handle("/api/settings", handlers.SettingsHandler(s.AllowDelete, settingsPath))

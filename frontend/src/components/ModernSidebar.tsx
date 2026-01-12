@@ -15,13 +15,14 @@ type ModernSidebarProps = {
     onOpenTerminal?: () => void
     onToggleSettings?: () => void
     onOpenTrash?: () => void
-    onOpenTrash?: () => void
+
     onContextMenu?: (entry: DirEntry, x: number, y: number) => void
     refreshSignal?: { path: string, ts: number }
+    onRefresh?: () => void
 }
 
 export default function ModernSidebar(props: ModernSidebarProps) {
-    const { showHidden, selectedPath, onSelect, root = '/', onActivityChange } = props
+    const { showHidden, selectedPath, onSelect, root = '/', onActivityChange, onRefresh } = props
     const [activeActivity, setActiveActivity] = React.useState('files')
 
     const handleActivityClick = (activity: string) => {
@@ -55,7 +56,16 @@ export default function ModernSidebar(props: ModernSidebarProps) {
             <div className="side-panel">
                 {activeActivity === 'files' && (
                     <>
-                        <div className="panel-title">EXPLORER</div>
+                        <div className="panel-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span>EXPLORER</span>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                                {onRefresh && (
+                                    <button className="icon-btn" title="Refresh" onClick={onRefresh}>
+                                        <Icon name={getIcon('refresh') || 'icon-refresh'} size={14} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                         <div style={{ flex: 1, overflow: 'auto' }}>
                             <FileTree
                                 root={root}

@@ -249,6 +249,25 @@ export async function uploadFile(path: string, file: File): Promise<void> {
         throw new Error('upload failed')
     }
 }
+
+export type ArchiveEntry = {
+    name: string
+    size: number
+    isDir: boolean
+    modTime: string
+}
+
+/**
+ * List contents of an archive file.
+ */
+export async function listArchive(path: string): Promise<ArchiveEntry[]> {
+    const q = `?path=${encodeURIComponent(path)}`
+    info(`GET /api/archive/list${q}`)
+    const r = await authedFetch(`/api/archive/list${q}`)
+    info(`/api/archive/list${q} => ${r.status}`)
+    if (!r.ok) throw new Error('archive list failed')
+    return r.json()
+}
 // ... (existing code)
 
 /**

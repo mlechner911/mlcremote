@@ -551,6 +551,7 @@ export default function App() {
               }}
               onContextMenu={handleContextMenu}
               refreshSignal={refreshSignal}
+              onRefresh={() => setRefreshSignal({ path: '/', ts: Date.now() })}
             />
           ) : (
             <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} reloadSignal={reloadSignal} showMessageBox={(t, m, c, l) => setMessageBox({ title: t, message: m, onConfirm: c, confirmLabel: l })} onSelect={(p, isDir) => {
