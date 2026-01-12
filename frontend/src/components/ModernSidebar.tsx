@@ -17,7 +17,7 @@ type ModernSidebarProps = {
     onOpenTrash?: () => void
     onOpenTrash?: () => void
     onContextMenu?: (entry: DirEntry, x: number, y: number) => void
-    reloadTrigger?: number
+    refreshSignal?: { path: string, ts: number }
 }
 
 export default function ModernSidebar(props: ModernSidebarProps) {
@@ -64,7 +64,7 @@ export default function ModernSidebar(props: ModernSidebarProps) {
                                 onSelect={onSelect}
                                 onOpen={props.onOpen}
                                 onContextMenu={props.onContextMenu}
-                                reloadTrigger={props.reloadTrigger}
+                                refreshSignal={props.refreshSignal}
                             />
                         </div>
                     </>

@@ -98,8 +98,8 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
   const [logoVisible, setLogoVisible] = React.useState<boolean>(true)
   const [settingsOpen, setSettingsOpen] = React.useState<boolean>(false)
-  // const [showLogs, setShowLogs] = React.useState(false) // Moved to useAppSettings
-  const [fileTreeReloadTrigger, setFileTreeReloadTrigger] = React.useState(0)
+  const [showLogs, setShowLogs] = React.useState(false) // Moved to useAppSettings
+  const [refreshSignal, setRefreshSignal] = React.useState<{ path: string, ts: number } | undefined>(undefined)
   const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
   const [contextMenu, setContextMenu] = React.useState<{ x: number, y: number, entry: DirEntry } | null>(null)
   const [shellCwds, setShellCwds] = React.useState<Record<string, string>>({})
@@ -546,9 +546,8 @@ export default function App() {
                 openFile('trash', 'custom', 'Trash')
                 setActiveTab('trash')
               }}
-              onContextMenu={(entry, x, y) => {
-                setContextMenu({ x, y, entry })
-              }}
+              onContextMenu={handleContextMenu}
+              refreshSignal={refreshSignal}
             />
           ) : (
             <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} reloadSignal={reloadSignal} showMessageBox={(t, m, c, l) => setMessageBox({ title: t, message: m, onConfirm: c, confirmLabel: l })} onSelect={(p, isDir) => {
@@ -713,7 +712,7 @@ export default function App() {
                       const newPath = (contextMenu.entry.path === '/' ? '' : contextMenu.entry.path) + '/' + file.name
                       setSelectedPath(newPath)
                       openFile('metadata', 'custom', 'Details')
-                      setFileTreeReloadTrigger(n => n + 1)
+                      setRefreshSignal({ path: contextMenu.entry.path, ts: Date.now() })
                     } catch (err) {
                       console.error(err)
                       alert(t('upload_failed', 'Upload failed'))

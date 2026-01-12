@@ -88,7 +88,7 @@ const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, 
     selectedPath?: string
     showHidden?: boolean
     onContextMenu?: (entry: DirEntry, x: number, y: number) => void
-    reloadTrigger?: number
+    refreshSignal?: { path: string, ts: number }
 }) => {
     const [children, setChildren] = React.useState<DirEntry[] | null>(null)
     const [expanded, setExpanded] = React.useState(false)
@@ -103,12 +103,10 @@ const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, 
     }, [showHidden])
 
     React.useEffect(() => {
-        if (expanded) {
-            // refresh silently without invalidating cache first to avoid flicker?
-            // or maybe just reload
+        if (refreshSignal && (refreshSignal.path === entry.path) && expanded) {
             loadChildren()
         }
-    }, [reloadTrigger])
+    }, [refreshSignal])
 
     const loadChildren = async () => {
         setLoading(true)
@@ -181,7 +179,7 @@ const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, 
                             selectedPath={selectedPath}
                             showHidden={showHidden}
                             onContextMenu={onContextMenu}
-                            reloadTrigger={reloadTrigger}
+                            refreshSignal={refreshSignal}
                         />
                     ))}
                 </div>
@@ -190,7 +188,7 @@ const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, 
     )
 }
 
-export default function FileTree({ selectedPath, onSelect, onOpen, root = '/', showHidden, onContextMenu, reloadTrigger }: { selectedPath?: string, onSelect: (p: string, isDir: boolean) => void, onOpen?: (p: string) => void, root?: string, showHidden?: boolean, onContextMenu?: (entry: DirEntry, x: number, y: number) => void, reloadTrigger?: number }) {
+export default function FileTree({ selectedPath, onSelect, onOpen, root = '/', showHidden, onContextMenu, refreshSignal }: { selectedPath?: string, onSelect: (p: string, isDir: boolean) => void, onOpen?: (p: string) => void, root?: string, showHidden?: boolean, onContextMenu?: (entry: DirEntry, x: number, y: number) => void, refreshSignal?: { path: string, ts: number } }) {
     const { t } = useTranslation()
     const [entries, setEntries] = React.useState<DirEntry[]>([])
     const [loading, setLoading] = React.useState(false)
@@ -210,8 +208,11 @@ export default function FileTree({ selectedPath, onSelect, onOpen, root = '/', s
     }
 
     React.useEffect(() => {
-        fetchRoot()
-    }, [root, showHidden, reloadTrigger])
+        // Root refresh
+        if (refreshSignal && refreshSignal.path === root) {
+            fetchRoot()
+        }
+    }, [root, showHidden, refreshSignal])
 
     if (loading) return <div className="muted" style={{ padding: 10 }}>{t('loading')}...</div>
 
@@ -228,7 +229,7 @@ export default function FileTree({ selectedPath, onSelect, onOpen, root = '/', s
                     selectedPath={selectedPath}
                     showHidden={showHidden}
                     onContextMenu={onContextMenu}
-                    reloadTrigger={reloadTrigger}
+                    refreshSignal={refreshSignal}
                 />
             ))}
         </div>

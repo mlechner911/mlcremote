@@ -141,6 +141,7 @@ export async function listTree(path = '', opts?: { showHidden?: boolean }): Prom
     const params = new URLSearchParams()
     if (path) params.set('path', path)
     if (opts?.showHidden) params.set('showHidden', '1')
+    params.set('_', Date.now().toString()) // cache busting
     const q = params.toString() ? `?${params.toString()}` : ''
     info(`GET /api/tree${q}`)
     const r = await authedFetch(`/api/tree${q}`)
