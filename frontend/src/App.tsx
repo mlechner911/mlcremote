@@ -680,6 +680,48 @@ export default function App() {
           </div>
         </main>
       </div>
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          items={[
+            {
+              label: t('properties', 'Properties'),
+              icon: <Icon name={getIcon('info')} />,
+              action: () => {
+                setSelectedPath(contextMenu.entry.path)
+                openFile('metadata', 'custom', 'Details')
+              }
+            },
+            ...(contextMenu.entry.isDir ? [] : [
+              {
+                label: t('open', 'Open'),
+                icon: <Icon name={getIcon('edit')} />,
+                action: () => {
+                  setSelectedPath(contextMenu.entry.path)
+                  openFile(contextMenu.entry.path)
+                }
+              },
+              {
+                label: t('download', 'Download'),
+                icon: <Icon name="icon-download" />,
+                action: () => {
+                  const url = makeUrl(`/api/file?path=${encodeURIComponent(contextMenu.entry.path)}`)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = contextMenu.entry.name
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                }
+              }
+            ])
+          ]}
+        />
+      )}
+
       <StatusBar health={health} isOnline={isOnline} hideMemoryUsage={hideMemoryUsage} lastHealthAt={lastHealthAt} />
       <LogOverlay visible={showLogs} onClose={() => setShowLogs(false)} />
 
