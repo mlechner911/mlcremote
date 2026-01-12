@@ -367,10 +367,17 @@ func GetFileHandler(root string) http.HandlerFunc {
 		}
 		defer f.Close()
 		// detect content type from the first bytes
-		buf := make([]byte, 4100)
+		buf := make([]byte, 512)
 		n, _ := f.Read(buf)
 		mime := http.DetectContentType(buf[:n])
 		w.Header().Set("Content-Type", mime)
+
+		// Check if download is requested
+		if r.URL.Query().Get("download") == "true" {
+			filename := filepath.Base(target)
+			w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
+		}
+
 		// rewind to start
 		if _, err := f.Seek(0, 0); err == nil {
 			_, _ = io.Copy(w, f)

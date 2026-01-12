@@ -718,7 +718,7 @@ export default function App() {
                 icon: <Icon name="icon-download" />,
                 action: () => {
                   const token = getToken()
-                  const url = makeUrl(`/api/file?path=${encodeURIComponent(contextMenu.entry.path)}&token=${token}`)
+                  const url = makeUrl(`/api/file?path=${encodeURIComponent(contextMenu.entry.path)}&token=${token}&download=true`)
                   const a = document.createElement('a')
                   a.href = url
                   a.download = contextMenu.entry.name
