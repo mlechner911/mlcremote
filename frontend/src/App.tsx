@@ -98,6 +98,8 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
   const [logoVisible, setLogoVisible] = React.useState<boolean>(true)
   const [settingsOpen, setSettingsOpen] = React.useState<boolean>(false)
+  // const [showLogs, setShowLogs] = React.useState(false) // Moved to useAppSettings
+  const [fileTreeReloadTrigger, setFileTreeReloadTrigger] = React.useState(0)
   const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
   const [contextMenu, setContextMenu] = React.useState<{ x: number, y: number, entry: DirEntry } | null>(null)
   const [shellCwds, setShellCwds] = React.useState<Record<string, string>>({})
@@ -711,7 +713,7 @@ export default function App() {
                       const newPath = (contextMenu.entry.path === '/' ? '' : contextMenu.entry.path) + '/' + file.name
                       setSelectedPath(newPath)
                       openFile('metadata', 'custom', 'Details')
-                      // refresh tree? tricky without trigger.
+                      setFileTreeReloadTrigger(n => n + 1)
                     } catch (err) {
                       console.error(err)
                       alert(t('upload_failed', 'Upload failed'))
