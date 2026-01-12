@@ -1,5 +1,5 @@
 import React from 'react'
-import { statPath, type Health, saveSettings, makeUrl, DirEntry } from './api'
+import { statPath, type Health, saveSettings, makeUrl, DirEntry, getToken } from './api'
 import { useAuth } from './context/AuthContext'
 import { useAppSettings } from './hooks/useAppSettings'
 import { useWorkspace } from './hooks/useWorkspace'
@@ -717,7 +717,8 @@ export default function App() {
                 label: t('download', 'Download'),
                 icon: <Icon name="icon-download" />,
                 action: () => {
-                  const url = makeUrl(`/api/file?path=${encodeURIComponent(contextMenu.entry.path)}`)
+                  const token = getToken()
+                  const url = makeUrl(`/api/file?path=${encodeURIComponent(contextMenu.entry.path)}&token=${token}`)
                   const a = document.createElement('a')
                   a.href = url
                   a.download = contextMenu.entry.name

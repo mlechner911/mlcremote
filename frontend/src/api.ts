@@ -1,7 +1,7 @@
 import { info, warn } from './utils/logger'
 import { getToken, setToken, authedFetch, makeUrl, setApiBaseUrl, getApiBaseUrl } from './utils/auth'
 
-export { setApiBaseUrl, getApiBaseUrl, makeUrl }
+export { setApiBaseUrl, getApiBaseUrl, makeUrl, getToken }
 
 export async function login(password: string): Promise<string> {
     info('POST /api/login')
