@@ -376,7 +376,7 @@ export default function App() {
                         return (
                           <Editor path={tab.path} settings={settings || undefined} onSaved={() => { /* no-op */ }} reloadTrigger={reloadTriggers[tab.id] || 0} onUnsavedChange={handleUnsavedChange} onMeta={(m: any) => {
                             if (m && m.path) setFileMetas(fm => ({ ...fm, [tab.id]: m }))
-                          }} intent={tab.intent} />
+                          }} intent={tab.intent} onOpen={openFile} />
                         )
                     }
                   })()}

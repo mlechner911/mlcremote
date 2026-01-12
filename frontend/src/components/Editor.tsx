@@ -2,6 +2,7 @@ import React from 'react'
 import { readFile, saveFile, deleteFile, listTree, statPath, DirEntry } from '../api' // DirEntry for type if needed
 import { Intent } from '../handlers/types'
 import { formatBytes } from '../utils/bytes'
+import { getIcon } from '../generated/icon-helpers'
 import { probeFileType, extFromPath } from '../filetypes'
 import { effectiveExtFromFilename } from '../languageForFilename'
 import { authedFetch } from '../utils/auth'
@@ -19,11 +20,12 @@ type Props = {
   onUnsavedChange?: (path: string, hasUnsaved: boolean) => void
   onMeta?: (m: any) => void
   intent?: Intent
+  onOpen?: (path: string, type?: any, label?: string, intent?: Intent) => void
 }
 
 import MessageBox from './MessageBox'
 
-export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta, intent }: Props) {
+export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta, intent, onOpen }: Props) {
   const { t } = useTranslation()
   const [content, setContent] = React.useState<string>('')
   const [origContent, setOrigContent] = React.useState<string>('')
@@ -306,6 +308,16 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
           <button className="link icon-btn" title={t('refresh')} aria-label={t('refresh')} onClick={onReload} disabled={!path}>
             <Icon name={iconForExtension('refresh') || 'icon-refresh'} title={t('refresh')} size={16} />
           </button>
+
+          {(ext === 'md' || ext === 'markdown') && onOpen && (
+            <button
+              className="link icon-btn"
+              title={intent === 'view' ? t('edit') : t('preview')}
+              onClick={() => onOpen(path, undefined, undefined, intent === 'view' ? 'edit' : 'view')}
+            >
+              <Icon name={getIcon(intent === 'view' ? 'edit' : 'eye')} size={16} />
+            </button>
+          )}
 
           {/* Only show Save if handler supports editing and content changed */}
           {handler.isEditable && content !== origContent && (
