@@ -26,7 +26,11 @@ endif
 # ... (help targets omitted) ...
 
 help: ## Show this help
+ifdef HELP_CMD
+	@$(HELP_CMD)
+else
 	@grep -h '^##' Makefile Makefile.win Makefile.unix | sed "s/^## //g"
+endif
 
 ## backend - Build the Go backend
 backend:
