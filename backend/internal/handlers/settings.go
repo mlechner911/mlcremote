@@ -57,7 +57,7 @@ func SettingsHandler(allowDelete bool, settingsPath string) http.HandlerFunc {
 		// Merge system settings (read-only) with user settings
 		resp := map[string]interface{}{
 			"allowDelete":     allowDelete,
-			"defaultShell":    "bash", // Todo: detect default shell
+			"defaultShell":    detectDefaultShell(),
 			"theme":           userSettings.Theme,
 			"autoOpen":        userSettings.AutoOpen,
 			"showHidden":      userSettings.ShowHidden,

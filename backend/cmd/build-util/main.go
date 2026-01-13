@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 )
 
+// we use this as a helper tool for the build process
+// to provide feedback on assets and binary size.
+// (in Makefile) make prepare-payload
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()

@@ -21,11 +21,12 @@ type Props = {
   onMeta?: (m: any) => void
   intent?: Intent
   onOpen?: (path: string, type?: any, label?: string, intent?: Intent) => void
+  customLabel?: string
 }
 
 import MessageBox from './MessageBox'
 
-export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta, intent, onOpen }: Props) {
+export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta, intent, onOpen, customLabel }: Props) {
   const { t } = useTranslation()
   const [content, setContent] = React.useState<string>('')
   const [origContent, setOrigContent] = React.useState<string>('')
@@ -289,7 +290,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
         <strong>{t('editor')}</strong>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="muted">{(meta && meta.absPath) ? meta.absPath : (path || t('select_or_create'))}</span>
+            <span className="muted">{(meta && meta.absPath) ? meta.absPath : (customLabel || path || t('select_or_create'))}</span>
             {meta?.isReadOnly && <span className="badge badge-error" style={{ fontSize: 10, padding: '1px 4px' }}>{t('read_only', 'READ ONLY')}</span>}
             {intent === 'view' && <span className="badge box-accent" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--accent)', color: 'white', borderRadius: 4 }}>{t('preview', 'PREVIEW')}</span>}
           </div>

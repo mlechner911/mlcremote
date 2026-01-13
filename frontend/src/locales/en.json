@@ -17,6 +17,8 @@
     "run": "Run",
     "debug": "Debug",
     "close": "Close",
+    "edit": "Edit",
+    "preview": "Preview",
     "open": "Open",
     "loading": "Loading...",
     "no_files": "No files open",

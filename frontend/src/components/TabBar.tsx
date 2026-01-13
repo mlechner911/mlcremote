@@ -88,8 +88,17 @@ export default function TabBar({ tabs, activeId, onActivate, onClose, onCloseOth
               style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span className="tab-icon">
                 {(() => {
-                  if (tab.icon) return <Icon name={tab.icon} />
-                  if (tab.type === 'terminal') return <Icon name={getIcon('terminal')} />
+                  // Debug logging
+                  if (tab.label === 'Desktop' || tab.type === 'terminal') {
+                    //        console.log('TabBar rendering tab:', { id: tab.id, path: tab.path, type: tab.type, label: tab.label, icon: tab.icon })
+                  }
+
+                  if (tab.icon) {
+                    const iconName = tab.icon.startsWith('icon-') ? tab.icon : getIcon(tab.icon)
+                    return <Icon name={iconName} />
+                  }
+                  // Check for shell- id pattern as well as path
+                  if (tab.type === 'terminal' || tab.path.startsWith('shell-') || tab.id.startsWith('shell-')) return <Icon name={getIcon('terminal')} />
                   if (tab.type === 'custom' && tab.id === 'metadata') return <Icon name={getIcon('view')} />
                   if (tab.type === 'binary') return <Icon name={getIcon('file')} /> // fallback
                   const ext = (tab.path.split('.').pop() || '').toLowerCase()

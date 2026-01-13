@@ -19,23 +19,36 @@ type ModernSidebarProps = {
     onContextMenu?: (entry: DirEntry, x: number, y: number) => void
     refreshSignal?: { path: string, ts: number }
     onRefresh?: () => void
+    isExpanded?: boolean
+    onToggleSidebar?: (expanded: boolean) => void
 }
 
 export default function ModernSidebar(props: ModernSidebarProps) {
-    const { showHidden, selectedPath, onSelect, root = '/', onActivityChange, onRefresh } = props
+    const { showHidden, selectedPath, onSelect, root = '/', onActivityChange, onRefresh, isExpanded = true, onToggleSidebar } = props
     const [activeActivity, setActiveActivity] = React.useState('files')
 
     const handleActivityClick = (activity: string) => {
-        setActiveActivity(activity)
-        onActivityChange?.(activity)
+        if (activity === 'files') {
+            if (activeActivity === 'files' && isExpanded) {
+                // Toggle off
+                onToggleSidebar?.(false)
+            } else {
+                // Toggle on and set active
+                setActiveActivity('files')
+                if (!isExpanded) onToggleSidebar?.(true)
+            }
+        } else {
+            setActiveActivity(activity)
+            onActivityChange?.(activity)
+        }
     }
 
     return (
         <div className="modern-sidebar">
             {/* Activity Bar */}
             <div className="activity-bar">
-                <div className={`activity-icon ${activeActivity === 'files' ? 'active' : ''}`} onClick={() => handleActivityClick('files')} title="Explorer">
-                    <Icon name={getIcon('copy')} size={24} />
+                <div className={`activity-icon ${(activeActivity === 'files' && isExpanded) ? 'active' : ''}`} onClick={() => handleActivityClick('files')} title="Explorer">
+                    <Icon name={getIcon('folder')} size={24} />
                 </div>
                 {/* Terminal Icon - Always available command */}
                 <div className="activity-icon" onClick={() => props.onOpenTerminal?.()} title="New Terminal">
@@ -53,36 +66,38 @@ export default function ModernSidebar(props: ModernSidebarProps) {
             </div>
 
             {/* Side Panel */}
-            <div className="side-panel">
-                {activeActivity === 'files' && (
-                    <>
-                        <div className="panel-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span>EXPLORER</span>
-                            <div style={{ display: 'flex', gap: 4 }}>
-                                {onRefresh && (
-                                    <button className="icon-btn" title="Refresh" onClick={onRefresh}>
-                                        <Icon name={getIcon('refresh') || 'icon-refresh'} size={14} />
-                                    </button>
-                                )}
+            {isExpanded && (
+                <div className="side-panel">
+                    {activeActivity === 'files' && (
+                        <>
+                            <div className="panel-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span>EXPLORER</span>
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                    {onRefresh && (
+                                        <button className="icon-btn" title="Refresh" onClick={onRefresh}>
+                                            <Icon name={getIcon('refresh') || 'icon-refresh'} size={14} />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                        <div style={{ flex: 1, overflow: 'auto' }}>
-                            <FileTree
-                                root={root}
-                                showHidden={showHidden}
-                                selectedPath={selectedPath}
-                                onSelect={onSelect}
-                                onOpen={props.onOpen}
-                                onContextMenu={props.onContextMenu}
-                                refreshSignal={props.refreshSignal}
-                            />
-                        </div>
-                    </>
-                )}
-                {activeActivity === 'settings' && (
-                    <div style={{ padding: 20, textAlign: 'center', opacity: 0.5 }}>Settings via gear icon</div>
-                )}
-            </div>
+                            <div style={{ flex: 1, overflow: 'auto' }}>
+                                <FileTree
+                                    root={root}
+                                    showHidden={showHidden}
+                                    selectedPath={selectedPath}
+                                    onSelect={onSelect}
+                                    onOpen={props.onOpen}
+                                    onContextMenu={props.onContextMenu}
+                                    refreshSignal={props.refreshSignal}
+                                />
+                            </div>
+                        </>
+                    )}
+                    {activeActivity === 'settings' && (
+                        <div style={{ padding: 20, textAlign: 'center', opacity: 0.5 }}>Settings via gear icon</div>
+                    )}
+                </div>
+            )}
         </div>
     )
 }

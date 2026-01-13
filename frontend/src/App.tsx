@@ -95,7 +95,22 @@ export default function App() {
   } = useWorkspace()
 
   /* Local UI State */
-  const [sidebarWidth, setSidebarWidth] = React.useState<number>(300)
+  const [sidebarWidth, setSidebarWidth] = React.useState(240)
+  const sidebarWidthRef = React.useRef(240)
+  const [isSidebarExpanded, setIsSidebarExpanded] = React.useState(true)
+  const savedSidebarWidth = React.useRef(240)
+  const ACTIVITY_BAR_WIDTH_FIXED = 50
+
+  const toggleSidebar = (expand: boolean) => {
+    if (expand) {
+      setIsSidebarExpanded(true)
+      setSidebarWidth(savedSidebarWidth.current)
+    } else {
+      savedSidebarWidth.current = sidebarWidth
+      setIsSidebarExpanded(false)
+      setSidebarWidth(ACTIVITY_BAR_WIDTH_FIXED)
+    }
+  }
   const [logoVisible, setLogoVisible] = React.useState<boolean>(true)
   const [settingsOpen, setSettingsOpen] = React.useState<boolean>(false)
   const [refreshSignal, setRefreshSignal] = React.useState<{ path: string, ts: number } | undefined>(undefined)
@@ -552,6 +567,8 @@ export default function App() {
               onContextMenu={handleContextMenu}
               refreshSignal={refreshSignal}
               onRefresh={() => setRefreshSignal({ path: '/', ts: Date.now() })}
+              isExpanded={isSidebarExpanded}
+              onToggleSidebar={toggleSidebar}
             />
           ) : (
             <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} reloadSignal={reloadSignal} showMessageBox={(t, m, c, l) => setMessageBox({ title: t, message: m, onConfirm: c, confirmLabel: l })} onSelect={(p, isDir) => {
@@ -629,7 +646,8 @@ export default function App() {
             }} />
           )}
         </aside>
-        <div className="resizer" onMouseDown={(e) => {
+        <div className={`resizer ${!isSidebarExpanded ? 'disabled' : ''}`} onMouseDown={(e) => {
+          if (!isSidebarExpanded) return
           const startX = e.clientX
           const startW = sidebarWidth
           function onMove(ev: MouseEvent) {
@@ -728,7 +746,7 @@ export default function App() {
             ] : [
               {
                 label: t('open', 'Open'),
-                icon: <Icon name={getIcon('edit')} />,
+                icon: <Icon name={getIcon('terminal')} />,
                 action: () => {
                   setSelectedPath(contextMenu.entry.path)
                   openFile(contextMenu.entry.path, undefined, undefined, 'edit')

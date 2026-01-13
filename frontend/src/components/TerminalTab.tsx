@@ -5,6 +5,8 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { useTranslation } from 'react-i18next'
+import { Icon } from '../generated/icons'
+import { getIcon } from '../generated/icon-helpers'
 
 type Props = {
   shell: string
@@ -70,8 +72,8 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
     const resolveCwd = async (p: string) => {
       try {
         const j = await statPath(p)
-        if (j && j.exists && j.isDir) return p
-        if (j && j.exists && !j.isDir) return p.replace(/\/[^/]*$/, '') || '/'
+        if (j && j.isDir) return p
+        if (j && !j.isDir) return p.replace(/\/[^/]*$/, '') || '/'
         return p
       } catch (_) {
         return p
@@ -119,7 +121,7 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
       // Now that makeUrl handles query params in apiBase correctly, we can just use authedFetch naturally
       authedFetch(`/api/terminal/new?${fetchParams.toString()}`).then(r => r.json()).then(j => {
         sessionId = j.id
-        const wsParams = { ...commonParams, session: sessionId };
+        const wsParams: Record<string, string> = { ...commonParams, session: sessionId || '' };
         const wsUrl = constructWsUrl(apiBase, wsEndpoint, wsParams);
 
         const socket = new WebSocket(wsUrl);
@@ -169,11 +171,19 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
   }, [shell, path, t])
 
   return (
-    <div className="terminal-root">
-      <div className="terminal-header">
-        <strong>{path}</strong>
-        <div className="terminal-controls">
-          <button className="btn" onClick={async () => {
+    <div className="terminal-root" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="editor-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Icon name={getIcon('terminal')} size={14} />
+          <strong>{t('terminal')}</strong>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="muted">{path}</span>
+          </div>
+        </div>
+        <div className="actions">
+          <button className="link" onClick={async () => {
             // Copy terminal selection to clipboard
             try {
               // xterm exposes .getSelection()? we can read window.getSelection as fallback
@@ -194,7 +204,7 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
               console.warn('copy failed', e)
             }
           }}>{t('copy')}</button>
-          <button className="btn" onClick={async () => {
+          <button className="link" onClick={async () => {
             // Paste from clipboard into terminal (send to ws)
             try {
               let text = ''

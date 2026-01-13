@@ -7,6 +7,7 @@ import (
 	"os"
 )
 
+// only used if builtin md5 not found on os
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: md5-util <file>")

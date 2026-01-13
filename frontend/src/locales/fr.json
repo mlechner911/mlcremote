@@ -16,6 +16,8 @@
     "run": "Exécuter",
     "debug": "Déboguer",
     "close": "Fermer",
+    "edit": "Éditer",
+    "preview": "Aperçu",
     "open": "Ouvrir",
     "loading": "Chargement...",
     "no_files": "Aucun fichier ouvert",

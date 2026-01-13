@@ -42,10 +42,7 @@ var (
 // newTerminalSession starts a PTY running the given shell and registers it.
 func newTerminalSession(shell string, cwd string) (*terminalSession, error) {
 	if shell == "" {
-		shell = os.Getenv("SHELL")
-		if shell == "" {
-			shell = "/bin/bash"
-		}
+		shell = detectDefaultShell()
 	}
 	tty, cmd, err := termutil.StartShellPTY(shell, cwd)
 	if err != nil {
