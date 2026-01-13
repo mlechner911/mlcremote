@@ -192,6 +192,16 @@ else
 endif
 	@echo "Packaged distribution to build/dist"
 
+.PHONY: release
+## release - Build all desktop artifacts (Windows Exe + Installer, Linux Binary via Docker)
+release: build-linux desktop-dist installer
+	@echo "---------------------------------------------------"
+	@echo "Release Build Complete:"
+	@echo "1. Linux Binary: dist/linux/mlcremote"
+	@echo "2. Windows Binary: dist/MLCRemote.exe (copied from build/bin)"
+	@echo "3. Windows Installer: dist/MLCRemote-Setup.exe"
+	@echo "---------------------------------------------------"
+
 ## remote-xpra - Start xpra on remote Linux and print SSH tunnel/attach commands
 remote-xpra:
 	@if [ -z "$(REMOTE)" ]; then echo "Set REMOTE=user@host (e.g., make remote-xpra REMOTE=user@server)"; exit 1; fi
