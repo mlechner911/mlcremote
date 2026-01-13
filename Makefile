@@ -122,12 +122,17 @@ desktop-dist:
 	cd $(FRONTEND_DIR) && npm run build
 	cd $(DESKTOP_DIR)/wails && (wails build -s -tags "desktop,production,webkit2_41" || wails build -s -tags "desktop,production,webkit2" || wails build -s -tags "desktop,production")
 	@echo "Packaging desktop artifacts into dist/"
+ifeq ($(OS),Windows_NT)
+	@if not exist "$(OUTDIR)" mkdir "$(OUTDIR)"
+	@powershell -noprofile -command "if (Test-Path '$(DESKTOP_DIR)/wails/build/bin') { Copy-Item -Recurse -Force '$(DESKTOP_DIR)/wails/build/bin/*' '$(OUTDIR)/' } elseif (Test-Path '$(DESKTOP_DIR)/wails/build') { Copy-Item -Recurse -Force '$(DESKTOP_DIR)/wails/build/*' '$(OUTDIR)/' }"
+else
 	@mkdir -p $(OUTDIR)
 	@if [ -d "$(DESKTOP_DIR)/wails/build/bin" ]; then \
 		cp -r "$(DESKTOP_DIR)/wails/build/bin"/* "$(OUTDIR)/"; \
 	elif [ -d "$(DESKTOP_DIR)/wails/build" ]; then \
 		cp -r "$(DESKTOP_DIR)/wails/build"/* "$(OUTDIR)/"; \
 	fi
+endif
 	@echo "Packaged to $(OUTDIR)"
 
 .PHONY: desktop-dist-zip
