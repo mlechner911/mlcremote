@@ -13,6 +13,10 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-dev \
     libwebkit2gtk-4.1-dev \
     nsis \
+    fonts-noto \
+    fonts-liberation \
+    fontconfig \
+    x11-xserver-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Wails

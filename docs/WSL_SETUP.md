@@ -43,6 +43,12 @@ Open your Ubuntu terminal (WSL) and install the lightweight runtime dependencies
     sudo ./desktop/wails/scripts/install-linux-deps.sh
     ```
     *(Note: This script installs `libgtk-3-dev` and `libwebkit2gtk-4.0-dev` which includes the runtime libraries required to run the app).*
+    
+3.  **Install Fonts (Recommended)**:
+    If text appears as boxes ("tofu") or you see missing icons/cursors, install the standard font sets:
+    ```bash
+    sudo apt install fonts-noto fonts-liberation fontconfig
+    ```
 
 ## 4. Run the App
 
