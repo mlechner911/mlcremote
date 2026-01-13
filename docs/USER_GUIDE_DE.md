@@ -43,7 +43,14 @@ Derzeit muss MLCRemote für diese Plattformen aus dem Quellcode kompiliert werde
    ```bash
    make debug
    ```
+   ```
    *Offizielle Binärdateien für macOS und Linux werden bald verfügbar sein.*
+
+   **Wichtig für Linux/WSL Benutzer**:
+   Wenn Sie Darstellungsprobleme haben (z. B. Text wird als Kästchen angezeigt oder fehlende Cursor), stellen Sie bitte sicher, dass die Standard-Schriftarten installiert sind:
+   ```bash
+   sudo apt install fonts-noto fonts-liberation fontconfig
+   ```
 
 ---
 
@@ -125,11 +132,13 @@ Greifen Sie direkt auf die Kommandozeile des Servers zu.
 - **Sortierung**: Profile werden automatisch nach "Zuletzt verwendet" sortiert.
 - **Bearbeiten/Löschen**: Verwenden Sie die Symbole in der Seitenleiste, um Ihre gespeicherten Profile zu verwalten.
 
-### Geteilte Ansicht (Split View)
+### Tabs und Geteilte Ansicht (Split View)
 Steigern Sie die Produktivität, indem Sie Dateien und Terminals nebeneinander anzeigen.
-- Klicken Sie auf das **Teilen-Symbol** (Spalten-Symbol) in der Editor-Symbolleiste.
-- Sie können den Teiler ziehen, um die Größe der Bereiche zu ändern.
-- **Anwendungsfall**: Verfolgen Sie einen Live-Log-Stream (`tail -f /var/log/syslog`) in einem Bereich, während Sie im anderen eine Konfigurationsdatei (z. B. `nginx.conf`) anpassen.
+
+- **Tabs**: Öffnen Sie mehrere Dateien gleichzeitig. Ziehen Sie Tabs, um sie neu anzuordnen.
+- **Geteilte Ansicht**: Rechtsklick auf einen Tab und wählen Sie **Rechts teilen** (Split Right) oder **Unten teilen** (Split Down), um einen neuen Bereich zu erstellen.
+- **Größenänderung**: Ziehen Sie die Teiler zwischen den Bereichen, um deren Größe anzupassen.
+- **Kontextmenü**: Rechtsklick auf Tabs für Optionen wie "Andere schließen", "Nach rechts schließen", usw.
 
 ---
 

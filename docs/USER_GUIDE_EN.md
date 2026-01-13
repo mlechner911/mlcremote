@@ -43,7 +43,14 @@ Currently, MLCRemote must be built from source for these platforms.
    ```bash
    make debug
    ```
+   ```
    *Official binaries for macOS and Linux are coming soon.*
+
+   **Important for Linux/WSL Users**:
+   If you experience rendering issues (e.g., text showing as boxes "tofu" or missing cursors), please ensure you have the standard font sets installed:
+   ```bash
+   sudo apt install fonts-noto fonts-liberation fontconfig
+   ```
 
 ---
 
@@ -126,11 +133,13 @@ Access the server's command line directly.
 - **Sort**: Profiles are automatically sorted by "Last Used".
 - **Edit/Delete**: Use the icons in the sidebar to manage your saved profiles.
 
-### Split View
+### Tabs and Split View
 Increase productivity by viewing files and terminals side-by-side.
-- Click the **Split Icon** (columns icon) in the editor toolbar.
-- You can drag the divider to resize panes.
-- **Use Case**: View a live log stream (`tail -f /var/log/syslog`) in one pane while tweaking a config file (e.g., `nginx.conf`) in the other.
+
+- **Tabs**: Open multiple files simultaneously. Drag tabs to reorder them using the handle.
+- **Split View**: Right-click a tab and select **Split Right** or **Split Down** to create a new pane.
+- **Resizing**: Drag the dividers between panes to adjust their size.
+- **Context Menu**: Right-click tabs to Close Others, Close to Right, etc.
 
 ---
 
