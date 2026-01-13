@@ -254,4 +254,4 @@ test-env-down:
 build-linux:
 	$(ENSURE_DIST_LINUX)
 	docker build -t mlcremote-builder -f docker/build-linux/Dockerfile .
-	docker run --rm -v "$(CURDIR):/app" -v "$(CURDIR)/dist/linux:/out" mlcremote-builder
+	docker run --rm -v "$(CURDIR)/dist/linux:/out" mlcremote-builder
