@@ -99,6 +99,10 @@
     cursor: pointer;
     padding-right: 8px;
     /* Safe space on right */
+    margin-right: 4px;
+    /* Ensure selection doesn't cover scrollbar */
+    border-radius: 3px;
+    /* Polish */
 }
 
 .tree-arrow {

@@ -81,7 +81,7 @@ export default function ConnectionSidebar({
                                 return t('days_ago', { val: Math.floor(diff / 86400) })
                             })() : ''}
                         </div>
-                        <button className="icon-btn link" style={{ opacity: 0.5 }} onClick={(e) => onDelete(p.id!, e)}>
+                        <button className="icon-btn link muted-icon" onClick={(e) => onDelete(p.id!, e)}>
                             <Icon name="icon-trash" size={14} />
                         </button>
                     </div>

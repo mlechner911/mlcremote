@@ -145,6 +145,15 @@ body {
     border-radius: 4px;
 }
 
+.muted-icon {
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.muted-icon:hover {
+    opacity: 1 !important;
+}
+
 .hidden {
     display: none;
 }
@@ -204,11 +213,81 @@ body {
     background: rgba(255, 255, 255, 0.02);
 }
 
+/* React Resizable Panels Handles */
+.ResizeHandleOuter {
+    flex: 0 0 1.5em;
+    position: relative;
+    outline: none;
+    --background-color: transparent;
+    display: flex;
+    /* Ensure it takes up space for child */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    /* Ensure on top */
+}
+
+/* Vertical Handle (Horizontal Split) */
+[data-panel-group-direction="vertical"]>.ResizeHandleOuter {
+    height: 8px !important;
+    width: 100%;
+    cursor: row-resize;
+    flex: 0 0 8px;
+    /* Fixed height for hit area */
+}
+
+/* Horizontal Handle (Vertical Split) */
+[data-panel-group-direction="horizontal"]>.ResizeHandleOuter {
+    width: 8px !important;
+    height: 100%;
+    cursor: col-resize;
+    flex: 0 0 8px;
+    /* Fixed width for hit area */
+}
+
+.ResizeHandleInner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--border);
+    opacity: 0.1;
+    /* Almost invisible by default */
+    transition: background-color 0.2s linear, opacity 0.2s linear;
+}
+
+[data-panel-group-direction="vertical"]>.ResizeHandleOuter>.ResizeHandleInner {
+    height: 1px;
+    /* The visible line */
+    top: 50%;
+    /* Center it */
+}
+
+[data-panel-group-direction="horizontal"]>.ResizeHandleOuter>.ResizeHandleInner {
+    width: 1px;
+    /* The visible line */
+    left: 50%;
+    /* Center it */
+}
+
+.ResizeHandleOuter:hover .ResizeHandleInner,
+.ResizeHandleOuter:active .ResizeHandleInner {
+    background-color: var(--accent);
+    opacity: 1;
+}
+
 .resizer .bar {
     width: 2px;
     height: 40%;
     background: rgba(255, 255, 255, 0.04);
     border-radius: 2px;
+}
+
+/* Ensure resizers capture mouse events and aren't treated as window drag regions */
+.resizer,
+.split-resizer {
+    --wails-draggable: no-drag;
 }
 
 .explorer-header {
@@ -735,4 +814,103 @@ button,
     background: var(--panel);
     color: var(--text);
     border-color: var(--border);
+}
+
+/* React Resizable Panels Handles */
+.ResizeHandleOuter {
+    flex: 0 0 1.5em;
+    position: relative;
+    outline: none;
+    --background-color: transparent;
+    display: flex;
+    /* Ensure it takes up space for child */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    /* Ensure on top */
+}
+
+/* Vertical Handle (Horizontal Split) */
+[data-panel-group-direction="vertical"]>.ResizeHandleOuter,
+.ResizeHandleOuter.group-horizontal {
+    height: 100% !important;
+    width: 12px !important;
+    /* Thicker grip */
+    cursor: col-resize !important;
+    /* Force cursor */
+    flex: 0 0 12px;
+    background: transparent;
+    pointer-events: auto;
+    z-index: 10000;
+    /* Ensure absolute top */
+}
+
+/* Vertical Handle (Row Layout / Group Horizontal) */
+[data-panel-group-direction="horizontal"]>.ResizeHandleOuter,
+.ResizeHandleOuter.group-horizontal {
+    width: 12px !important;
+    /* Thicker grip */
+    height: 100% !important;
+    cursor: ew-resize !important;
+    /* Force cursor */
+    flex: 0 0 12px;
+    background: transparent;
+    pointer-events: auto;
+    z-index: 10000;
+}
+
+/* Horizontal Handle (Column Layout / Group Vertical) */
+[data-panel-group-direction="vertical"]>.ResizeHandleOuter,
+.ResizeHandleOuter.group-vertical {
+    height: 12px !important;
+    /* Thicker grip */
+    width: 100% !important;
+    cursor: ns-resize !important;
+    /* Force cursor */
+    flex: 0 0 12px;
+    background: transparent;
+    pointer-events: auto;
+    z-index: 10000;
+}
+
+.ResizeHandleInner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--border);
+    opacity: 0.1;
+    /* Almost invisible by default */
+    transition: background-color 0.2s linear, opacity 0.2s linear;
+}
+
+[data-panel-group-direction="horizontal"]>.ResizeHandleOuter>.ResizeHandleInner,
+.ResizeHandleOuter.group-horizontal>.ResizeHandleInner {
+    width: 1px;
+    height: 100%;
+    left: 50%;
+    top: 0;
+}
+
+[data-panel-group-direction="vertical"]>.ResizeHandleOuter>.ResizeHandleInner,
+.ResizeHandleOuter.group-vertical>.ResizeHandleInner {
+    height: 1px;
+    width: 100%;
+    top: 50%;
+    top: 50%;
+    left: 0;
+}
+
+/* Hover effect */
+.ResizeHandleOuter:hover .ResizeHandleInner,
+.ResizeHandleOuter:active .ResizeHandleInner {
+    background-color: var(--accent);
+    opacity: 1;
+}
+
+.ResizeHandleOuter:hover .ResizeHandleInner,
+.ResizeHandleOuter:active .ResizeHandleInner {
+    background-color: var(--accent);
+    opacity: 1;
 }

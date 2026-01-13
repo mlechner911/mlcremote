@@ -21,5 +21,7 @@
     "productVersion": "1.1.0",
     "copyright": "Copyright (c) 2025 Michael Lechner",
     "comments": "Lightweight Remote Environment"
-  }
+  },
+  "resizable": true,
+  "frameless": false
 }

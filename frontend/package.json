@@ -29,6 +29,7 @@
     "react-dom": "18.2.0",
     "react-i18next": "^15.4.0",
     "react-markdown": "^10.1.0",
+    "react-resizable-panels": "^2.0.19",
     "remark-gfm": "^4.0.1"
   },
   "optionalDependencies": {

@@ -36,6 +36,16 @@ button {
     cursor: pointer;
     border: none;
     font-family: inherit;
+    padding: 4px;
+}
+
+.muted-icon {
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.muted-icon:hover {
+    opacity: 1 !important;
 }
 
 .btn {
@@ -76,7 +86,8 @@ button {
 }
 
 .link:hover {
-    color: white;
+    color: var(--text-primary);
+    opacity: 0.8;
 }
 
 .muted {
@@ -167,7 +178,11 @@ button {
 }
 
 .theme-light .connection-icon {
-    /* Halo Effect for Light Mode: Stronger drop shadow + White ring */
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15), 0 0 0 6px rgba(255, 255, 255, 0.7);
-    border: none;
+    /* Halo Effect for Light Mode: Stronger drop shadow + Dark ring for contrast */
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 0 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.connection-icon svg {
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
 }

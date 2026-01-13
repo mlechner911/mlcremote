@@ -251,7 +251,7 @@ test-env-down:
 	docker-compose down
 
 ## build-linux - Build Linux binary using Docker
-build-linux:
+build-linux: backend-linux-payload
 	$(ENSURE_DIST_LINUX)
 	docker build -t mlcremote-builder -f docker/build-linux/Dockerfile .
 	docker run --rm -v "$(CURDIR)/dist/linux:/out" mlcremote-builder

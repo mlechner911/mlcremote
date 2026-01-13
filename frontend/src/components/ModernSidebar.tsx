@@ -80,7 +80,7 @@ export default function ModernSidebar(props: ModernSidebarProps) {
                                     )}
                                 </div>
                             </div>
-                            <div style={{ flex: 1, overflow: 'auto' }}>
+                            <div className="file-tree-container" style={{ flex: 1, overflow: 'auto' }}>
                                 <FileTree
                                     root={root}
                                     showHidden={showHidden}
