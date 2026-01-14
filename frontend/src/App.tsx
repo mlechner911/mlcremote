@@ -7,7 +7,7 @@ import AppHeader from './components/AppHeader'
 import AuthOverlay from './components/AuthOverlay'
 import AboutPopup from './components/AboutPopup'
 import FileExplorer from './components/FileExplorer'
-import ModernSidebar from './components/ModernSidebar'
+import { ActivityBar, SidebarPanel } from './components/ModernSidebar'
 import SettingsPopup from './components/SettingsPopup'
 import ContextMenu, { ContextMenuItem } from './components/ContextMenu'
 import { Intent } from './types/layout'
@@ -36,11 +36,23 @@ import { defaultStore, boolSerializer, strSerializer } from './utils/storage'
 import MessageBox from './components/MessageBox'
 import StatusBar from './components/StatusBar'
 import { getHandler } from './handlers/registry'
+import { DirEntry, getHealth, getSettings, listTree, saveSettings, Settings, TaskDef } from './api'
+import { Tab, ViewType } from './types/layout'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { LayoutNode, PaneId, PaneState } from './types/layout'
 
 export default function App() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const [quickTasks, setQuickTasks] = React.useState<TaskDef[]>(() => {
+    // Try to read initial tasks from window.name (injected by desktop wrapper)
+    try {
+      if (!window.name || !window.name.startsWith('{')) return []
+      const data = JSON.parse(window.name)
+      if (data && Array.isArray(data.tasks)) return data.tasks
+    } catch (e) {
+    }
+    return []
+  })
 
   const {
     health, isOnline, lastHealthAt, refreshHealth
@@ -78,8 +90,7 @@ export default function App() {
     hideMemoryUsage, toggleHideMemoryUsage,
     canChangeRoot,
     maxEditorSize, updateMaxEditorSize,
-    uiMode, setUiMode,
-    i18n
+    uiMode, setUiMode
   } = useAppSettings()
 
   const {
@@ -95,7 +106,11 @@ export default function App() {
   } = useWorkspace()
 
   /* Sidebar Toggle Logic */
-  const [isSidebarExpanded, setIsSidebarExpanded] = React.useState(true)
+  const [isSidebarExpanded, setIsSidebarExpanded] = React.useState(() => {
+    // Check URL param for initial state
+    const p = new URLSearchParams(window.location.search)
+    return !p.get('collapsed')
+  })
 
   const toggleSidebar = (expand: boolean) => {
     setIsSidebarExpanded(expand)
@@ -107,6 +122,7 @@ export default function App() {
   const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
   const [contextMenu, setContextMenu] = React.useState<{ x: number, y: number, entry: DirEntry } | null>(null)
   const [shellCwds, setShellCwds] = React.useState<Record<string, string>>({})
+  const [commandSignals, setCommandSignals] = React.useState<Record<string, { cmd: string, ts: number }>>({})
 
   // These were local state, now derived or managed by hook. 
   const [now, setNow] = React.useState<Date>(new Date())
@@ -123,8 +139,13 @@ export default function App() {
     return !!p.get('controlled') || !!p.get('theme')
   }, [])
 
-  // Listen for messages from parent (Desktop Overlay)
+  // -- Effects --
+
+  // Listen for messages from parent (Desktop wrapper)
   React.useEffect(() => {
+    // Notify parent that we are ready to receive data
+    window.parent.postMessage({ type: 'app-ready' }, '*')
+
     const handleMessage = (e: MessageEvent) => {
       if (!e.data) return
       if (e.data.type === 'set-theme') {
@@ -140,6 +161,32 @@ export default function App() {
         const root = document.querySelector('.app') as HTMLElement
         const name = e.data.filename || 'mlcremote-screenshot.png'
         if (root) captureElementToPng(root, name)
+      }
+      if (e.data.type === 'run-task') {
+        const cmd = e.data.command
+        const name = e.data.name || 'Task'
+        console.log("[MLCRemote] Received run-task command:", name)
+        if (cmd) {
+          // Stable ID based on task name to allow reuse
+          const shellName = `task-${name.replace(/[^a-zA-Z0-9-]/g, '-')}`
+
+          setShellCwds(s => ({ ...s, [shellName]: '/' }))
+          // Always set a new signal with current timestamp to trigger effect
+          setCommandSignals(s => ({ ...s, [shellName]: { cmd, ts: Date.now() } }))
+
+          // This will focus if exists, or open new if not
+          // Pass icon and color as extra metadata
+          const extra = {
+            icon: e.data.icon,
+            iconColor: e.data.color
+          }
+          openFile(shellName, 'terminal', name, undefined, extra)
+        }
+      }
+      if (e.data.type === 'set-tasks') {
+        if (Array.isArray(e.data.tasks)) {
+          setQuickTasks(e.data.tasks)
+        }
       }
     }
     window.addEventListener('message', handleMessage)
@@ -238,7 +285,7 @@ export default function App() {
         label = t('details', 'Details')
       }
 
-      if (tab.type === 'terminal') {
+      if (tab.type === 'terminal' && !tab.id.startsWith('task-')) {
         const cwd = shellCwds[tab.id]
         if (cwd) {
           const parts = cwd.split('/').filter(Boolean)
@@ -343,7 +390,7 @@ export default function App() {
     const isActivePane = paneId === activePaneId
 
     return (
-      <div className={`pane-content ${uiMode === 'modern' ? 'modern-tabs' : ''}`}
+      <div className={`pane-content modern-tabs`}
         style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', minWidth: 0, overflow: 'hidden' }}
         onClick={() => { if (!isActivePane) setActivePaneId(paneId) }}
       >
@@ -403,7 +450,14 @@ export default function App() {
                       case 'terminal':
                         return (
                           <React.Suspense fallback={<div className="muted">{t('loading')}</div>}>
-                            <TerminalTab shell={(settings && settings.defaultShell) || 'bash'} path={shellCwds[tab.id] || ''} onExit={() => onClose(tab.id)} />
+                            <TerminalTab
+                              shell={(settings && settings.defaultShell) || 'bash'}
+                              path={shellCwds[tab.id] || ''}
+                              label={tab.label}                           // Pass the label!
+                              initialCommand={commandSignals[tab.id]?.cmd}
+                              commandSignal={commandSignals[tab.id]}
+                              onExit={() => onClose(tab.id)}
+                            />
                           </React.Suspense>
                         )
                       case 'custom':
@@ -456,157 +510,47 @@ export default function App() {
           ]}
         />
       )}
-      {uiMode !== 'modern' && (
-        <AppHeader
-          logoVisible={logoVisible}
-          setLogoVisible={setLogoVisible}
 
-          isControlled={isControlled}
-          theme={theme}
-          onToggleTheme={() => {
-            const next = theme === 'dark' ? 'light' : 'dark'
-            setTheme(next)
-            defaultStore.set('theme', next, strSerializer as any)
-          }}
+      <div className="app-body" style={{ display: 'flex', flexDirection: 'row', flex: 1, overflow: 'hidden', alignItems: 'stretch' }}>
 
-          onOpenTerminal={async () => {
-            // determine cwd logic
-            let cwd = selectedPath || ''
-            try {
-              if (cwd) {
-                const st = await statPath(cwd)
-                if (!st.isDir && st.absPath) {
-                  const parts = st.absPath.split('/').filter(Boolean)
-                  parts.pop()
-                  cwd = parts.length ? `/${parts.join('/')}` : ''
-                }
-              } else if (activeTabId && !activeTabId.startsWith('shell-')) {
-                // fallback to active tab path if real file
-                // check if activeTabId is valid path?
-                // simple check: not shell, not metadata
-              }
-            } catch (e) { }
+        {/* Activity Bar - Always Visible */}
+        <div style={{ width: 48, flexShrink: 0, zIndex: 1000, height: '100%', borderRight: '1px solid var(--border)' }}>
+          <ActivityBar
+            isExpanded={isSidebarExpanded}
+            onToggleSidebar={toggleSidebar}
+            quickTasks={quickTasks}
+            onRunTask={(task: any) => {
+              // Reuse existing message simulation to run task
+              // We can't dispatch a real MessageEvent easily that matches the listener exactly,
+              // instead let's extract the run logic or just postMessage to self?
+              window.postMessage({ type: 'run-task', ...task }, '*')
+            }}
+            onOpenTerminal={() => {
+              const shellName = `shell-${Date.now()}`
+              setShellCwds(s => ({ ...s, [shellName]: selectedPath || '/' }))
+              openFile(shellName, 'terminal', 'Terminal')
+            }}
+            onOpenTrash={() => {
+              openFile('trash', 'custom', 'Trash')
+              setActiveTab('trash')
+            }}
+            onToggleSettings={() => setSettingsOpen(s => !s)}
+            onActivityChange={() => { }} // Required by strict interface but unused in App
+          />
+        </div>
 
-            const shellName = `shell-${Date.now()}`
-            setShellCwds(s => ({ ...s, [shellName]: cwd || '/' }))
-            openFile(shellName, 'terminal', 'Terminal')
-          }}
-
-          onOpenTrash={() => {
-            const trashId = 'trash'
-            const existing = openTabs.find(t => t.id === trashId)
-            if (!existing) openFile(trashId, 'custom', 'Trash')
-            setActiveTab(trashId)
-          }}
-          onScreenshot={async () => {
-            const root = document.querySelector('.app') as HTMLElement | null
-            if (!root) return
-            try {
-              await captureElementToPng(root, 'mlcremote-screenshot.png')
-            } catch (e) {
-              console.error('Screenshot failed', e)
-            }
-          }}
-
-          onSplitPane={splitPane}
-          onCloseActivePane={() => closePane(activePaneId)}
-          canCloseActivePane={layout.type !== 'leaf'}
-
-          settingsOpen={settingsOpen}
-          setSettingsOpen={setSettingsOpen}
-          aboutOpen={aboutOpen}
-          setAboutOpen={setAboutOpen}
-
-          autoOpen={autoOpen}
-          setAutoOpen={setAutoOpen}
-          showHidden={showHidden}
-          setShowHidden={setShowHidden}
-          showLogs={showLogs}
-          toggleLogs={setShowLogs}
-          hideMemoryUsage={hideMemoryUsage}
-          toggleHideMemoryUsage={toggleHideMemoryUsage}
-          maxEditorSize={maxEditorSize}
-          updateMaxEditorSize={updateMaxEditorSize}
-          uiMode={uiMode}
-          onToggleUiMode={setUiMode}
-          i18n={i18n}
-        />
-      )}
-      <div className="app-body" style={{ alignItems: 'stretch' }}>
-        {/* Top-level PanelGroup for Sidebar + Main Content */}
-        <PanelGroup direction="horizontal" autoSaveId="local-persistence-top">
-          {/* Sidebar Panel */}
+        {/* Top-level PanelGroup for Sidebar Panel + Main Content */}
+        <PanelGroup direction="horizontal" autoSaveId="local-persistence-top" style={{ flex: 1, minWidth: 0 }}>
+          {/* Sidebar Panel - Collapsible */}
           {isSidebarExpanded && (
-            <Panel defaultSize={20} minSize={10} maxSize={40} collapsible={true} order={1} style={{ overflow: 'hidden' }}>
-              <aside className="sidebar" style={{ width: '100%', height: '100%', padding: uiMode === 'modern' ? 0 : 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                {uiMode === 'modern' ? (
-                  <ModernSidebar
-                    showHidden={showHidden}
-                    selectedPath={selectedPath}
-                    root={explorerDir || '/'}
-                    onSelect={(p, isDir) => {
-                      /* Reusing existing selection logic */
-                      setSelectedPath(p)
-                      if (isDir) {
-                        openFile('metadata', 'custom', 'Details')
-                        return
-                      }
-                      (async () => {
-                        try {
-                          const st = await statPath(p)
-                          const h = getHandler({ path: p, meta: st })
-
-                          if (!autoOpen) {
-                            const existing = openTabs.find(t => t.id === p)
-                            if (existing) {
-                              setActiveTab(p)
-                            } else if (activeTabId !== 'metadata') {
-                              // Fallback to details view if not auto-opening
-                              openFile('metadata', 'custom', 'Details')
-                            }
-                            checkHealthStatus()
-                            return
-                          }
-
-                          if (h.name === 'Binary' || h.name === 'Unsupported') {
-                            openFile('binary', 'binary', 'Binary View')
-                            setBinaryPath(p)
-                            setActiveTab('binary')
-                            return
-                          }
-
-                          // if autoOpen is true and not binary
-                          // if autoOpen is true and not binary
-                          openFile(p)
-                        } catch (e: any) {
-                          setMessageBox({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
-                          return
-                        }
-                      })()
-                      checkHealthStatus()
-                    }}
-                    onOpen={(p) => {
-                      openFile(p)
-                    }}
-                    onOpenTerminal={() => {
-                      const shellName = `shell-${Date.now()}`
-                      // We should infer CWD here similar to AppHeader logic, but for now root
-                      setShellCwds(s => ({ ...s, [shellName]: selectedPath || '/' }))
-                      openFile(shellName, 'terminal', 'Terminal')
-                    }}
-                    onToggleSettings={() => setSettingsOpen(s => !s)}
-                    onOpenTrash={() => {
-                      openFile('trash', 'custom', 'Trash')
-                      setActiveTab('trash')
-                    }}
-                    onContextMenu={handleContextMenu}
-                    refreshSignal={refreshSignal}
-                    onRefresh={() => setRefreshSignal({ path: '/', ts: Date.now() })}
-                    isExpanded={isSidebarExpanded}
-                    onToggleSidebar={toggleSidebar}
-                  />
-                ) : (
-                  <FileExplorer showHidden={showHidden} autoOpen={autoOpen} onToggleHidden={(v) => setShowHidden(v)} selectedPath={selectedPath} activeDir={explorerDir} onDirChange={handleExplorerDirChange} focusRequest={focusRequest} reloadSignal={reloadSignal} showMessageBox={(t, m, c, l) => setMessageBox({ title: t, message: m, onConfirm: c, confirmLabel: l })} onSelect={(p, isDir) => {
+            <Panel defaultSize={20} minSize={10} maxSize={40} collapsible={true} order={1} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <aside className="sidebar" style={{ width: '100%', height: '100%', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <SidebarPanel
+                  showHidden={showHidden}
+                  selectedPath={selectedPath}
+                  root={explorerDir || '/'}
+                  onSelect={(p, isDir) => {
+                    /* Reusing existing selection logic */
                     setSelectedPath(p)
                     if (isDir) {
                       openFile('metadata', 'custom', 'Details')
@@ -623,63 +567,36 @@ export default function App() {
                             setActiveTab(p)
                           } else if (activeTabId !== 'metadata') {
                             // Fallback to details view if not auto-opening
-                            // Only switch if we aren't already there (avoids race with onOpen double-click)
                             openFile('metadata', 'custom', 'Details')
                           }
                           checkHealthStatus()
                           return
                         }
 
-                        // If it's the Binary or Unsupported handler, open the shared binary tab
                         if (h.name === 'Binary' || h.name === 'Unsupported') {
                           openFile('binary', 'binary', 'Binary View')
                           setBinaryPath(p)
                           setActiveTab('binary')
                           return
                         }
+
+                        // if autoOpen is true and not binary
+                        // if autoOpen is true and not binary
+                        openFile(p)
                       } catch (e: any) {
                         setMessageBox({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
                         return
                       }
-
-                      // otherwise open as normal file tab (autoOpen is true here)
-                      openFile(p)
                     })()
-                    // check health status since backend interaction succeeded
                     checkHealthStatus()
-                  }} onView={(p) => {
-                    // if the file is already open, activate it; otherwise open it as a new persistent tab
-                    const existing = openTabs.find(t => t.id === p)
-                    if (existing) {
-                      setActiveTab(p)
-                    } else {
-                      openFile(p)
-                    }
-                    if (p !== 'metadata') setSelectedPath(p)
-                    checkHealthStatus()
-                  }} onBackendActive={checkHealthStatus} onChangeRoot={async () => {
-                    // Prompt-only logic unchanged
-                    if (!canChangeRoot) {
-                      alert('Changing root is not permitted by the server settings')
-                      return
-                    }
-                    const p = window.prompt('Enter the server directory path to use as new root (e.g. /home/user/project):', selectedPath || '/')
-                    if (!p) return
-                    const chosen = p.trim()
-                    try {
-                      const st = await statPath(chosen)
-                      if (!st.isDir) {
-                        alert('Selected path is not a directory')
-                        return
-                      }
-                      setSelectedPath(chosen)
-                      try { defaultStore.set('lastRoot', chosen, strSerializer) } catch { }
-                      try { const cur = defaultStore.getOrDefault('showHidden', boolSerializer, false); defaultStore.set('showHidden', cur, boolSerializer) } catch { }
-                    } catch (e: any) {
-                      alert('Cannot access selected path: ' + (e?.message || e))
-                    }
-                  }} />
-                )}
+                  }}
+                  onOpen={(p) => {
+                    openFile(p)
+                  }}
+                  onContextMenu={handleContextMenu}
+                  refreshSignal={refreshSignal}
+                  onRefresh={() => setRefreshSignal({ path: '/', ts: Date.now() })}
+                />
               </aside>
             </Panel>
           )}
@@ -732,6 +649,7 @@ export default function App() {
 
               {/* Recursive Panel Layout */}
               {renderLayout(layout)}
+
 
             </div>
           </Panel>
@@ -812,7 +730,13 @@ export default function App() {
         />
       )}
 
-      <StatusBar health={health} isOnline={isOnline} hideMemoryUsage={hideMemoryUsage} lastHealthAt={lastHealthAt} />
+      <StatusBar
+        health={health}
+        isOnline={isOnline}
+        hideMemoryUsage={hideMemoryUsage}
+        lastHealthAt={lastHealthAt}
+      />
+
       <LogOverlay visible={showLogs} onClose={() => setShowLogs(false)} />
 
       {aboutOpen && (

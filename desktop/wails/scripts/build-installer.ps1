@@ -35,7 +35,16 @@ $wailsDir = Join-Path $scriptDir ".."
 Set-Location $wailsDir
 
 Write-Host "Building Wails app with NSIS installer..."
-wails build -nsis -v 2
+# Try to build with webkit2_41 tag first, fallback to others if needed
+wails build -nsis -tags "desktop,production,webkit2_41" -v 2
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Build with webkit2_41 failed, trying webkit2..."
+    wails build -nsis -tags "desktop,production,webkit2" -v 2
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Build with webkit2 failed, trying default..."
+        wails build -nsis -tags "desktop,production" -v 2
+    }
+}
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

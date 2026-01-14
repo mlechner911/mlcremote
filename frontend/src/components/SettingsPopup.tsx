@@ -130,21 +130,7 @@ export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, 
           </div>
         </div>
 
-        <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-          <label style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>UI Mode</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              className="btn"
-              style={{ flex: 1, background: uiMode === 'classic' ? 'var(--accent)' : 'transparent', color: uiMode === 'classic' ? '#fff' : 'var(--text)', border: '1px solid var(--border)' }}
-              onClick={() => onToggleUiMode('classic')}
-            >Classic</button>
-            <button
-              className="btn"
-              style={{ flex: 1, background: uiMode === 'modern' ? 'var(--accent)' : 'transparent', color: uiMode === 'modern' ? '#fff' : 'var(--text)', border: '1px solid var(--border)' }}
-              onClick={() => onToggleUiMode('modern')}
-            >Modern (Beta)</button>
-          </div>
-        </div>
+
       </div >
     </div >
   )

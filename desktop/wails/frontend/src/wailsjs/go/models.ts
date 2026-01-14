@@ -48,6 +48,28 @@ export namespace backend {
 
 export namespace config {
 	
+	export class TaskDef {
+	    id: string;
+	    name: string;
+	    command: string;
+	    color: string;
+	    icon: string;
+	    showOnLaunch: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new TaskDef(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.command = source["command"];
+	        this.color = source["color"];
+	        this.icon = source["icon"];
+	        this.showOnLaunch = source["showOnLaunch"];
+	    }
+	}
 	export class ConnectionProfile {
 	    id: string;
 	    name: string;
@@ -64,6 +86,7 @@ export namespace config {
 	    remoteArch: string;
 	    remoteVersion: string;
 	    mode: string;
+	    tasks: TaskDef[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ConnectionProfile(source);
@@ -86,7 +109,26 @@ export namespace config {
 	        this.remoteArch = source["remoteArch"];
 	        this.remoteVersion = source["remoteVersion"];
 	        this.mode = source["mode"];
+	        this.tasks = this.convertValues(source["tasks"], TaskDef);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

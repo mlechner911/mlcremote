@@ -3,7 +3,12 @@ import LaunchScreen from './components/LaunchScreen'
 import AppLock from './components/AppLock'
 import SettingsDialog from './components/SettingsDialog'
 import RemoteView from './components/RemoteView'
-import { StopTunnel, HasMasterPassword, StopRemoteServer } from './wailsjs/go/app/App'
+import {
+  StartTunnel, StopTunnel, TunnelStatus, DetectRemoteOS,
+  InstallBackend, DeployAgent, CheckBackend, ProbeConnection,
+  ListProfiles, SaveProfile, DeleteProfile,
+  SetMasterPassword, VerifyMasterPassword, HasMasterPassword, RunTask, StopRemoteServer
+} from './wailsjs/go/app/App'
 import { I18nProvider, useI18n } from './utils/i18n'
 // @ts-ignore
 import spriteUrl from './generated/icons-sprite.svg'
@@ -16,20 +21,7 @@ fetch(spriteUrl).then(r => r.text()).then(svg => {
   document.body.prepend(div);
 }).catch(console.error);
 
-export interface Profile {
-  user: string
-  host: string
-  localPort: number
-  remoteHost: string
-  remotePort: number
-  identityFile: string
-  extraArgs: string[]
-  remoteOS?: string
-  remoteArch?: string
-  remoteVersion?: string
-  id?: string
-  color?: string
-}
+import { Profile, TaskDef } from './types'
 
 let runtime: any = null
 function loadRuntimeIfPresent() {
@@ -137,8 +129,11 @@ function AppContent() {
     checkLock()
   }, [])
 
-  const handleConnected = (p: Profile, token?: string) => {
+  const [initialTask, setInitialTask] = useState<TaskDef | undefined>(undefined)
+
+  const handleConnected = (p: Profile, token?: string, task?: TaskDef) => {
     setCurrentProfile(p)
+    setInitialTask(task)
     setProfileName(`${p.user}@${p.host}`)
     setProfileColor(p.color || '')
     let url = `http://localhost:${p.localPort || 8443}`
@@ -155,19 +150,48 @@ function AppContent() {
   }
 
   const handleDisconnect = async () => {
-    if (currentProfile) {
-      try {
-        await StopRemoteServer(JSON.stringify(currentProfile))
-      } catch (e) {
-        console.error("Failed to stop remote server:", e)
-      }
+    try {
+      await StopTunnel()
+      setCurrentProfile(null)
+      // Clear URL param
+      window.history.pushState({}, '', '/')
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setRemoteUrl('')
+      setProfileName('')
+      setProfileColor('')
+      setView('launch')
     }
-    try { await StopTunnel() } catch (e) { console.error(e) }
-    setRemoteUrl('')
-    setProfileName('')
-    setProfileColor('')
-    setCurrentProfile(null)
-    setView('launch')
+  }
+
+  const handleRunTask = async (task: TaskDef) => {
+    if (!currentProfile) return
+
+    // Show "Running..." toast/indicator?
+    // simple alert for now or implement a better UI later
+    // We can use a temporary overlay
+    const start = Date.now()
+    console.log("Running task:", task.name)
+
+    try {
+      // @ts-ignore
+      const res = await RunTask(currentProfile, task, "")
+      const duration = Date.now() - start
+      console.log("Task finished in", duration, "ms")
+      console.log("Output:", res)
+
+      // Simple output display
+      if (res) {
+        alert(`Task: ${task.name}\n\n${res}`)
+      } else {
+        // Success no output
+        // alert(`Task: ${task.name} completed successfully.`)
+      }
+    } catch (e: any) {
+      console.error("Task failed:", e)
+      alert(`Task Failed: ${task.name}\nError: ${e.message || e}`)
+    }
   }
 
   if (view === 'init') return <div style={{ background: 'var(--bg-root)', height: '100vh' }} />
@@ -194,6 +218,9 @@ function AppContent() {
           profileId={currentProfile?.id}
           user={currentProfile?.user}
           localPort={currentProfile?.localPort}
+          tasks={currentProfile?.tasks}
+          initialTask={initialTask}
+          onRunTask={handleRunTask}
           theme={effectiveTheme}
           onSetTheme={setTheme}
           onDisconnect={handleDisconnect}

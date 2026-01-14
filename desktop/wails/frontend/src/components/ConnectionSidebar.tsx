@@ -1,7 +1,7 @@
 import React from 'react'
 import { Icon } from '../generated/icons'
 import { useI18n } from '../utils/i18n'
-import { ConnectionProfile } from './ProfileEditor'
+import { ConnectionProfile } from '../types'
 
 interface ConnectionSidebarProps {
     profiles: ConnectionProfile[]

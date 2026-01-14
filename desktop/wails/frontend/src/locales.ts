@@ -107,7 +107,20 @@ export const translations = {
         ssh_key_missing_info: "Connection successful!\n\nNo local SSH key found. To enable key auth:\n1. Open a terminal (PowerShell/Bash)\n2. Run: ssh-keygen -t ed25519\n3. Press Enter to accept defaults\n4. Test connection again to deploy the new key.",
         setup_secure_access: "Setup Secure Access",
         setup_managed_key_msg: "Enter your remote password. We will generate a secure identity and configure the server for password-less access.",
-        premium_managed_key_desc: "Switch to a secure, app-managed SSH key instead of using a password."
+        premium_managed_key_desc: "Switch to a secure, app-managed SSH key instead of using a password.",
+
+        // Tasks
+        edit_task: "Edit Task",
+        new_task: "New Task",
+        command: "Command",
+        command_hint: "Runs on the remote server via SSH",
+        icon: "Icon",
+        quick_tasks: "Quick Tasks",
+        add_task: "Add Task",
+        premium_tasks_upsell: "Upgrade to Premium to create custom server shortcuts and automate your workflow.",
+        no_tasks: "No tasks defined. Add one to get started.",
+        show_on_launch: "Show on Launch Screen",
+        startup_tasks: "Startup Tasks"
     },
     de: {
         app_title: "MLCRemote Desktop",
@@ -208,6 +221,19 @@ export const translations = {
         setup_secure_access: "Sicheren Zugang einrichten",
         setup_managed_key_msg: "Geben Sie Ihr Remote-Passwort ein. Wir erstellen eine sichere Identität und konfigurieren den Server für passwortlosen Zugriff.",
         premium_managed_key_desc: "Wechseln Sie zu einem sicheren, von der App verwalteten SSH-Schlüssel, anstatt ein Passwort zu verwenden.",
+
+        // Tasks
+        edit_task: "Aufgabe bearbeiten",
+        new_task: "Neue Aufgabe",
+        command: "Befehl",
+        command_hint: "Wird via SSH auf dem Server ausgeführt",
+        icon: "Icon",
+        quick_tasks: "Schnellaufgaben",
+        add_task: "Aufgabe hinzufügen",
+        premium_tasks_upsell: "Upgrade auf Premium, um eigene Shortcuts und Workflows zu erstellen.",
+        no_tasks: "Keine Aufgaben definiert. Fügen Sie eine hinzu, um zu beginnen.",
+        show_on_launch: "Auf dem Startbildschirm anzeigen",
+        startup_tasks: "Startaufgaben",
 
         // Session
         session_found: "Bestehende Sitzung gefunden",
@@ -311,7 +337,20 @@ export const translations = {
         premium_managed: "Identidad Gestionada (Premium)",
         setup_secure_access: "Configurar acceso seguro",
         setup_managed_key_msg: "Ingrese su contraseña remota. Generaremos una identidad segura y configuraremos el servidor para el acceso sin contraseña.",
-        premium_managed_key_desc: "Cambie a una clave SSH segura y administrada por la aplicación en lugar de usar una contraseña."
+        premium_managed_key_desc: "Cambie a una clave SSH segura y administrada por la aplicación en lugar de usar una contraseña.",
+
+        // Tasks
+        edit_task: "Editar Tarea",
+        new_task: "Nueva Tarea",
+        command: "Comando",
+        command_hint: "Se ejecuta en el servidor remoto vía SSH",
+        icon: "Icono",
+        quick_tasks: "Tareas Rápidas",
+        add_task: "Agregar Tarea",
+        premium_tasks_upsell: "Actualiza a Premium para crear accesos directos personalizados y automatizar tu flujo de trabajo.",
+        no_tasks: "No hay tareas definidas. Agrega una para comenzar.",
+        show_on_launch: "Mostrar en la pantalla de inicio",
+        startup_tasks: "Tareas de inicio"
     },
     fr: {
         app_title: "MLCRemote Desktop",
@@ -406,7 +445,20 @@ export const translations = {
         premium_managed: "Identité Gérée (Premium)",
         setup_secure_access: "Configurer l'accès sécurisé",
         setup_managed_key_msg: "Entrez votre mot de passe distant. Nous générerons une identité sécurisée et configurerons le serveur pour un accès sans mot de passe.",
-        premium_managed_key_desc: "Passez à une clé SSH sécurisée gérée par l'application au lieu d'utiliser un mot de passe."
+        premium_managed_key_desc: "Passez à une clé SSH sécurisée gérée par l'application au lieu d'utiliser un mot de passe.",
+
+        // Tasks
+        edit_task: "Modifier la tâche",
+        new_task: "Nouvelle tâche",
+        command: "Commande",
+        command_hint: "S'exécute sur le serveur distant via SSH",
+        icon: "Icône",
+        quick_tasks: "Tâches Rapides",
+        add_task: "Ajouter une tâche",
+        premium_tasks_upsell: "Passez à Premium pour créer des raccourcis serveur personnalisés et automatiser vos flux de travail.",
+        no_tasks: "Aucune tâche définie. Ajoutez-en une pour commencer.",
+        show_on_launch: "Afficher sur l'écran de lancement",
+        startup_tasks: "Tâches de démarrage"
     }
 };
 

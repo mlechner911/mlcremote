@@ -1,30 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { Icon } from '../generated/icons'
+import { ConnectionProfile } from '../types'
 import { useI18n } from '../utils/i18n'
 import { ProbeConnection, DeploySSHKey, VerifyPassword, GetManagedIdentityPath, PickIdentityFile } from '../wailsjs/go/app/App'
 import PasswordDialog from './PasswordDialog'
 import { useConnectionTester } from '../hooks/useConnectionTester'
 import ColorPicker, { DEFAULT_COLORS } from './ColorPicker'
+import { TaskDef } from '../types'
+import TaskEditor from './TaskEditor'
+import TaskIcon from './TaskIcon'
 
-// Define the shape locally until generated bindings are available/updated
-// should come from swagger at some point..
-export interface ConnectionProfile {
-    id?: string
-    name: string
-    color: string
-    user: string
-    host: string
-    port: int
-    localPort: int
-    identityFile: string
-    isWindows: boolean
-    lastUsed: number
-    extraArgs: string[]
-    remoteOS?: string
-    remoteArch?: string
-    remoteVersion?: string
-    mode?: string
-}
+
 
 type int = number
 
@@ -54,6 +40,11 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
     const [authType, setAuthType] = useState<'agent' | 'custom' | 'managed'>('agent')
     const [managedPath, setManagedPath] = useState('')
     const [isVerified, setIsVerified] = useState(false)
+
+    // Task & Premium Logic
+    const [tasks, setTasks] = useState<TaskDef[]>(profile?.tasks || [])
+    const [editingTask, setEditingTask] = useState<TaskDef | null>(null)
+    const [showTaskEditor, setShowTaskEditor] = useState(false)
 
     const normalizePath = (p: string) => p.replace(/\\/g, '/').toLowerCase()
 
@@ -136,8 +127,26 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             identityFile,
             isWindows: profile?.isWindows || false,
             lastUsed: profile?.lastUsed || 0,
-            extraArgs: profile?.extraArgs || []
+            extraArgs: profile?.extraArgs || [],
+            tasks: tasks
         })
+    }
+
+    const handleTaskSave = (t: TaskDef) => {
+        const idx = tasks.findIndex(x => x.id === t.id)
+        if (idx >= 0) {
+            const copy = [...tasks]
+            copy[idx] = t
+            setTasks(copy)
+        } else {
+            setTasks([...tasks, t])
+        }
+        setShowTaskEditor(false)
+        setEditingTask(null)
+    }
+
+    const handleDeleteTask = (id: string) => {
+        setTasks(tasks.filter(t => t.id !== id))
     }
 
     const handleTestConnection = async () => {
@@ -307,6 +316,58 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
                     )}
                 </div>
 
+                {/* Tasks Section */}
+                <div style={{ padding: 16, background: 'var(--bg-section)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('quick_tasks') || "Quick Tasks"}</h3>
+                        {isPremium && (
+                            <button type="button" className="btn secondary small" onClick={() => { setEditingTask(null); setShowTaskEditor(true) }}>
+                                <Icon name="icon-plus" size={12} /> {t('add_task')}
+                            </button>
+                        )}
+                        {!isPremium && <div style={{ fontSize: '0.75rem', color: '#f7b955', border: '1px solid #f7b955', padding: '2px 6px', borderRadius: 4 }}>PREMIUM</div>}
+                    </div>
+
+                    {!isPremium && (
+                        <div className="muted" style={{ fontSize: '0.9rem', fontStyle: 'italic' }}>
+                            {t('premium_tasks_upsell') || "Upgrade to Premium to create custom server shortcuts and automate your workflow."}
+                        </div>
+                    )}
+
+                    {isPremium && tasks.length === 0 && (
+                        <div className="muted" style={{ fontSize: '0.9rem', textAlign: 'center', padding: 10 }}>
+                            {t('no_tasks') || "No tasks defined. Add one to get started."}
+                        </div>
+                    )}
+
+                    {isPremium && tasks.length > 0 && (
+                        <div style={{ display: 'grid', gap: 8 }}>
+                            {tasks.map(task => (
+                                <div key={task.id} style={{
+                                    display: 'flex', alignItems: 'center', gap: 10,
+                                    padding: '8px 12px', background: 'var(--bg-panel)', borderRadius: 6,
+                                    border: '1px solid var(--border)'
+                                }}>
+                                    <TaskIcon icon={task.icon || 'play'} color={task.color || '#3b82f6'} size={20} />
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 500 }}>{task.name}</div>
+                                        <div className="muted" style={{ fontSize: '0.75rem', fontFamily: 'monospace' }}>{task.command}</div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 4 }}>
+                                        <button type="button" className="icon-btn" onClick={() => { setEditingTask(task); setShowTaskEditor(true) }}>
+                                            <Icon name="icon-settings" size={14} />
+                                        </button>
+                                        <button type="button" className="icon-btn" onClick={() => handleDeleteTask(task.id)}>
+                                            <Icon name="icon-trash" size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                </div>
+
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12, alignItems: 'center' }}>
                     {testStatus && <span style={{ fontSize: '0.85rem', color: testStatus.includes('failed') ? 'var(--error)' : 'var(--accent)' }}>{testStatus}</span>}
                     <button type="button" className="btn link" onClick={handleTestConnection} style={{ marginRight: 'auto' }}>{t('test_connection')}</button>
@@ -314,6 +375,18 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
                     <button type="submit" className="btn primary">{t('save_profile')}</button>
                 </div>
             </form>
+
+            {showTaskEditor && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '100%', maxWidth: 400, background: 'var(--bg-root)', padding: 0, borderRadius: 8, boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
+                        <TaskEditor
+                            task={editingTask || undefined}
+                            onSave={handleTaskSave}
+                            onCancel={() => { setShowTaskEditor(false); setEditingTask(null) }}
+                        />
+                    </div>
+                </div>
+            )}
 
             {showPasswordDialog && (
                 <PasswordDialog

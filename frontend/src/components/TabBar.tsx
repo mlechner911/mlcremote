@@ -95,7 +95,13 @@ export default function TabBar({ tabs, activeId, onActivate, onClose, onCloseOth
 
                   if (tab.icon) {
                     const iconName = tab.icon.startsWith('icon-') ? tab.icon : getIcon(tab.icon)
-                    return <Icon name={iconName} />
+                    // Apply color if present
+                    const style = tab.iconColor ? { color: tab.iconColor } : undefined
+                    return (
+                      <span style={style} className="flex items-center">
+                        <Icon name={iconName} />
+                      </span>
+                    )
                   }
                   // Check for shell- id pattern as well as path
                   if (tab.type === 'terminal' || tab.path.startsWith('shell-') || tab.id.startsWith('shell-')) return <Icon name={getIcon('terminal')} />

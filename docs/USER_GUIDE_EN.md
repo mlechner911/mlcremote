@@ -28,6 +28,11 @@ Welcome to the **MLCRemote** User Guide. This document provides everything you n
 - **Native Experience**: Fast, responsive desktop UI with OS integration.
 - **Admin Focused**: Ideal for editing `/etc/` config files, checking `systemd` logs, or running maintenance scripts.
 
+## Release Notes (v1.2.1)
+- **Fixed**: Resolved issue where remote processes (e.g., `btop`) would remain running as zombies after the session was closed. The system now correctly terminates the entire process group.
+- **Fixed**: Restored drag-and-drop file upload functionality in the sidebar.
+- **Fixed**: Replaced "Copy/Paste" text buttons in terminal with proper icons.
+
 ## Installation
 
 ### Windows
@@ -140,6 +145,41 @@ Increase productivity by viewing files and terminals side-by-side.
 - **Split View**: Right-click a tab and select **Split Right** or **Split Down** to create a new pane.
 - **Resizing**: Drag the dividers between panes to adjust their size.
 - **Context Menu**: Right-click tabs to Close Others, Close to Right, etc.
+
+### Activity Bar
+The narrow bar on the far left provides quick access to key features:
+
+- **File Explorer**: Default view for your remote files.
+- **Quick Tasks**: Launch frequently used commands with a single click.
+- **New Terminal**: Instantly opens a new SSH terminal.
+- **Trash**: Access deleted remote files.
+- **Settings**: Configure app settings and profiles.
+
+#### Configuring Quick Tasks
+You can define common commands in a `tasks.json` file or via the settings. Here are some examples:
+
+```json
+[
+  {
+    "name": "Session Manager",
+    "command": "tmux attach || tmux new",
+    "icon": "server",
+    "color": "#00ff00"
+  },
+  {
+    "name": "SQL Backup",
+    "command": "mysqldump -u root -p my_db > backup.sql && echo 'Backup done!'",
+    "icon": "database",
+    "color": "#ff0000"
+  },
+  {
+    "name": "System Status",
+    "command": "htop",
+    "icon": "chart-bar",
+    "color": "#0099ff"
+  }
+]
+```
 
 ---
 

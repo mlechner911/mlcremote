@@ -28,6 +28,11 @@ Willkommen beim **MLCRemote** Benutzerhandbuch. Dieses Dokument enthält alle In
 - **Native Erfahrung**: Schnelle, reaktionsfähige Desktop-Benutzeroberfläche mit Betriebssystemintegration.
 - **Admin-Fokussiert**: Ideal zum Bearbeiten von `/etc/` Konfigurationsdateien, Überprüfen von `systemd`-Logs oder Ausführen von Wartungsskripten.
 
+## Release Notes (v1.2.1)
+- **Behoben**: Ein Problem wurde gelöst, bei dem Remote-Prozesse (z.B. `btop`) als Zombie-Prozesse weiterliefen, nachdem die Sitzung beendet wurde. Das System beendet nun korrekt die gesamte Prozessgruppe.
+- **Behoben**: Drag-and-Drop Datei-Upload in der Seitenleiste wiederhergestellt.
+- **Behoben**: "Kopieren/Einfügen" Text-Buttons im Terminal durch Icons ersetzt.
+
 ## Installation
 
 ### Windows
@@ -139,6 +144,41 @@ Steigern Sie die Produktivität, indem Sie Dateien und Terminals nebeneinander a
 - **Geteilte Ansicht**: Rechtsklick auf einen Tab und wählen Sie **Rechts teilen** (Split Right) oder **Unten teilen** (Split Down), um einen neuen Bereich zu erstellen.
 - **Größenänderung**: Ziehen Sie die Teiler zwischen den Bereichen, um deren Größe anzupassen.
 - **Kontextmenü**: Rechtsklick auf Tabs für Optionen wie "Andere schließen", "Nach rechts schließen", usw.
+
+### Aktivitätsleiste (Activity Bar)
+Die schmale Leiste ganz links bietet schnellen Zugriff auf wichtige Funktionen:
+
+- **Datei-Explorer**: Standardansicht für Ihre Remote-Dateien.
+- **Schnellaufgaben (Quick Tasks)**: Starten Sie häufig verwendete Befehle mit einem einzigen Klick.
+- **Neues Terminal**: Öffnet sofort ein neues SSH-Terminal.
+- **Papierkorb**: Zugriff auf gelöschte Remote-Dateien.
+- **Einstellungen**: Konfiguration von App-Einstellungen und Profilen.
+
+#### Konfiguration der Schnellaufgaben
+Sie können häufige Befehle in einer `tasks.json` im Datei-Explorer definieren oder über die Einstellungen hinzufügen. Hier einige Beispiele:
+
+```json
+[
+  {
+    "name": "Session Manager",
+    "command": "tmux attach || tmux new",
+    "icon": "server",
+    "color": "#00ff00"
+  },
+  {
+    "name": "SQL Backup",
+    "command": "mysqldump -u root -p my_db > backup.sql && echo 'Backup fertig!'",
+    "icon": "database",
+    "color": "#ff0000"
+  },
+  {
+    "name": "System Status",
+    "command": "htop",
+    "icon": "chart-bar",
+    "color": "#0099ff"
+  }
+]
+```
 
 ---
 

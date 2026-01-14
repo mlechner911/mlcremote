@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ProbeConnection } from '../wailsjs/go/app/App'
 import { useI18n } from '../utils/i18n'
-import { ConnectionProfile } from '../components/ProfileEditor'
+import { ConnectionProfile } from '../types'
 
 export function useConnectionTester() {
     const { t } = useI18n()

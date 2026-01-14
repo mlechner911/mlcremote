@@ -10,6 +10,7 @@ export interface Tab {
     label: string;       // Display name
     type: ViewType;
     icon?: string;       // Optional icon override
+    iconColor?: string;  // Optional icon color override
     dirty?: boolean;     // Unsaved changes flag
     metadata?: any;      // Extra data (e.g. scroll position, cursor)
     intent?: Intent;

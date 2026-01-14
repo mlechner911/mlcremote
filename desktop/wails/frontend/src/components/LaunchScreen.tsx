@@ -6,9 +6,9 @@ import {
 } from '../wailsjs/go/app/App'
 import { EventsOn, EventsOff } from '../wailsjs/runtime'
 import { useConnectionTester } from '../hooks/useConnectionTester'
-import ProfileEditor, { ConnectionProfile } from './ProfileEditor'
+import ProfileEditor from './ProfileEditor'
 import SessionDialog, { SessionInfo } from './SessionDialog'
-import { Profile } from '../App' // Legacy Profile type if needed, but we use ConnectionProfile mostly
+import { Profile, ConnectionProfile, TaskDef } from '../types'
 import { useI18n } from '../utils/i18n'
 import PasswordDialog from './PasswordDialog'
 import AboutDialog from './AboutDialog'
@@ -17,7 +17,7 @@ import ConnectionDetail from './ConnectionDetail'
 import AlertDialog, { DialogType } from './AlertDialog'
 
 interface LaunchScreenProps {
-    onConnected: (p: Profile, token?: string) => void
+    onConnected: (p: Profile, token?: string, task?: TaskDef) => void
     onLocked: () => void
     onOpenSettings: () => void
 }
@@ -151,7 +151,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
         }
     }, [loading, t])
 
-    const performConnect = async (p: ConnectionProfile) => {
+    const performConnect = async (p: ConnectionProfile, task?: TaskDef) => {
         setLoading(true)
         setStatus(t('initializing_connection'))
         setErrorWin(null)
@@ -232,8 +232,8 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                     user: p.user, host: p.host, localPort: actualPort, remoteHost: '127.0.0.1', remotePort: 8443,
                     identityFile: p.identityFile, extraArgs: p.extraArgs,
                     remoteOS: p.remoteOS, remoteArch: p.remoteArch, remoteVersion: p.remoteVersion,
-                    id: p.id, color: p.color
-                }, token)
+                    id: p.id, color: p.color, tasks: p.tasks
+                }, token, task)
             } else {
                 // Check if it's an auth error
                 if (res.toLowerCase().includes('permission denied') || res.toLowerCase().includes('publickey')) {
@@ -278,7 +278,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
         }
     }
 
-    const handleConnect = async (p: ConnectionProfile) => {
+    const handleConnect = async (p: ConnectionProfile, task?: TaskDef) => {
         // First check for existing session
         setLoading(true)
         setStatus(t('status_checking'))
@@ -303,7 +303,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
         }
 
         // If no session or error, just connect
-        performConnect(p)
+        performConnect(p, task)
     }
 
     const onDeployKey = async (password: string) => {
@@ -414,9 +414,10 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                             status={status}
                             isManaged={isManaged || false} // handle potential null return from check
                             loading={loading}
-                            onConnect={() => handleConnect(selectedProfile)}
+                            onConnect={(task) => handleConnect(selectedProfile, task)}
                             onEdit={() => setEditing(true)}
                             onTest={() => testConnection(selectedProfile)}
+
                             isTesting={isTesting}
                             testStatus={testStatus}
                         />

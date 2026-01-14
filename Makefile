@@ -94,7 +94,7 @@ prepare-payload: backend-linux-payload backend-windows-payload backend-darwin-am
 
 ## desktop-dev - Run the desktop app in dev mode (wails dev)
 desktop-dev: prepare-payload
-	cd $(DESKTOP_DIR)/wails && wails dev -tags desktop
+	powershell -ExecutionPolicy Bypass -Command "cd $(DESKTOP_DIR)/wails; wails dev -tags dev"
 
 .PHONY: debug
 debug: desktop-dev
@@ -120,7 +120,11 @@ desktop-upgrade-wails:
 desktop-dist:
 	@echo "Building frontend and desktop (wails build)"
 	cd $(FRONTEND_DIR) && npm run build
+ifeq ($(OS),Windows_NT)
+	powershell -ExecutionPolicy Bypass -Command "cd $(DESKTOP_DIR)/wails; wails build -s -tags 'desktop,production'"
+else
 	cd $(DESKTOP_DIR)/wails && (wails build -s -tags "desktop,production,webkit2_41" || wails build -s -tags "desktop,production,webkit2" || wails build -s -tags "desktop,production")
+endif
 	@echo "Packaging desktop artifacts into dist/"
 ifeq ($(OS),Windows_NT)
 	@if not exist "$(OUTDIR)" mkdir "$(OUTDIR)"

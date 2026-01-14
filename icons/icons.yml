@@ -234,3 +234,9 @@ icons:
     file: raw/link.svg
     mime: application/x-ui
     extensions: ["link"]
+
+  - id: paste
+    name: Paste
+    file: raw/paste.svg
+    mime: application/x-ui
+    extensions: ["paste"]

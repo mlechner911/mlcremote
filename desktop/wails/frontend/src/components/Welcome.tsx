@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Profile } from '../App'
+import { Profile } from '../types'
 
 interface WelcomeProps {
     onConnect: (profile?: Profile) => void

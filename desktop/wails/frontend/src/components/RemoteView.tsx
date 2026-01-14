@@ -2,6 +2,9 @@ import React from 'react'
 import { Icon } from '../generated/icons'
 import { useI18n } from '../utils/i18n'
 
+import TaskBar from './TaskBar'
+import { TaskDef } from '../types'
+
 interface RemoteViewProps {
     url: string
     profileName: string
@@ -10,11 +13,14 @@ interface RemoteViewProps {
     user?: string
     localPort?: number
     theme: 'light' | 'dark'
+    tasks?: TaskDef[]
+    initialTask?: TaskDef
+    onRunTask?: (task: TaskDef) => void
     onSetTheme: (t: 'light' | 'dark') => void
     onDisconnect: () => void
 }
 
-export default function RemoteView({ url, profileName, profileId, profileColor, user, localPort, theme, onSetTheme, onDisconnect }: RemoteViewProps) {
+export default function RemoteView({ url, profileName, profileId, profileColor, user, localPort, theme, tasks, initialTask, onRunTask, onSetTheme, onDisconnect }: RemoteViewProps) {
     const { t, lang } = useI18n()
     // Append profileId to URL if present
     // DEBUG: Point to debug page (Disabled)
@@ -23,16 +29,70 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
     // Production View
     const [initialTheme] = React.useState(theme)
     const targetSrc = React.useMemo(() => {
-        return `/ide/index.html?api=${encodeURIComponent(url)}&lng=${lang}&theme=${initialTheme}&controlled=true` + (profileId ? `&profileId=${encodeURIComponent(profileId)}` : '')
-    }, [url, profileId, lang])
+        let qs = `?api=${encodeURIComponent(url)}&lng=${lang}&theme=${initialTheme}&controlled=true`
+        if (profileId) qs += `&profileId=${encodeURIComponent(profileId)}`
+        // If we have an initial task, collapse the sidebar initially to focus on the task output
+        if (initialTask) qs += `&collapsed=true`
+        return `/ide/index.html${qs}`
+    }, [url, profileId, lang, initialTask])
 
     const iframeRef = React.useRef<HTMLIFrameElement>(null)
+
+    // Handle initial task execution
+    const taskRanRef = React.useRef(false)
+    React.useEffect(() => {
+        if (initialTask && iframeRef.current && !taskRanRef.current) {
+            // Wait a bit for iframe to load? Or rely on the fact that postMessage might be queued or we need a 'ready' signal?
+            // For now, let's just try sending it after a short delay or check if we can make it reliable.
+            // A simple timeout is a crude but often effective MVP solution.
+            // Better: List for 'ide-ready' message from iframe. But we don't have that yet.
+            const timer = setTimeout(() => {
+                if (iframeRef.current && iframeRef.current.contentWindow) {
+                    console.log("Auto-running task:", initialTask.name)
+                    iframeRef.current.contentWindow.postMessage({
+                        type: 'run-task',
+                        command: initialTask.command,
+                        name: initialTask.name,
+                        icon: initialTask.icon,
+                        color: initialTask.color
+                    }, '*')
+                    taskRanRef.current = true
+                }
+            }, 1500) // 1.5s delay to allow React/IDE to hydrate
+            return () => clearTimeout(timer)
+        }
+    }, [initialTask])
 
     React.useEffect(() => {
         if (iframeRef.current && iframeRef.current.contentWindow) {
             iframeRef.current.contentWindow.postMessage({ type: 'set-theme', theme }, '*')
         }
     }, [theme])
+
+    // Listen for app-ready from iframe
+    React.useEffect(() => {
+        const handleMessage = (e: MessageEvent) => {
+            if (e.data && e.data.type === 'app-ready') {
+                if (iframeRef.current && iframeRef.current.contentWindow) {
+                    // Handshake confirms ready, send theme (tasks already in window.name)
+                    iframeRef.current.contentWindow.postMessage({ type: 'set-theme', theme }, '*')
+                    // Also send tasks just in case they changed since mount
+                    if (tasks) {
+                        iframeRef.current.contentWindow.postMessage({ type: 'set-tasks', tasks }, '*')
+                    }
+                }
+            }
+        }
+        window.addEventListener('message', handleMessage)
+        return () => window.removeEventListener('message', handleMessage)
+    }, [tasks, theme])
+
+    // Update tasks if they change live
+    React.useEffect(() => {
+        if (iframeRef.current && iframeRef.current.contentWindow && tasks) {
+            iframeRef.current.contentWindow.postMessage({ type: 'set-tasks', tasks }, '*')
+        }
+    }, [tasks])
 
     const handleScreenshot = () => {
         if (iframeRef.current && iframeRef.current.contentWindow) {
@@ -63,12 +123,12 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
             const token = new URLSearchParams(new URL(url).search).get('token')
             if (token) {
                 navigator.clipboard.writeText(token)
-                alert(t('session_key_copied'))
+                alert(t('session_key_copied') || 'Token copied')
             } else {
                 alert("No token found in session.")
             }
         } catch (e) {
-            console.error("Failed to share", e)
+            console.error("Failed to copy token", e)
         }
     }
 
@@ -79,98 +139,89 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
         onDisconnect()
     }
 
+    // Embed tasks in window.name for synchronous load
+    const frameName = React.useMemo(() => {
+        return JSON.stringify({ tasks: tasks || [] })
+    }, [tasks])
+
     const btnStyle = {
         backgroundColor: 'rgba(255,255,255,0.1)',
-        color: 'white',
-        border: '1px solid rgba(255,255,255,0.2)',
+        color: theme === 'dark' ? 'white' : '#333',
+        border: theme === 'dark' ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(0,0,0,0.1)',
         padding: '6px 12px',
         borderRadius: '4px',
-        cursor: isDisconnecting ? 'wait' : 'pointer',
-        fontWeight: 500,
+        cursor: 'pointer',
+        fontWeight: 500 as const,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         transition: 'background-color 0.2s',
         height: 32
     }
 
     return (
-        <div style={{
-            display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden',
-            cursor: isDisconnecting ? 'wait' : 'default',
-        }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg-root)' }}>
             {/* Header */}
             <div style={{
-                backgroundColor: '#1f2937', // dark-800
-                color: 'white',
-                padding: '10px 20px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                borderBottom: '1px solid #374151',
-                userSelect: 'none',
-                opacity: isDisconnecting ? 0.6 : 1,
-                transition: 'opacity 0.3s'
+                height: 48,
+                background: theme === 'dark' ? '#0f0f0f' : '#e5e5e5', // Distinct header
+                borderBottom: `1px solid ${theme === 'dark' ? '#333' : '#ccc'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '0 16px',
+                flexShrink: 0
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {profileColor && (
-                        <div style={{
-                            width: 12, height: 12, borderRadius: 3,
-                            backgroundColor: profileColor,
-                            boxShadow: '0 0 8px ' + profileColor + '44'
-                        }} />
-                    )}
-                    <span style={{ fontWeight: 'bold' }}>MLCRemote</span>
-                    <span style={{ color: '#9ca3af' }}>|</span>
-                    <span style={{ color: '#e5e7eb' }}>
-                        {user ? `${t('user')}: ${user}` : `User: ${profileName.split('@')[0]}`}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: 6, background: '#a855f7' }}></div>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>MLCRemote</span>
+                    <span style={{ opacity: 0.3 }}>|</span>
+                    <span style={{ opacity: 0.8, fontSize: 14 }}>
+                        {t('user')}: {user || 'root'}
                     </span>
-                    <span style={{ color: '#9ca3af' }}>|</span>
-                    <span style={{ color: '#e5e7eb' }}>
-                        Tunnel Port: {localPort || 8443}
+                    <span style={{ opacity: 0.3 }}>|</span>
+                    <span style={{ opacity: 0.6, fontSize: 13 }}>
+                        Port: {localPort}
                     </span>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+
                     <button
                         onClick={toggleTheme}
                         title={t('toggle_theme')}
-                        disabled={isDisconnecting}
-                        style={btnStyle}
-                        onMouseOver={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)')}
-                        onMouseOut={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
+                        style={{ ...btnStyle, color: theme === 'dark' ? 'white' : '#333' }}
+                        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')}
+                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
                     >
-                        <Icon name={theme === 'dark' ? 'icon-moon' : 'icon-sun'} size={16} />
+                        <Icon name={theme === 'dark' ? 'icon-moon' : 'icon-sun'} size={18} />
                     </button>
                     <button
                         onClick={handleScreenshot}
                         title={t('screenshot')}
-                        disabled={isDisconnecting}
-                        style={btnStyle}
-                        onMouseOver={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)')}
-                        onMouseOut={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
+                        style={{ ...btnStyle, color: theme === 'dark' ? 'white' : '#333' }}
+                        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')}
+                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
                     >
-                        <Icon name="icon-screenshot" size={16} />
+                        <Icon name="icon-screenshot" size={18} />
                     </button>
-
                     <button
                         onClick={handleShare}
-                        disabled={isDisconnecting}
-                        style={btnStyle}
-                        onMouseOver={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)')}
-                        onMouseOut={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
                         title={t('share_session')}
+                        style={{ ...btnStyle, color: theme === 'dark' ? 'white' : '#333' }}
+                        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')}
+                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
                     >
-                        <span style={{ fontSize: '0.9rem' }}>{t('share_session')}</span>
+                        <Icon name="icon-link" size={18} />
                     </button>
+
                     <button
                         onClick={handleDisconnectWrapper}
                         disabled={isDisconnecting}
                         style={{
-                            ...btnStyle,
                             backgroundColor: '#ef4444', // red-500
                             border: 'none',
-                            opacity: isDisconnecting ? 0.7 : 1
+                            opacity: isDisconnecting ? 0.7 : 1,
+                            color: 'white',
+                            padding: '4px 12px',
+                            borderRadius: 4,
+                            cursor: isDisconnecting ? 'wait' : 'pointer'
                         }}
-                        onMouseOver={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = '#dc2626')}
-                        onMouseOut={(e) => !isDisconnecting && (e.currentTarget.style.backgroundColor = '#ef4444')}
                     >
                         {isDisconnecting ? t('disconnecting') || 'Disconnecting...' : t('disconnect')}
                     </button>
@@ -186,6 +237,14 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                 <iframe
                     ref={iframeRef}
                     src={targetSrc}
+                    onLoad={() => {
+                        // Send tasks when iframe is fully loaded
+                        if (iframeRef.current && iframeRef.current.contentWindow && tasks) {
+                            console.log("Iframe loaded, sending tasks:", tasks)
+                            iframeRef.current.contentWindow.postMessage({ type: 'set-tasks', tasks }, '*')
+                            iframeRef.current.contentWindow.postMessage({ type: 'set-theme', theme }, '*')
+                        }
+                    }}
                     style={{
                         width: '100%',
                         height: '100%',

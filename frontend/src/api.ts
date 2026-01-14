@@ -285,7 +285,14 @@ export interface Settings {
     allowDelete?: boolean
     defaultShell?: string
     uiMode?: 'classic' | 'modern'
+}
 
+export interface TaskDef {
+    name: string
+    command: string
+    icon?: string
+    color?: string
+    showOnLaunch?: boolean
 }
 
 export async function getSettings(): Promise<Settings> {

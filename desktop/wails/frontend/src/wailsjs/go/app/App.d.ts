@@ -48,6 +48,8 @@ export function PickIdentityFile():Promise<string>;
 
 export function ProbeConnection(arg1:app.SSHDeployRequest):Promise<string>;
 
+export function RunTask(arg1:config.ConnectionProfile,arg2:config.TaskDef,arg3:string):Promise<string>;
+
 export function SaveIdentityFile(arg1:string,arg2:string):Promise<string>;
 
 export function SaveProfile(arg1:config.ConnectionProfile):Promise<string>;

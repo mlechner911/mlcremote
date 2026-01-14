@@ -14,8 +14,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
-	"syscall"
-	"time"
 
 	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
@@ -134,14 +132,13 @@ func (s *terminalSession) close() {
 	sessionsMu.Unlock()
 	// attempt to close tty
 	_ = s.tty.Close()
-	// attempt to terminate the child process
+	// attempt to terminate the child process and its group
 	if s.cmd != nil && s.cmd.Process != nil {
 		pid := s.cmd.Process.Pid
 		log.Printf("terminal: closing session id=%s pid=%d", s.id, pid)
-		_ = s.cmd.Process.Signal(syscall.SIGTERM)
-		// give it a short moment to exit gracefully
-		time.Sleep(100 * time.Millisecond)
-		_ = s.cmd.Process.Kill()
+
+		// Helper to kill process group
+		killProcessGroup(s.cmd)
 	}
 }
 

@@ -90,6 +90,10 @@ export function ProbeConnection(arg1) {
   return window['go']['app']['App']['ProbeConnection'](arg1);
 }
 
+export function RunTask(arg1, arg2, arg3) {
+  return window['go']['app']['App']['RunTask'](arg1, arg2, arg3);
+}
+
 export function SaveIdentityFile(arg1, arg2) {
   return window['go']['app']['App']['SaveIdentityFile'](arg1, arg2);
 }

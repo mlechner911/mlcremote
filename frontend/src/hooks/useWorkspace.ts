@@ -39,7 +39,7 @@ export function useWorkspace(maxTabs = 8) {
         })
     }
 
-    function createTab(path: string, type?: ViewType, label?: string, intent?: Intent): Tab {
+    function createTab(path: string, type?: ViewType, label?: string, intent?: Intent, extra?: Partial<Tab>): Tab {
         // Logic to determine type if not provided
         let actualType: ViewType = type || 'editor'
         let actualLabel = label || path.split('/').pop() || path
@@ -71,11 +71,12 @@ export function useWorkspace(maxTabs = 8) {
             label: actualLabel,
             type: actualType,
             icon: actualType === 'terminal' ? 'terminal' : undefined,
-            intent
+            intent,
+            ...extra
         }
     }
 
-    function openFile(path: string, type?: ViewType, label?: string, intent?: Intent) {
+    function openFile(path: string, type?: ViewType, label?: string, intent?: Intent, extra?: Partial<Tab>) {
         setOpenTabs(currentTabs => {
             if (currentTabs.find(t => t.id === path && t.intent === intent)) return currentTabs // Only duplicate if intent differs? Or strict path?
             // Actually, if we open same file with different intent, we might want a new tab or update existing?
@@ -88,7 +89,7 @@ export function useWorkspace(maxTabs = 8) {
             // For now, minimal change: if found, we switch to it. Updating intent on existing tab is complex with current state structure.
             // Let's assume user wants to switch context.
             // If I specifically ask 'view', I want to see the view.
-            return [...currentTabs.filter(t => t.id !== path), createTab(path, type, label, intent)]
+            return [...currentTabs.filter(t => t.id !== path), createTab(path, type, label, intent, extra)]
         })
         setActiveTab(path)
 

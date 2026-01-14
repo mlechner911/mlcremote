@@ -230,3 +230,20 @@ func (a *App) KillRemoteSession(profileJSON string) error {
 func (a *App) StopRemoteServer(profileJSON string) error {
 	return a.Backend.KillRemoteServer(profileJSON)
 }
+
+// RunTask executes a defined task on the remote server
+func (a *App) RunTask(profile config.ConnectionProfile, task config.TaskDef, password string) (string, error) {
+	// If profile uses Identity File, we use it.
+	// If profile uses Password, we use the provided password.
+	// We pass both to RunCommand which handles priority.
+
+	// Ensure we have correct paths for identity file
+	idFile := profile.IdentityFile
+	if profile.Tasks != nil {
+		// Just in case we need to look up task by ID if not passed fully?
+		// Frontend passes the full TaskDef, so we good.
+	}
+
+	// Just call SSH manager
+	return a.SSH.RunCommand(profile.Host, profile.User, profile.Port, password, idFile, task.Command)
+}

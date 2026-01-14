@@ -11,6 +11,9 @@ import { getIcon } from '../generated/icon-helpers'
 type Props = {
   shell: string
   path: string
+  label?: string
+  initialCommand?: string
+  commandSignal?: { cmd: string, ts: number }
   onExit?: () => void
 }
 
@@ -21,7 +24,7 @@ type Props = {
  * fails it falls back to an ephemeral WS-based PTY. The component handles
  * resize events and exposes copy/paste helpers.
  */
-export default function TerminalTab({ shell, path, onExit }: Props) {
+export default function TerminalTab({ shell, path, label, initialCommand, commandSignal, onExit }: Props) {
   const { t } = useTranslation()
   const ref = React.useRef<HTMLDivElement | null>(null)
   const termRef = React.useRef<Terminal | null>(null)
@@ -54,6 +57,15 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
           const dims = { type: 'resize', cols: (term as any).cols || 80, rows: (term as any).rows || 24 }
           if (ws) ws.send(JSON.stringify(dims))
         } catch (_) { }
+
+        // Send initial command if provided
+        if (initialCommand) {
+          setTimeout(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(initialCommand + '\n')
+            }
+          }, 500) // Small delay to ensure shell is ready
+        }
       }
       ws.onmessage = (ev) => {
         const data = typeof ev.data === 'string' ? ev.data : new TextDecoder().decode(ev.data as ArrayBuffer)
@@ -63,6 +75,7 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
         try { if (wsRef.current) wsRef.current = null } catch (_) { }
         if (onExit) try { onExit() } catch (_) { }
       }
+
       term.onData(d => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(d) })
     }
 
@@ -170,29 +183,32 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
     }
   }, [shell, path, t])
 
+  const displayTitle = label || t('terminal')
+  const displayPath = (path.startsWith('task-') || path.startsWith('shell-')) ? '' : path
+
   return (
     <div className="terminal-root" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="editor-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Icon name={getIcon('terminal')} size={14} />
-          <strong>{t('terminal')}</strong>
+          <strong>{displayTitle}</strong>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="muted">{path}</span>
+        {displayPath && (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="muted">{displayPath}</span>
+            </div>
           </div>
-        </div>
-        <div className="actions">
-          <button className="link" onClick={async () => {
+        )}
+        <div className="actions" style={{ display: 'flex', gap: 4 }}>
+          <button className="icon-btn" title={t('copy')} onClick={async () => {
             // Copy terminal selection to clipboard
             try {
-              // xterm exposes .getSelection()? we can read window.getSelection as fallback
               const sel = (termRef.current && (termRef.current as any).getSelection && (termRef.current as any).getSelection()) || window.getSelection()?.toString() || ''
               if (!sel) return
               if (navigator.clipboard && navigator.clipboard.writeText) {
                 await navigator.clipboard.writeText(sel)
               } else {
-                // fallback
                 const ta = document.createElement('textarea')
                 ta.value = sel
                 document.body.appendChild(ta)
@@ -203,18 +219,18 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
             } catch (e) {
               console.warn('copy failed', e)
             }
-          }}>{t('copy')}</button>
-          <button className="link" onClick={async () => {
+          }}>
+            <Icon name={getIcon('copy')} size={14} />
+          </button>
+          <button className="icon-btn" title={t('paste')} onClick={async () => {
             // Paste from clipboard into terminal (send to ws)
             try {
               let text = ''
               if (navigator.clipboard && navigator.clipboard.readText) text = await navigator.clipboard.readText()
               else {
-                // fallback: prompt user
                 text = window.prompt(t('paste_text_here')) || ''
               }
               if (!text) return
-              // send to WS if available, otherwise inject directly
               const ws = wsRef.current
               if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(text)
@@ -224,7 +240,10 @@ export default function TerminalTab({ shell, path, onExit }: Props) {
             } catch (e) {
               console.warn('paste failed', e)
             }
-          }}>{t('paste')}</button>
+          }}>
+            {/* Use the new paste icon */}
+            <Icon name={getIcon('paste')} size={14} />
+          </button>
         </div>
       </div>
       <div className="terminal-body" ref={ref} />

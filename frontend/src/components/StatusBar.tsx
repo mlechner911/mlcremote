@@ -9,9 +9,11 @@ type Props = {
     isOnline: boolean
     hideMemoryUsage: boolean
     lastHealthAt: number | null | undefined
+    isSidebarCollapsed?: boolean
+    onToggleSidebar?: () => void
 }
 
-export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealthAt }: Props) {
+export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealthAt, isSidebarCollapsed, onToggleSidebar }: Props) {
     const { t } = useTranslation()
     const [now, setNow] = React.useState<Date>(new Date())
 
@@ -36,6 +38,24 @@ export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealt
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {/* Connection Status */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} title={lastHealthAt ? `${t('last_checked', 'Last checked')}: ${new Date(lastHealthAt).toLocaleTimeString()}` : ''}>
+                    {isSidebarCollapsed && onToggleSidebar && (
+                        <button
+                            onClick={onToggleSidebar}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: 'var(--text-muted)',
+                                padding: '0 4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                marginRight: 4
+                            }}
+                            title="Show Sidebar"
+                        >
+                            <Icon name="icon-menu" size={14} />
+                        </button>
+                    )}
                     <span style={{
                         width: 8, height: 8, borderRadius: 4,
                         background: health && health.host ? '#10b981' : (isOnline ? '#f59e0b' : '#ef4444')
