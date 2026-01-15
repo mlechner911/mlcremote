@@ -64,11 +64,11 @@ These tasks compile the helper binaries (`dev-server`, `md5-util`) that are embe
 
 ## Release Workflow
 
-To create a full release (e.g., v1.2.1):
+To create a full release (e.g., v1.2.4):
 
 1.  **Update Version**: Update version numbers in `wails.json`.
 2.  **Update Docs**: Add release notes to `docs/USER_GUIDE_*.md`.
-3.  **Run Tag**: `git tag v1.2.1`
+3.  **Run Tag**: `git tag v1.2.4`
 4.  **Build Release**:
     ```bash
     task release

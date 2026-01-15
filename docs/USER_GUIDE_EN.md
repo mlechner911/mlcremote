@@ -28,7 +28,7 @@ Welcome to the **MLCRemote** User Guide. This document provides everything you n
 - **Native Experience**: Fast, responsive desktop UI with OS integration.
 - **Admin Focused**: Ideal for editing `/etc/` config files, checking `systemd` logs, or running maintenance scripts.
 
-## Release Notes (v1.2.1)
+## Release Notes (v1.2.4)
 - **Fixed**: Resolved issue where remote processes (e.g., `btop`) would remain running as zombies after the session was closed. The system now correctly terminates the entire process group.
 - **Fixed**: Restored drag-and-drop file upload functionality in the sidebar.
 - **Fixed**: Replaced "Copy/Paste" text buttons in terminal with proper icons.

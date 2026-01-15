@@ -28,7 +28,7 @@ Willkommen beim **MLCRemote** Benutzerhandbuch. Dieses Dokument enthält alle In
 - **Native Erfahrung**: Schnelle, reaktionsfähige Desktop-Benutzeroberfläche mit Betriebssystemintegration.
 - **Admin-Fokussiert**: Ideal zum Bearbeiten von `/etc/` Konfigurationsdateien, Überprüfen von `systemd`-Logs oder Ausführen von Wartungsskripten.
 
-## Release Notes (v1.2.1)
+## Release Notes (v1.2.4)
 - **Behoben**: Ein Problem wurde gelöst, bei dem Remote-Prozesse (z.B. `btop`) als Zombie-Prozesse weiterliefen, nachdem die Sitzung beendet wurde. Das System beendet nun korrekt die gesamte Prozessgruppe.
 - **Behoben**: Drag-and-Drop Datei-Upload in der Seitenleiste wiederhergestellt.
 - **Behoben**: "Kopieren/Einfügen" Text-Buttons im Terminal durch Icons ersetzt.
