@@ -46,3 +46,8 @@ func (a *App) GetRemoteFileTree(profileJSON string) (string, error) {
 func (a *App) TailRemoteLogs(profileJSON string) (string, error) {
 	return a.Backend.TailRemoteLogs(profileJSON)
 }
+
+// StopBackend attempts to kill the remote process
+func (a *App) StopBackend(profileJSON string) (string, error) {
+	return a.Backend.StopBackend(profileJSON)
+}

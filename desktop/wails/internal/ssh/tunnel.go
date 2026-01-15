@@ -26,13 +26,15 @@ type TunnelProfile struct {
 	IdentityFile string   `json:"identityFile"`
 	Password     string   `json:"password"`
 	ExtraArgs    []string `json:"extraArgs"`
-	Mode         string   `json:"mode"` // "default" or "parallel"
+	Mode         string   `json:"mode"`         // "default" or "parallel"
+	DefaultShell string   `json:"defaultShell"` // e.g. "bash" or "powershell"
 }
 
 type Manager struct {
 	mu          sync.Mutex
 	cmd         *exec.Cmd
 	tunnelState string
+	stopping    bool
 }
 
 func NewManager() *Manager {
@@ -47,6 +49,9 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 	if m.cmd != nil && m.cmd.Process != nil {
 		return "already-running", nil
 	}
+
+	// Reset stopping flag
+	m.stopping = false
 
 	// Basic validation
 	if profile.User == "" || profile.Host == "" {
@@ -126,7 +131,9 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 			m.cmd = nil
 			m.tunnelState = "disconnected"
 			wailsRuntime.EventsEmit(ctx, "tunnel-status", "disconnected")
-			if err != nil {
+
+			// Only log error if not stopping intentionally
+			if err != nil && !m.stopping {
 				fmt.Printf("Tunnel exited with error: %v\n", err)
 			}
 		}
@@ -138,6 +145,9 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 func (m *Manager) StopTunnel() (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	// Signal intentional stop
+	m.stopping = true
 
 	if m.cmd != nil && m.cmd.Process != nil {
 		if err := m.cmd.Process.Kill(); err != nil {

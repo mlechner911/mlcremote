@@ -34,7 +34,8 @@
     "delete_confirm": "Are you sure you want to delete {{path}}?",
     "auto_open_files": "Auto open files",
     "show_hidden_files": "Show hidden files",
-    "show_server_logs": "Show server logs",
+    "show_console_logs": "Show console logs (Debug)",
+    "show_server_logs": "Show server logs (Backend)",
     "hide_memory_usage": "Hide memory usage gauge",
     "about": "About MLCRemote",
     "version": "Version",
@@ -97,6 +98,8 @@
     "use_token": "Use token",
     "connected_since": "Connected since",
     "host": "Host",
+    "default_shell": "Default Shell (Optional)",
+    "default_shell_desc": "Leave empty to auto-detect. On Windows, you can specify 'bash' or full path to Git Bash.",
     "pid": "PID",
     "app_memory": "App Memory",
     "permission_denied": "Permission denied",
@@ -120,5 +123,6 @@
     "empty_file_readonly": "Empty file (Read Only)",
     "path": "Path",
     "type": "Type",
-    "directory": "Directory"
+    "directory": "Directory",
+    "binary_download_msg": "(Binary or unsupported file type)"
 }

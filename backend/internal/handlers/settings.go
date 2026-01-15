@@ -62,6 +62,7 @@ func SettingsHandler(allowDelete bool, settingsPath string) http.HandlerFunc {
 			"autoOpen":        userSettings.AutoOpen,
 			"showHidden":      userSettings.ShowHidden,
 			"showLogs":        userSettings.ShowLogs,
+			"showServerLogs":  userSettings.ShowServerLogs,
 			"hideMemoryUsage": userSettings.HideMemoryUsage,
 			"maxEditorSize":   userSettings.MaxEditorSize,
 			"language":        userSettings.Language,

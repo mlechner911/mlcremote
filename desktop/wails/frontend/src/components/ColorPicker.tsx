@@ -16,7 +16,10 @@ interface ColorPickerProps {
     onChange: (color: string) => void
 }
 
+import { useI18n } from '../utils/i18n'
+
 export default function ColorPicker({ value, onChange }: ColorPickerProps) {
+    const { t } = useI18n()
     const isCustom = !DEFAULT_COLORS.includes(value) && value !== ''
 
     return (
@@ -46,7 +49,7 @@ export default function ColorPicker({ value, onChange }: ColorPickerProps) {
                         position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer',
                         width: '100%', height: '100%', padding: 0, margin: 0
                     }}
-                    title="Custom Color"
+                    title={t('custom_color') || "Custom Color"}
                 />
                 <div style={{
                     width: 20, height: 20, borderRadius: '50%',

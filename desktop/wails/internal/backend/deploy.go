@@ -163,6 +163,28 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 	binName := remoteSys.GetBinaryName("dev-server")
 	md5Name := remoteSys.GetMD5UtilityName()
 
+	// 0. Pre-check: If session exists, is the binary up to date?
+	// If not, we MUST force a new deployment.
+	if !forceNew {
+		// Read local binary to get hash
+		if devServerContent, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, binName)); err == nil {
+			localSum := fmt.Sprintf("%x", md5.Sum(devServerContent))
+
+			// Check remote hash
+			hashCmd, hashParser := remoteSys.FileHash(remoteSys.JoinPath(home, remoteBinDir, binName))
+			if out, err := runRemote(hashCmd); err == nil {
+				remoteSum := hashParser(out)
+				if !strings.EqualFold(remoteSum, localSum) {
+					fmt.Printf("Remote binary hash mismatch (Local: %s, Remote: %s). Forcing update.\n", localSum, remoteSum)
+					forceNew = true
+				}
+			} else {
+				// Failed to hash? Maybe binary missing. Force new.
+				forceNew = true
+			}
+		}
+	}
+
 	// 1. Cleanup Stale / Zombie Processes
 	if !forceNew {
 		fmt.Println("Cleaning up potential zombie processes...")
@@ -195,7 +217,14 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 	}
 
 	// 4. Start Backend & Verify
-	return m.startBackend(runRemote, remoteSys, home, remoteBinDir, binName, token, forceNew)
+	res, err := m.startBackend(runRemote, remoteSys, home, remoteBinDir, binName, token, forceNew)
+	if err != nil && !forceNew {
+		// Fallback: If default port (8443) failed, try a random port (forceNew=true)
+		// This handles cases where port 8443 is occupied by a zombie process that wasn't cleaning up.
+		fmt.Printf("Startup on default port failed (%v). Retrying with random port...\n", err)
+		return m.startBackend(runRemote, remoteSys, home, remoteBinDir, binName, token, true)
+	}
+	return res, err
 }
 
 // --------------------------------------------------------------------------------
@@ -273,8 +302,22 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 	}
 
 	if !skipBinary {
-		// Remove old binary
+		// Force kill existing process to ensure we can overwrite binary
+		// This handles cases where forceNew=true (update required) but the process is still running.
+		fmt.Println("Ensuring remote process is stopped before update...")
+		runRemote(remoteSys.FallbackKill(binName))
+		time.Sleep(1 * time.Second)
+
+		// Remove old binary if possible, or rename it if locked (Windows)
+		// We try standard remove first.
 		runRemote(remoteSys.Remove(remoteSys.JoinPath(remoteBinDir, binName)))
+
+		// Try to rename it to .old just in case Remove failed due to locking (common on Windows)
+		// This moves the "locked" file out of the way so we can write a new one.
+		runRemote(remoteSys.Rename(
+			remoteSys.JoinPath(remoteBinDir, binName),
+			remoteSys.JoinPath(remoteBinDir, binName+".old"),
+		))
 
 		// SCP Binaries
 		scpBinArgs := append([]string{}, scpArgs...)
@@ -471,6 +514,7 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 	}
 
 	// Failure Report
+	time.Sleep(500 * time.Millisecond) // Give OS time to flush logs
 	logContent := ""
 	fmt.Printf("Reading log file %s...\n", logPath)
 	if out, err := runRemote(remoteSys.ReadFile(logPath)); err == nil {
@@ -489,6 +533,12 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 	if out, err := runRemote(remoteSys.ReadFile(errLogPath)); err == nil && strings.TrimSpace(out) != "" {
 		logContent += "\n\n--- Startup Error details (startup_err.log) ---\n" + out
 	}
+
+	// Analyze specific errors
+	if strings.Contains(strings.ToLower(logContent), "address already in use") || strings.Contains(strings.ToLower(logContent), "bind: only one usage of each socket address") {
+		return "startup-failed", fmt.Errorf("backend failed to start: Port %d is already in use.\nPlease stop the existing process or use a different port.\n\nLog: %s", targetPort, logContent)
+	}
+
 	return "startup-failed", fmt.Errorf("backend process died or timed out. Log output:\n%s", logContent)
 }
 

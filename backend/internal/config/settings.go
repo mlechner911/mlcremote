@@ -13,6 +13,7 @@ type UserSettings struct {
 	AutoOpen        bool   `json:"autoOpen"`
 	ShowHidden      bool   `json:"showHidden"`
 	ShowLogs        bool   `json:"showLogs"`
+	ShowServerLogs  bool   `json:"showServerLogs"`
 	HideMemoryUsage bool   `json:"hideMemoryUsage"`
 	MaxEditorSize   int64  `json:"maxEditorSize"`
 	Language        string `json:"language"`
@@ -26,6 +27,7 @@ func DefaultSettings() *UserSettings {
 		AutoOpen:        true,
 		ShowHidden:      false,
 		ShowLogs:        false,
+		ShowServerLogs:  false,
 		HideMemoryUsage: false,
 		MaxEditorSize:   1024 * 1024, // 1MB
 		Language:        "en",

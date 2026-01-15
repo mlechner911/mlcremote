@@ -116,5 +116,6 @@
     "empty_file_readonly": "Archivo vacío (Solo lectura)",
     "path": "Ruta",
     "type": "Tipo",
-    "directory": "Directorio"
+    "directory": "Directorio",
+    "binary_download_msg": "(Archivo binario o no compatible)"
 }

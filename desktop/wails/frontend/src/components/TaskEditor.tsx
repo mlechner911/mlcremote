@@ -12,7 +12,7 @@ interface TaskEditorProps {
 
 const AVAILABLE_ICONS = [
     'play', 'stop', 'terminal', 'server', 'log', 'refresh', 'settings',
-    'upload', 'download', 'trash', 'copy', 'info', 'warn', 'link'
+    'upload', 'download', 'trash', 'copy', 'info', 'link'
 ]
 
 export default function TaskEditor({ task, onSave, onCancel }: TaskEditorProps) {

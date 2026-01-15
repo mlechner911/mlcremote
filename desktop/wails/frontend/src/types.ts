@@ -21,6 +21,7 @@ export interface Profile {
     id?: string
     color?: string
     tasks?: TaskDef[]
+    defaultShell?: string
 }
 
 export interface ConnectionProfile {
@@ -40,4 +41,5 @@ export interface ConnectionProfile {
     remoteVersion?: string
     mode?: string
     tasks?: TaskDef[]
+    defaultShell?: string
 }

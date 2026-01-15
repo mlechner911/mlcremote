@@ -100,6 +100,9 @@ export const translations = {
         join_session: "Join Session",
         share_session: "Share Session",
         session_key_copied: "Session Key copied to clipboard!",
+        default_shell: "Default Shell (Optional)",
+        default_shell_desc: "Leave empty to auto-detect. On Windows, you can specify 'bash' or full path to Git Bash.",
+        server_logs: "Server Logs",
 
         // Premium
         premium_managed: "Managed Identity (Beta)",
@@ -120,7 +123,12 @@ export const translations = {
         premium_tasks_upsell: "Upgrade to Premium to create custom server shortcuts and automate your workflow.",
         no_tasks: "No tasks defined. Add one to get started.",
         show_on_launch: "Show on Launch Screen",
-        startup_tasks: "Startup Tasks"
+        startup_tasks: "Startup Tasks",
+        general: "General",
+        extended_settings: "Extended",
+        quick_tasks_desc: "Define shortcuts for common commands run on this server.",
+        delete: "Delete",
+        custom_color: "Custom Color"
     },
     de: {
         app_title: "MLCRemote Desktop",
@@ -234,6 +242,13 @@ export const translations = {
         no_tasks: "Keine Aufgaben definiert. Fügen Sie eine hinzu, um zu beginnen.",
         show_on_launch: "Auf dem Startbildschirm anzeigen",
         startup_tasks: "Startaufgaben",
+        general: "Allgemein",
+        extended_settings: "Erweitert",
+        default_shell: "Standard-Shell (Optional)",
+        quick_tasks_desc: "Definieren Sie Shortcuts für häufige Befehle auf diesem Server.",
+        delete: "Löschen",
+        custom_color: "Benutzerdefinierte Farbe",
+        default_shell_desc: "Leer lassen für automatische Erkennung. Unter Windows können Sie 'bash' oder den vollen Pfad zu Git Bash angeben.",
 
         // Session
         session_found: "Bestehende Sitzung gefunden",
@@ -350,7 +365,14 @@ export const translations = {
         premium_tasks_upsell: "Actualiza a Premium para crear accesos directos personalizados y automatizar tu flujo de trabajo.",
         no_tasks: "No hay tareas definidas. Agrega una para comenzar.",
         show_on_launch: "Mostrar en la pantalla de inicio",
-        startup_tasks: "Tareas de inicio"
+        startup_tasks: "Tareas de inicio",
+        general: "General",
+        extended_settings: "Avanzado",
+        quick_tasks_desc: "Defina accesos directos para comandos comunes en este servidor.",
+        delete: "Eliminar",
+        custom_color: "Color personalizado",
+        default_shell: "Shell predeterminado (Opcional)",
+        default_shell_desc: "Dejar vacío para detección automática. En Windows, puede especificar 'bash' o la ruta completa a Git Bash.",
     },
     fr: {
         app_title: "MLCRemote Desktop",
@@ -458,7 +480,14 @@ export const translations = {
         premium_tasks_upsell: "Passez à Premium pour créer des raccourcis serveur personnalisés et automatiser vos flux de travail.",
         no_tasks: "Aucune tâche définie. Ajoutez-en une pour commencer.",
         show_on_launch: "Afficher sur l'écran de lancement",
-        startup_tasks: "Tâches de démarrage"
+        startup_tasks: "Tâches de démarrage",
+        general: "Général",
+        extended_settings: "Avancé",
+        default_shell: "Shell par défaut (Optionnel)",
+        quick_tasks_desc: "Définissez des raccourcis pour les commandes courantes sur ce serveur.",
+        delete: "Supprimer",
+        custom_color: "Couleur personnalisée",
+        default_shell_desc: "Laisser vide pour la détection automatique. Sur Windows, vous pouvez spécifier 'bash' ou le chemin complet vers Git Bash.",
     }
 };
 

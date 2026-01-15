@@ -18,6 +18,7 @@
     --border: #d1d5db;
     --accent: #007acc;
     --error: #ef4444;
+    --bg-btn-hover: #d1d5db;
 }
 
 body {
@@ -60,7 +61,7 @@ button {
 }
 
 .btn:hover {
-    background: #3e3e42;
+    background: var(--bg-btn-hover, #3e3e42);
 }
 
 .btn.primary {
@@ -185,4 +186,34 @@ button {
 
 .connection-icon svg {
     filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+}
+
+/* Tab Bar Styles */
+.tab-header {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+}
+
+.tab-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
 }

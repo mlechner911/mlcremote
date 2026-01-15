@@ -25,7 +25,7 @@ try {
     $fs.Close()
     
     # Cleanup
-    [System.Drawing.Interop.PLib]::DestroyIcon($hIcon) | Out-Null
+    # [System.Drawing.Interop.PLib]::DestroyIcon($hIcon) | Out-Null
     $srcImage.Dispose()
     $bitmap.Dispose()
     $graph.Dispose()

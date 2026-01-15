@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 
 
+## [1.2.1] - 2026-01-15
+
+### Added
+- **Tabbed Interface**: Connection profiles now use tabs ("General", "Extended", "Tasks") for better organization.
+- **Log Viewer Improvements**: Added pause/resume toggle and structured colored logs.
+- **Extended Shell Config**: Moved default shell configuration to an "Extended" tab.
+
+### Fixed
+- **XML Highlighting**: Fixed missing syntax highlighting for XML files.
+- **ZIP Preview**: Fixed "Access Denied" error when previewing ZIP files on Windows.
+- **PDF Preview**: Fixed "Factory Worker" error preventing PDF previews from loading.
+- **File Tree**: Fixed text selection annoyance on double-click and restored active file highlighting.
+- **Secure Logs**: Filtered `/api/logs` requests from the access log to prevent noise.
+
 ## [1.1.0] - 2026-01-09
 
 ### Added

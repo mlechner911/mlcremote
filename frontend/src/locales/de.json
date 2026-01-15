@@ -119,5 +119,6 @@
     "empty_file_readonly": "Leere Datei (Schreibgeschützt)",
     "path": "Pfad",
     "type": "Typ",
-    "directory": "Verzeichnis"
+    "directory": "Verzeichnis",
+    "binary_download_msg": "(Binäre oder nicht unterstützte Datei)"
 }

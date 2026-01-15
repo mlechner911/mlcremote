@@ -268,6 +268,16 @@ export async function listArchive(path: string): Promise<ArchiveEntry[]> {
     if (!r.ok) throw new Error('archive list failed')
     return r.json()
 }
+
+/**
+ * Fetch the last 50KB of server logs.
+ */
+export async function getRemoteLogs(): Promise<string> {
+    const r = await authedFetch('/api/logs')
+    if (!r.ok) throw new Error('Failed to fetch remote logs')
+    return r.text()
+}
+
 // ... (existing code)
 
 /**
@@ -280,6 +290,7 @@ export interface Settings {
     autoOpen?: boolean
     showHidden?: boolean
     showLogs?: boolean
+    showServerLogs?: boolean
     hideMemoryUsage?: boolean
     maxEditorSize?: number
     allowDelete?: boolean

@@ -50,6 +50,16 @@ export async function authedFetch(input: RequestInfo, init?: RequestInit): Promi
     finalInput = makeUrl(input)
   }
 
+  // TRACE LOGGING
+  try {
+    const method = merged.method || 'GET'
+    const url = typeof finalInput === 'string' ? finalInput : (finalInput as Request).url
+
+    // Log to console so user can see it in their view
+    // They seem to be capturing console logs
+    console.log(`[Fetch] ${method} ${url}`)
+  } catch (_) { }
+
   const res = await fetch(finalInput, merged)
   if (res.status === 401) {
     try { localStorage.removeItem('mlcremote_token') } catch (_) { }

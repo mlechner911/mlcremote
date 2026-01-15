@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { FileHandler, DecideOpts, ViewProps } from './types'
 import { makeUrl } from '../api'
 import TextView from '../components/TextView'
@@ -115,6 +116,17 @@ export const TextHandler: FileHandler = {
     isEditable: true
 }
 
+// Need to move View component to a function to use hook
+const BinaryViewInfo = ({ path }: { path: string }) => {
+    const { t } = useTranslation()
+    return (
+        <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+            <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split('/').pop()}>{t('download')}</a>
+            <span className="muted">{t('binary_download_msg')}</span>
+        </div>
+    )
+}
+
 export const BinaryHandler: FileHandler = {
     name: 'Binary',
     priority: 10,
@@ -124,12 +136,7 @@ export const BinaryHandler: FileHandler = {
         if (opts.probe && !opts.probe.isText) return true
         return false
     },
-    view: ({ path }: ViewProps) => (
-        <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-            <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split('/').pop()}>Download</a>
-            <span className="muted">(Binary or unsupported file type)</span>
-        </div>
-    ),
+    view: ({ path }: ViewProps) => <BinaryViewInfo path={path} />,
     // Binary view is not editable, it just offers download
     isEditable: false
 }

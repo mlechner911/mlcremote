@@ -12,6 +12,9 @@ type Remote interface {
 	// Remove returns the command to remove files or directories (force, recursive, like rm -rf)
 	Remove(path string) string
 
+	// Rename returns the command to move/rename a file (force, like mv -f)
+	Rename(src, dst string) string
+
 	// FileHash returns the command to get MD5 hash of a file, and a parser function to extract the hash from output.
 	// The parser handles OS-specific output differences (e.g. md5sum vs CertUtil).
 	FileHash(path string) (script string, parser func(string) string)

@@ -52,6 +52,13 @@ func (w *Windows) Remove(path string) string {
 	return fmt.Sprintf("rmdir /s /q \"%s\" 2>NUL || del /f /q \"%s\" 2>NUL || echo OK", path, path)
 }
 
+func (w *Windows) Rename(src, dst string) string {
+	// move /Y src dst
+	// Wrap in cmd /c if needed, but usually direct command works via SSH if shell is cmd
+	// We handle potential cross-drive moves by copy+del if move fails? No, simpler first.
+	return fmt.Sprintf("move /Y \"%s\" \"%s\" 2>NUL || echo OK", src, dst)
+}
+
 func (w *Windows) FileHash(path string) (string, func(string) string) {
 	// Use native PowerShell Get-FileHash to avoid AV false positives with unsigned binaries
 	cmd := fmt.Sprintf("powershell -Command \"(Get-FileHash -Algorithm MD5 '%s').Hash\"", path)

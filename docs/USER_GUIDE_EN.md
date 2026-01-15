@@ -66,13 +66,19 @@ Currently, MLCRemote must be built from source for these platforms.
 When you first launch MLCRemote, you will see the **Launch Screen**.
 
 1. Click the **New Connection** (+) button in the sidebar.
-2. Fill in the connection details:
-   - **Name**: A friendly name for this server (e.g., "Production VPS").
-   - **Host**: The IP address or domain name (e.g., `192.168.1.50`).
-   - **User**: The SSH username (e.g., `root` or `ubuntu`).
-   - **Port**: SSH port (Default: `22`).
-3. (Optional) Choose a **Color** to identify this profile easiest.
-4. Click **Save**.
+2. The **Profile Editor** will open with three tabs:
+   - **General**:
+     - **Name**: A friendly name for this server.
+     - **Color**: Identify this profile easily.
+     - **User**: The SSH username (e.g., `root`).
+     - **Host**: IP address or domain.
+     - **Port**: SSH port (Default: `22`).
+     - **Auth Method**: Choose between Agent, Custom Key, or Managed Identity.
+   - **Extended**:
+     - **Default Shell**: Specify a preferred shell (e.g., `bash`, `zsh`) or leave empty for auto-detection.
+   - **Quick Jobs**:
+     - Define custom tasks to run on this server (see [Quick Tasks](#configuring-quick-tasks)).
+3. Click **Save Connection**.
    > **Note**: If a profile with the same User, Host, and Port already exists, you will be asked if you want to update the existing one or create a new duplicate.
 5. Select the profile from the list and click **Connect**.
 
@@ -156,7 +162,14 @@ The narrow bar on the far left provides quick access to key features:
 - **Settings**: Configure app settings and profiles.
 
 #### Configuring Quick Tasks
-You can define common commands in a `tasks.json` file or via the settings. Here are some examples:
+You can define Quick Tasks directly in the **Profile Editor** under the **Quick Jobs** tab.
+-   Click **Add Task**.
+-   **Name**: Display name for the button.
+-   **Command**: The shell command to execute on the server.
+-   **Icon/Color**: Customize the appearance.
+-   **Show on Launch**: Check this to make the task available on the Launch Screen for instant execution before connecting fully.
+
+Alternatively, you can edit `tasks.json` manually if preferred. Here are some examples:
 
 ```json
 [

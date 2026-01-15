@@ -18,9 +18,10 @@ interface RemoteViewProps {
     onRunTask?: (task: TaskDef) => void
     onSetTheme: (t: 'light' | 'dark') => void
     onDisconnect: () => void
+    defaultShell?: string
 }
 
-export default function RemoteView({ url, profileName, profileId, profileColor, user, localPort, theme, tasks, initialTask, onRunTask, onSetTheme, onDisconnect }: RemoteViewProps) {
+export default function RemoteView({ url, profileName, profileId, profileColor, user, localPort, theme, tasks, initialTask, onRunTask, onSetTheme, onDisconnect, defaultShell }: RemoteViewProps) {
     const { t, lang } = useI18n()
     // Append profileId to URL if present
     // DEBUG: Point to debug page (Disabled)
@@ -31,10 +32,11 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
     const targetSrc = React.useMemo(() => {
         let qs = `?api=${encodeURIComponent(url)}&lng=${lang}&theme=${initialTheme}&controlled=true`
         if (profileId) qs += `&profileId=${encodeURIComponent(profileId)}`
+        if (defaultShell) qs += `&shell=${encodeURIComponent(defaultShell)}`
         // If we have an initial task, collapse the sidebar initially to focus on the task output
         if (initialTask) qs += `&collapsed=true`
         return `/ide/index.html${qs}`
-    }, [url, profileId, lang, initialTask])
+    }, [url, profileId, lang, initialTask, defaultShell])
 
     const iframeRef = React.useRef<HTMLIFrameElement>(null)
 
@@ -208,6 +210,21 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                         onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
                     >
                         <Icon name="icon-link" size={18} />
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            if (iframeRef.current && iframeRef.current.contentWindow) {
+                                iframeRef.current.contentWindow.postMessage({ type: 'open-logs' }, '*')
+                            }
+                        }}
+                        title={t('server_logs') || 'Server Logs'}
+                        style={{ ...btnStyle, color: theme === 'dark' ? 'white' : '#333' }}
+                        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')}
+                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
+                    >
+                        {/* Use a clear icon like 'list' or 'file-text' if available, otherwise 'info' */}
+                        <Icon name="icon-info" size={18} />
                     </button>
 
                     <button

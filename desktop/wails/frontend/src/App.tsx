@@ -7,7 +7,7 @@ import {
   StartTunnel, StopTunnel, TunnelStatus, DetectRemoteOS,
   InstallBackend, DeployAgent, CheckBackend, ProbeConnection,
   ListProfiles, SaveProfile, DeleteProfile,
-  SetMasterPassword, VerifyMasterPassword, HasMasterPassword, RunTask, StopRemoteServer
+  SetMasterPassword, VerifyMasterPassword, HasMasterPassword, RunTask, StopBackend
 } from './wailsjs/go/app/App'
 import { I18nProvider, useI18n } from './utils/i18n'
 // @ts-ignore
@@ -150,17 +150,35 @@ function AppContent() {
   }
 
   const handleDisconnect = async () => {
+    // 1. Immediately unmount RemoteView to stop polling
+    setShuttingDown(true)
+    setView('launch')
+
+    // Clear URL param immediately
+    window.history.pushState({}, '', '/')
+
     try {
+      // Attempt to stop the remote server process before closing the tunnel
+      if (currentProfile) {
+        try {
+          console.log("Stopping remote backend...")
+          await StopBackend(JSON.stringify(currentProfile))
+        } catch (e) {
+          console.warn("Failed to stop remote backend (may already be stopped):", e)
+        }
+      }
+
       await StopTunnel()
       setCurrentProfile(null)
-      // Clear URL param
-      window.history.pushState({}, '', '/')
     } catch (e) {
       console.error(e)
     } finally {
+      // Reset State
+      setShuttingDown(false)
       setRemoteUrl('')
       setProfileName('')
       setProfileColor('')
+      // Ensure we are in launch view (already set, but for safety)
       setView('launch')
     }
   }
@@ -224,6 +242,7 @@ function AppContent() {
           theme={effectiveTheme}
           onSetTheme={setTheme}
           onDisconnect={handleDisconnect}
+          defaultShell={currentProfile?.defaultShell}
         />
       )}
 

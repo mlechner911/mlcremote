@@ -139,7 +139,8 @@ export default function TerminalTab({ shell, path, label, initialCommand, comman
 
         const socket = new WebSocket(wsUrl);
         attachWS(socket, t('terminal_connected_session', { id: sessionId }));
-      }).catch(() => {
+      }).catch((err) => {
+        console.error('[TerminalTab] Persistent session failed', err)
         // fallback to ephemeral connection
         const wsParams = { ...commonParams };
         const wsUrl = constructWsUrl(apiBase, wsEndpoint, wsParams);

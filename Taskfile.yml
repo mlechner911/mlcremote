@@ -1,0 +1,222 @@
+version: '3'
+
+vars:
+  FRONTEND_DIR: frontend
+  BACKEND_DIR: backend
+  DESKTOP_DIR: desktop
+  WAILS_DIR: '{{.DESKTOP_DIR}}/wails'
+  BIN_DIR: bin
+  DIST_DIR: dist
+  # Binary names
+  SERVER_BIN: dev-server
+  MD5_BIN: md5-util
+  BUILD_UTIL_BIN: build-util
+  ICON_GEN_BIN: icon-gen
+
+tasks:
+  default:
+    cmds:
+      - task: help
+
+  help:
+    desc: List all tasks
+    cmds:
+      - task --list
+
+  # ============================================================================
+  # DEVELOPMENT & SETUP
+  # ============================================================================
+  deps:
+    desc: Install dependencies (Go & NPM)
+    cmds:
+      - cmd: cd {{.BACKEND_DIR}} && go mod download
+      - cmd: cd {{.FRONTEND_DIR}} && npm install
+      - cmd: cd {{.WAILS_DIR}} && go mod download
+      - cmd: cd cmd/icon-gen && go mod download
+      
+  icons:
+    desc: Generate icons from raw assets
+    cmds:
+      - cmd: cd cmd/icon-gen && go run . --manifest ../../icons/icons.yml --raw ../../icons/raw --out ../../frontend/src/generated
+
+  dev:
+    desc: Run Desktop App in Dev Mode (Wails Dev)
+    deps: [payload:all]
+    dir: '{{.WAILS_DIR}}'
+    cmds:
+      - wails dev -tags dev
+
+  # ============================================================================
+  # PAYLOAD BUILDING (Cross-Platform Backend Binaries)
+  # ============================================================================
+  payload:linux:
+    desc: Build Linux backend payload
+    dir: '{{.BACKEND_DIR}}'
+    env:
+      GOOS: linux
+      GOARCH: amd64
+    vars:
+      OUT: '../{{.WAILS_DIR}}/assets/payload/linux/amd64'
+    cmds:
+      - mkdir -p {{.OUT}}
+      - cmd: go build -ldflags "-s -w" -o {{.OUT}}/{{.SERVER_BIN}} ./cmd/dev-server
+      - cmd: go build -ldflags "-s -w" -o {{.OUT}}/{{.MD5_BIN}} ./cmd/md5-util
+
+  payload:windows:
+    desc: Build Windows backend payload
+    dir: '{{.BACKEND_DIR}}'
+    env:
+      GOOS: windows
+      GOARCH: amd64
+    vars:
+      OUT: '../{{.WAILS_DIR}}/assets/payload/windows/amd64'
+    cmds:
+      - mkdir -p {{.OUT}}
+      - cmd: go build -ldflags "-s -w" -o {{.OUT}}/{{.SERVER_BIN}}.exe ./cmd/dev-server
+      - cmd: go build -ldflags "-s -w" -o {{.OUT}}/{{.MD5_BIN}}.exe ./cmd/md5-util
+
+  payload:mac:amd64:
+    desc: Build MacOS (Intel) backend payload
+    dir: '{{.BACKEND_DIR}}'
+    env:
+      GOOS: darwin
+      GOARCH: amd64
+    vars:
+      OUT: '../{{.WAILS_DIR}}/assets/payload/darwin/amd64'
+    cmds:
+      - mkdir -p {{.OUT}}
+      - cmd: go build -ldflags "-s -w" -o {{.OUT}}/{{.SERVER_BIN}} ./cmd/dev-server
+      - cmd: go build -ldflags "-s -w" -o {{.OUT}}/{{.MD5_BIN}} ./cmd/md5-util
+
+  payload:mac:arm64:
+    desc: Build MacOS (Apple Silicon) backend payload
+    dir: '{{.BACKEND_DIR}}'
+    env:
+      GOOS: darwin
+      GOARCH: arm64
+    vars:
+      OUT: '../{{.WAILS_DIR}}/assets/payload/darwin/arm64'
+    cmds:
+      - mkdir -p {{.OUT}}
+      - cmd: go build -ldflags "-s -w" -o {{.OUT}}/{{.SERVER_BIN}} ./cmd/dev-server
+      - cmd: go build -ldflags "-s -w" -o {{.OUT}}/{{.MD5_BIN}} ./cmd/md5-util
+
+  payload:assets:
+    desc: Build and distribute frontend assets
+    deps: [frontend:build]
+    cmds:
+      - task: payload:copy_frontend
+      - task: payload:copy_ide
+
+  payload:copy_frontend:
+    cmds:
+      - cmd: rm -rf {{.WAILS_DIR}}/assets/payload/frontend-dist
+      - mkdir -p {{.WAILS_DIR}}/assets/payload/frontend-dist
+      - cmd: |
+          {{if eq OS "windows"}}powershell -Command "Copy-Item -Recurse -Force {{.FRONTEND_DIR}}/dist/* {{.WAILS_DIR}}/assets/payload/frontend-dist/"{{else}}cp -r {{.FRONTEND_DIR}}/dist/* {{.WAILS_DIR}}/assets/payload/frontend-dist/{{end}}
+
+  payload:copy_ide:
+    cmds:
+      - cmd: rm -rf {{.WAILS_DIR}}/frontend/public/ide
+      - mkdir -p {{.WAILS_DIR}}/frontend/public/ide
+      - cmd: |
+          {{if eq OS "windows"}}powershell -Command "Copy-Item -Recurse -Force {{.FRONTEND_DIR}}/dist/* {{.WAILS_DIR}}/frontend/public/ide/"{{else}}cp -r {{.FRONTEND_DIR}}/dist/* {{.WAILS_DIR}}/frontend/public/ide/{{end}}
+
+  payload:tools:
+    desc: Build verification tools
+    dir: '{{.BACKEND_DIR}}'
+    cmds:
+      - mkdir -p ../{{.BIN_DIR}}
+      - go build -o ../{{.BIN_DIR}}/{{.BUILD_UTIL_BIN}}{{if eq OS "windows"}}.exe{{end}} ./cmd/build-util
+
+  payload:all:
+    desc: Build ALL payloads (binaries for all platforms + frontend)
+    deps: 
+      - payload:linux
+      - payload:windows
+      - payload:mac:amd64
+      - payload:mac:arm64
+      - payload:assets
+      - payload:tools
+
+  # ============================================================================
+  # FRONTEND
+  # ============================================================================
+  frontend:build:
+    desc: Build React Frontend
+    dir: '{{.FRONTEND_DIR}}'
+    deps: [icons]
+    cmds:
+      - npm install
+      - npm run build
+
+  # ============================================================================
+  # DESKTOP BUILD & DIST
+  # ============================================================================
+  dist:
+    desc: Build Desktop App for Distribution (Production)
+    deps: [payload:all]
+    dir: '{{.WAILS_DIR}}'
+    cmds:
+      - cmd: wails build -s -tags "desktop,production"
+        platforms: [windows]
+      - cmd: wails build -s -tags "desktop,production,webkit2_41" || wails build -s -tags "desktop,production,webkit2" || wails build -s -tags "desktop,production"
+        platforms: [linux]
+      - cmd: wails build -s -tags "desktop,production"
+        platforms: [darwin]
+      - task: dist:package
+
+  dist:package:
+    desc: Package the built artifacts into /dist folder
+    cmds:
+      - mkdir -p {{.DIST_DIR}}
+      - cmd: |
+          {{if eq OS "windows"}} 
+            powershell -Command "if (Test-Path '{{.WAILS_DIR}}/build/bin') { Copy-Item -Recurse -Force '{{.WAILS_DIR}}/build/bin/*' '{{.DIST_DIR}}/' }"
+          {{else}}
+            cp -r {{.WAILS_DIR}}/build/bin/* {{.DIST_DIR}}/
+          {{end}}
+
+  installer:
+    desc: Build Windows Installer (NSIS) - Windows Only
+    deps: [dist]
+    platforms: [windows]
+    dir: '{{.WAILS_DIR}}/scripts'
+    cmds:
+      - powershell -ExecutionPolicy Bypass -File build-installer.ps1
+      - mkdir -p ../../../{{.DIST_DIR}}
+      - powershell -Command "Copy-Item -Force ../build/bin/*installer.exe ../../../{{.DIST_DIR}}/"
+
+  # ============================================================================
+  # LINUX DOCKER BUILD
+  # ============================================================================
+  linux:bin:
+    desc: Build Linux Desktop Binary via Docker
+    deps: [payload:all]
+    cmds:
+      - docker build -t mlcremote-builder -f docker/build-linux/Dockerfile .
+      - docker run --rm -v "{{.ROOT_DIR}}/dist/linux:/out" mlcremote-builder
+    vars:
+      ROOT_DIR:
+        sh: pwd
+
+  # ============================================================================
+  # RELEASE
+  # ============================================================================
+  release:
+    desc: Create a full release (Windows Installer + Linux Binary)
+    cmds:
+      - task: dist
+      - task: installer
+      - task: linux:bin
+      - echo "Release build complete. Check {{.DIST_DIR}}/"
+
+  clean:
+    desc: Clean all artifacts
+    cmds:
+      - rm -rf {{.BIN_DIR}}
+      - rm -rf {{.FRONTEND_DIR}}/dist
+      - rm -rf {{.WAILS_DIR}}/build/bin
+      - rm -rf {{.DIST_DIR}}
+      - rm -rf {{.WAILS_DIR}}/assets/payload
+

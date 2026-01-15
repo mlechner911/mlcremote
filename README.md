@@ -16,8 +16,10 @@ Lightweight remote development environment for small servers, wrapped in a nativ
     -   Trash Support (Safety first!)
     - **Modern UI:** Optional VSCode-like interface with sidebar navigation and tab management.
 - **File Management:** Browse, edit, delete, and move files on remote servers.
-- **Terminal:** Integrated SSH terminal with multiple tabs.PTY support with resize handling and correct encoding.
+- **Terminal:** Integrated SSH terminal with multiple tabs. PTY support with resize handling and correct encoding.
 -   **Profile Manager:**
+    -   **Tabbed Interface:** Organized settings for General, Extended (Default Shell), and Quick Jobs.
+    -   **Quick Jobs:** Define server-side tasks/scripts that can be executed with one click.
     -   Save connection details with color-coding
     -   Duplicate profile detection
     -   Metadata tracking (OS/Arch/Version, Last Seen)
@@ -57,28 +59,32 @@ Lightweight remote development environment for small servers, wrapped in a nativ
 
 **Prerequisites:**
  
+ **Prerequisites:**
+ 
  -   Go 1.24+ (required for backend/desktop modules)
  -   Node.js 20+
  -   Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
- -   Make (Windows: via Chocolatey, Scoop, or use provided `scripts/make-help.ps1`)
- -   Docker (Required for `make build-linux` target)
- -   NSIS (Windows: For installer build, standard install path supported)
+ -   **Task** (Build System): `go install github.com/go-task/task/v3/cmd/task@latest`
+ -   Docker (Required for Linux cross-compilation)
+ -   NSIS (Windows: For installer build)
  
  **Local Build & Run:**
  
  ```bash
  # See available targets
- make help
+ task help
  
  # Full Desktop Build (Dev Mode with Hot Reload)
- make debug
+ task dev
  
  # Create Production Bundle (Windows)
- make installer
+ task dist
  
- # Cross-compile for Linux (Requires Docker)
- make build-linux
+ # Create Full Release (Installer + Linux binary)
+ task release
  ```
+
+ *For detailed build documentation, see [BUILD.md](docs/BUILD.md).*
 
 **Docker Development:**
 

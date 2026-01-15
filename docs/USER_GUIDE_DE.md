@@ -66,13 +66,19 @@ Derzeit muss MLCRemote für diese Plattformen aus dem Quellcode kompiliert werde
 Wenn Sie MLCRemote zum ersten Mal starten, sehen Sie den **Startbildschirm**.
 
 1. Klicken Sie in der Seitenleiste auf die Schaltfläche **Neue Verbindung** (+).
-2. Geben Sie die Verbindungsdetails ein:
-   - **Name**: Ein freundlicher Name für diesen Server (z. B. "Produktions-VPS").
-   - **Host**: Die IP-Adresse oder der Domänenname (z. B. `192.168.1.50`).
-   - **Benutzer**: Der SSH-Benutzername (z. B. `root` oder `ubuntu`).
-   - **Port**: SSH-Port (Standard: `22`).
-3. (Optional) Wählen Sie eine **Farbe**, um dieses Profil leichter identifizieren zu können.
-4. Klicken Sie auf **Speichern**.
+2. Der **Profil-Editor** öffnet sich mit drei Reitern (Tabs):
+   - **Allgemein**:
+     - **Name**: Ein freundlicher Name für diesen Server.
+     - **Farbe**: Zur einfachen Identifizierung.
+     - **Benutzer**: SSH-Benutzername (z.B. `root`).
+     - **Host**: IP-Adresse oder Domain.
+     - **Port**: SSH-Port (Standard: `22`).
+     - **Authentifizierung**: Wählen Sie zwischen Agent, Schlüsseldatei oder Verwalteter Identität.
+   - **Erweitert**:
+     - **Standard-Shell**: Bevorzugte Shell (z.B. `bash`, `zsh`) festlegen oder leer lassen für Auto-Erkennung.
+   - **Quick Jobs**:
+     - Definieren Sie eigene Aufgaben für diesen Server (siehe [Schnellaufgaben](#konfiguration-der-schnellaufgaben)).
+3. Klicken Sie auf **Verbindung Speichern**.
 5. Wählen Sie das Profil aus der Liste aus und klicken Sie auf **Verbinden**.
 
 Die Anwendung wird:
@@ -155,7 +161,14 @@ Die schmale Leiste ganz links bietet schnellen Zugriff auf wichtige Funktionen:
 - **Einstellungen**: Konfiguration von App-Einstellungen und Profilen.
 
 #### Konfiguration der Schnellaufgaben
-Sie können häufige Befehle in einer `tasks.json` im Datei-Explorer definieren oder über die Einstellungen hinzufügen. Hier einige Beispiele:
+Sie können Schnellaufgaben direkt im **Profil-Editor** unter dem Reiter **Quick Jobs** definieren.
+-   Klicken Sie auf **Task hinzufügen**.
+-   **Name**: Anzeigename für den Button.
+-   **Befehl**: Der Shell-Befehl, der auf dem Server ausgeführt wird.
+-   **Icon/Farbe**: Passen Sie das Aussehen an.
+-   **Beim Start anzeigen**: Aktivieren Sie dies, um die Aufgabe bereits auf dem Startbildschirm verfügbar zu machen (für sofortige Ausführung ohne volle Verbindung).
+
+Alternativ können Sie die `tasks.json` manuell bearbeiten. Hier einige Beispiele:
 
 ```json
 [

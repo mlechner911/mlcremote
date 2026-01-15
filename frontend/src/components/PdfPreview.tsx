@@ -9,6 +9,7 @@ export default function PdfPreview({ path }: { path: string }) {
   const [pageNum, setPageNum] = React.useState<number>(1)
   const [numPages, setNumPages] = React.useState<number | null>(null)
   const [loading, setLoading] = React.useState<boolean>(false)
+  const [errorState, setErrorState] = React.useState<string>('')
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
 
   // load pdfjs library and set worker
@@ -16,14 +17,18 @@ export default function PdfPreview({ path }: { path: string }) {
     let mounted = true
       ; (async () => {
         try {
-          const pdfjs = await import('pdfjs-dist/legacy/build/pdf')
-          // use the worker served from public/pdf.worker.mjs
+          const pdfjs = await import('pdfjs-dist/build/pdf')
+          // Use Vite's URL import to get the correct path to the worker in production/dev
           // @ts-ignore
-          pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.mjs'
+          const workerUrl = (await import('pdfjs-dist/build/pdf.worker.mjs?url')).default
+
+          // @ts-ignore
+          pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
           if (!mounted) return
           setPdfLib(pdfjs)
-        } catch (e) {
+        } catch (e: any) {
           console.error('Failed to load pdfjs', e)
+          if (mounted) setErrorState(e.message || 'Failed to load PDF library')
         }
       })()
     return () => { mounted = false }
@@ -33,12 +38,16 @@ export default function PdfPreview({ path }: { path: string }) {
   React.useEffect(() => {
     if (!pdfLib) return
     let cancelled = false
+    setErrorState('')
       ; (async () => {
         setLoading(true)
         try {
           // use authedFetch to include token header when required
           const r = await authedFetch(`/api/file?path=${encodeURIComponent(path)}`)
-          if (!r.ok) throw new Error('fetch failed')
+          if (!r.ok) {
+            const txt = await r.text().catch(() => '')
+            throw new Error(`fetch failed: ${r.status} ${txt}`)
+          }
           const data = await r.arrayBuffer()
           const loadingTask = pdfLib.getDocument({ data })
           const doc = await loadingTask.promise
@@ -46,9 +55,12 @@ export default function PdfPreview({ path }: { path: string }) {
           setPdfDoc(doc)
           setNumPages(doc.numPages || null)
           setPageNum(1)
-        } catch (e) {
+        } catch (e: any) {
           console.error('Failed to load PDF', e)
-          if (!cancelled) setPdfDoc(null)
+          if (!cancelled) {
+            setPdfDoc(null)
+            setErrorState(e.message || 'Failed to load document')
+          }
         } finally {
           if (!cancelled) setLoading(false)
         }
@@ -78,8 +90,18 @@ export default function PdfPreview({ path }: { path: string }) {
     return () => { mounted = false }
   }, [pdfDoc, pageNum])
 
-  if (!pdfLib) return <div className="muted">{t('loading_pdf_support')}</div>
-  if (loading && !pdfDoc) return <div className="muted">{t('loading_pdf')}</div>
+  if (!pdfLib && !errorState) return <div className="muted">{t('loading_pdf_support')}</div>
+  if (loading && !pdfDoc && !errorState) return <div className="muted">{t('loading_pdf')}</div>
+
+  // Expose error if present
+  if (errorState) return (
+    <div style={{ padding: 12 }}>
+      <div className="muted" style={{ color: 'var(--danger)' }}>{t('error', 'Error')}: {errorState}</div>
+      <div style={{ marginTop: 8 }}>
+        <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split('/').pop()}>{t('download')}</a>
+      </div>
+    </div>
+  )
 
   return (
     <div style={{ padding: 12 }}>

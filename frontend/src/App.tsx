@@ -18,6 +18,7 @@ import TrashView from './components/TrashView'
 import Editor from './components/Editor'
 import BinaryView from './components/BinaryView'
 import FileDetailsView from './components/FileDetailsView'
+import ServerLogsView from './components/ServerLogsView'
 const TerminalTab = React.lazy(() => import('./components/TerminalTab'))
 import TabBarComponent from './components/TabBar'
 
@@ -36,7 +37,9 @@ import { defaultStore, boolSerializer, strSerializer } from './utils/storage'
 import MessageBox from './components/MessageBox'
 import StatusBar from './components/StatusBar'
 import { getHandler } from './handlers/registry'
-import { DirEntry, getHealth, getSettings, listTree, saveSettings, Settings, TaskDef } from './api'
+import StatusBar from './components/StatusBar'
+import { getHandler } from './handlers/registry'
+import { getHealth, getSettings, listTree, Settings, TaskDef } from './api'
 import { Tab, ViewType } from './types/layout'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { LayoutNode, PaneId, PaneState } from './types/layout'
@@ -87,6 +90,7 @@ export default function App() {
     autoOpen, setAutoOpen,
     showHidden, setShowHidden,
     showLogs, toggleLogs: setShowLogs,
+    showServerLogs, toggleServerLogs,
     hideMemoryUsage, toggleHideMemoryUsage,
     canChangeRoot,
     maxEditorSize, updateMaxEditorSize,
@@ -187,6 +191,10 @@ export default function App() {
         if (Array.isArray(e.data.tasks)) {
           setQuickTasks(e.data.tasks)
         }
+      }
+      if (e.data.type === 'open-logs') {
+        openFile('server-logs', 'logs', 'Server Logs')
+        setActiveTab('server-logs')
       }
     }
     window.addEventListener('message', handleMessage)
@@ -451,7 +459,10 @@ export default function App() {
                         return (
                           <React.Suspense fallback={<div className="muted">{t('loading')}</div>}>
                             <TerminalTab
-                              shell={(settings && settings.defaultShell) || 'bash'}
+                              shell={(() => {
+                                const urlShell = new URLSearchParams(window.location.search).get('shell')
+                                return urlShell || (settings && settings.defaultShell) || 'bash'
+                              })()}
                               path={shellCwds[tab.id] || ''}
                               label={tab.label}                           // Pass the label!
                               initialCommand={commandSignals[tab.id]?.cmd}
@@ -464,6 +475,8 @@ export default function App() {
                         if (tab.id === 'trash') return <TrashView />
                         if (tab.id === 'metadata') return <FileDetailsView path={selectedPath} />
                         return null
+                      case 'logs':
+                        return <ServerLogsView />
                       case 'binary':
                         return (
                           <React.Suspense fallback={<div className="muted">Loading…</div>}>
@@ -521,8 +534,6 @@ export default function App() {
             quickTasks={quickTasks}
             onRunTask={(task: any) => {
               // Reuse existing message simulation to run task
-              // We can't dispatch a real MessageEvent easily that matches the listener exactly,
-              // instead let's extract the run logic or just postMessage to self?
               window.postMessage({ type: 'run-task', ...task }, '*')
             }}
             onOpenTerminal={() => {
@@ -533,6 +544,11 @@ export default function App() {
             onOpenTrash={() => {
               openFile('trash', 'custom', 'Trash')
               setActiveTab('trash')
+            }}
+            showServerLogs={showServerLogs}
+            onOpenLogs={() => {
+              openFile('server-logs', 'logs', 'Server Logs')
+              setActiveTab('server-logs')
             }}
             onToggleSettings={() => setSettingsOpen(s => !s)}
             onActivityChange={() => { }} // Required by strict interface but unused in App
@@ -580,8 +596,6 @@ export default function App() {
                           return
                         }
 
-                        // if autoOpen is true and not binary
-                        // if autoOpen is true and not binary
                         openFile(p)
                       } catch (e: any) {
                         setMessageBox({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
@@ -631,6 +645,8 @@ export default function App() {
                   onToggleShowHidden={setShowHidden}
                   showLogs={showLogs}
                   onToggleLogs={setShowLogs}
+                  showServerLogs={showServerLogs || false}
+                  onToggleServerLogs={toggleServerLogs}
                   hideMemoryUsage={hideMemoryUsage}
                   onToggleHideMemoryUsage={toggleHideMemoryUsage}
                   onClose={() => setSettingsOpen(false)}

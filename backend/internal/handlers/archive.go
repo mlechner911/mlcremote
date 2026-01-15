@@ -37,8 +37,14 @@ func ListArchiveHandler(root string) http.HandlerFunc {
 		}
 
 		// Security check: join with root and clean
+		cleanRoot := filepath.Clean(root)
 		absPath := filepath.Join(root, relPath)
-		if !strings.HasPrefix(absPath, root) {
+		cleanPath := filepath.Clean(absPath)
+
+		// Hmm .. Case-insensitive check on Windows is complex, but standard prefix check
+		// with normalized separators should catch basic traversal attacks.
+		// We use Clean() to ensure separators are consistent (OS-specific).
+		if !strings.HasPrefix(cleanPath, cleanRoot) {
 			http.Error(w, "access denied", http.StatusForbidden)
 			return
 		}

@@ -116,5 +116,6 @@
     "empty_file_readonly": "Fichier vide (Lecture seule)",
     "path": "Chemin",
     "type": "Type",
-    "directory": "Répertoire"
+    "directory": "Répertoire",
+    "binary_download_msg": "(Fichier binaire ou non pris en charge)"
 }

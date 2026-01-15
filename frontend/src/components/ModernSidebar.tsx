@@ -10,10 +10,13 @@ export interface ActivityBarProps {
     onToggleSidebar: (expanded: boolean) => void
     onOpenTerminal: () => void
     onOpenTrash: () => void
+    onOpenLogs: () => void
     onToggleSettings: () => void
     quickTasks: TaskDef[]
     onRunTask: (task: TaskDef) => void
+
     onActivityChange: (activity: string) => void
+    showServerLogs?: boolean
 }
 
 export interface SidebarPanelProps {
@@ -77,12 +80,18 @@ export function ActivityBar(props: ActivityBarProps) {
 
             {/* Terminal Icon - Always available command */}
             <div className="activity-icon" onClick={() => onOpenTerminal()} title={t('new_terminal')}>
-                <Icon name={getIcon('shell') || 'icon-shell'} size={24} />
+                <Icon name="icon-terminal" size={24} />
             </div>
             {/* Trash Icon */}
             <div className="activity-icon" onClick={() => onOpenTrash()} title={t('trash')}>
                 <Icon name="icon-trash" size={24} />
             </div>
+            {/* Logs Icon - Only visible if enabled in settings */}
+            {props.showServerLogs && (
+                <div className="activity-icon" onClick={() => props.onOpenLogs()} title={t('server_logs') || 'Server Logs'}>
+                    <Icon name="icon-file-code" size={24} />
+                </div>
+            )}
             {/* Spacer */}
             <div style={{ flex: 1 }}></div>
             <div className={`activity-icon ${activeActivity === 'settings' ? 'active' : ''}`} onClick={() => onToggleSettings()} title="Settings">

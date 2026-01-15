@@ -27,6 +27,10 @@ func (d *Darwin) Remove(path string) string {
 	return fmt.Sprintf("rm -rf \"%s\"", path)
 }
 
+func (d *Darwin) Rename(src, dst string) string {
+	return fmt.Sprintf("mv -f \"%s\" \"%s\"", src, dst)
+}
+
 func (d *Darwin) FileHash(path string) (string, func(string) string) {
 	// macOS uses 'md5 -q' for quiet output (just hash)
 	// Try md5-util first (if deployed), then fallback to system md5

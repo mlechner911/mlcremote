@@ -47,10 +47,19 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 
 	// 3. Detect Remote OS
 	runtime.EventsEmit(a.ctx, "connection-status", "detecting_os")
-	// We pass the raw JSON because Backend service expects it (to avoid re-marshalling)
-	osArch, err := a.Backend.DetectRemoteOS(profileJSON)
-	if err != nil {
-		return "failed", fmt.Errorf("failed to detect remote OS: %w", err)
+
+	var osArch string
+	var err error
+
+	if cp.RemoteOS != "" && cp.RemoteArch != "" {
+		fmt.Printf("[DEBUG] StartTunnel: Using cached OS: %s/%s\n", cp.RemoteOS, cp.RemoteArch)
+		osArch = fmt.Sprintf("%s/%s", cp.RemoteOS, cp.RemoteArch)
+	} else {
+		// We pass the raw JSON because Backend service expects it (to avoid re-marshalling)
+		osArch, err = a.Backend.DetectRemoteOS(profileJSON)
+		if err != nil {
+			return "failed", fmt.Errorf("failed to detect remote OS: %w", err)
+		}
 	}
 
 	// 4. Deploy Agent

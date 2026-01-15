@@ -76,6 +76,11 @@ func allowCORS(w http.ResponseWriter, r *http.Request) {
 // authMiddleware wraps an http.Handler and checks for the valid AuthToken.
 func (s *Server) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// TRACE LOGGING
+		if !strings.Contains(r.URL.Path, "/api/logs") {
+			log.Printf("[ACCESS] %s %s (Remote: %s)", r.Method, r.URL.String(), r.RemoteAddr)
+		}
+
 		allowCORS(w, r)
 
 		if r.Method == http.MethodOptions {
@@ -186,6 +191,7 @@ func (s *Server) Routes() {
 	s.Mux.HandleFunc("/api/trash/recent", handlers.RecentTrashHandler())
 	s.Mux.HandleFunc("/api/trash/restore", handlers.RestoreTrashHandler(s.Root))
 	s.Mux.HandleFunc("/api/trash", handlers.EmptyTrashHandler(s.TrashDir, s.AllowDelete))
+	s.Mux.Handle("/api/logs", handlers.LogsHandler()) // Register LogsHandler
 	s.Mux.HandleFunc("/api/terminal/new", handlers.NewTerminalAPI(s.Root))
 	s.Mux.Handle("/api/file", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {

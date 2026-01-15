@@ -200,6 +200,7 @@ func ShutdownAllSessions() {
 // @Router /api/terminal/new [post]
 func NewTerminalAPI(root string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("HANDLER: NewTerminalAPI called. Params: shell=%s chd=%s", r.URL.Query().Get("shell"), r.URL.Query().Get("cwd"))
 		reqShell := r.URL.Query().Get("shell")
 		shell := termutil.ResolveRequestedShell(reqShell)
 		cwd := r.URL.Query().Get("cwd")

@@ -13,6 +13,7 @@ export function useAppSettings() {
     const [autoOpen, setAutoOpenState] = React.useState<boolean>(true)
     const [showHidden, setShowHiddenState] = React.useState<boolean>(false)
     const [showLogs, setShowLogs] = React.useState<boolean>(false)
+    const [showServerLogs, setShowServerLogs] = React.useState<boolean>(false)
     const [hideMemoryUsage, setHideMemoryUsage] = React.useState<boolean>(false)
     const [maxEditorSize, setMaxEditorSize] = React.useState<number>(0)
     const [canChangeRoot, setCanChangeRoot] = React.useState<boolean>(false)
@@ -22,6 +23,7 @@ export function useAppSettings() {
     const setAutoOpen = (v: boolean) => { setAutoOpenState(v); saveSettings({ autoOpen: v }).catch(console.error) }
     const setShowHidden = (v: boolean) => { setShowHiddenState(v); saveSettings({ showHidden: v }).catch(console.error) }
     const toggleLogs = (v: boolean) => { setShowLogs(v); saveSettings({ showLogs: v }).catch(console.error) }
+    const toggleServerLogs = (v: boolean) => { setShowServerLogs(v); saveSettings({ showServerLogs: v }).catch(console.error) }
     const toggleHideMemoryUsage = (v: boolean) => { setHideMemoryUsage(v); saveSettings({ hideMemoryUsage: v }).catch(console.error) }
     const updateMaxEditorSize = (sz: number) => {
         setMaxEditorSize(sz)
@@ -42,6 +44,7 @@ export function useAppSettings() {
                 if (typeof s.autoOpen !== 'undefined') setAutoOpenState(s.autoOpen)
                 if (typeof s.showHidden !== 'undefined') setShowHiddenState(s.showHidden)
                 if (typeof s.showLogs !== 'undefined') setShowLogs(s.showLogs)
+                if (typeof s.showServerLogs !== 'undefined') setShowServerLogs(s.showServerLogs)
                 if (s.hideMemoryUsage) setHideMemoryUsage(s.hideMemoryUsage)
                 if (s.maxEditorSize) {
                     setMaxEditorSize(s.maxEditorSize)
@@ -99,6 +102,7 @@ export function useAppSettings() {
         autoOpen, setAutoOpen,
         showHidden, setShowHidden,
         showLogs, toggleLogs,
+        showServerLogs, toggleServerLogs,
         hideMemoryUsage, toggleHideMemoryUsage,
         maxEditorSize, updateMaxEditorSize,
         canChangeRoot,

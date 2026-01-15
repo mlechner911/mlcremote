@@ -30,6 +30,7 @@ import (
 // @Router /ws/terminal [get]
 func WsTerminalHandler(root string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("HANDLER: WsTerminalHandler called. Session=%s", r.URL.Query().Get("session"))
 		up := websocket.Upgrader{
 			ReadBufferSize:  8192,
 			WriteBufferSize: 8192,
@@ -78,7 +79,7 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 			s, err := newTerminalSession(shell, cwd)
 			if err != nil {
 				log.Printf("failed to start shell for ephemeral ws: %v", err)
-				_ = conn.WriteMessage(websocket.TextMessage, []byte("failed to start shell: " + err.Error()))
+				_ = conn.WriteMessage(websocket.TextMessage, []byte("failed to start shell: "+err.Error()))
 				return
 			}
 			// attach this websocket to the session
@@ -114,6 +115,10 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 					}
 				}
 				if mt == websocket.TextMessage || mt == websocket.BinaryMessage {
+					// Debug log for input troubleshooting
+					if len(data) > 0 {
+						log.Printf("WsTerminalHandler [ephemeral]: received %d bytes from WS: %q", len(data), string(data))
+					}
 					s.write(data)
 				}
 			}
@@ -162,6 +167,10 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 				}
 			}
 			if mt == websocket.TextMessage || mt == websocket.BinaryMessage {
+				// Debug log for input troubleshooting
+				if len(data) > 0 {
+					log.Printf("WsTerminalHandler: received %d bytes from WS: %q", len(data), string(data))
+				}
 				s.write(data)
 			}
 		}

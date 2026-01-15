@@ -177,11 +177,14 @@ func (m *Manager) TailRemoteLogs(profileJSON string) (string, error) {
 		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
 	}
 
-	// journalctl --user -u mlcremote.service -n 50 --no-pager
-	cmdArgs := append([]string{}, sshBaseArgs...)
-	cmdArgs = append(cmdArgs, target, fmt.Sprintf("journalctl --user -u %s -n 50 --no-pager", ServiceName))
+	// Try common log locations/commands (Tail for Linux/Mac, PowerShell for Windows)
+	// We use a chained command to support multiple platforms
+	cmd := "tail -n 50 .mlcremote/current.log 2>/dev/null || powershell -Command \"Get-Content .mlcremote/current.log -Tail 50\" 2>NUL || type .mlcremote\\current.log 2>NUL"
 
-	out, err := createSilentCmd("ssh", cmdArgs...).Output()
+	cmdArgs := append([]string{}, sshBaseArgs...)
+	cmdArgs = append(cmdArgs, target, cmd)
+
+	out, err := createSilentCmd("ssh", cmdArgs...).CombinedOutput()
 	if err != nil {
 		return "", err
 	}

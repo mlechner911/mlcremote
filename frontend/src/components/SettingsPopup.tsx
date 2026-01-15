@@ -10,6 +10,8 @@ type Props = {
   onToggleShowHidden: (v: boolean) => void
   showLogs: boolean
   onToggleLogs: (v: boolean) => void
+  showServerLogs: boolean
+  onToggleServerLogs: (v: boolean) => void
   hideMemoryUsage: boolean
   onToggleHideMemoryUsage: (v: boolean) => void
   onClose: () => void
@@ -20,7 +22,7 @@ type Props = {
   onToggleUiMode: (m: 'classic' | 'modern') => void
 }
 
-export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, onToggleShowHidden, showLogs, onToggleLogs, hideMemoryUsage, onToggleHideMemoryUsage, onClose, onLanguageChange, maxEditorSize, onMaxFileSizeChange, uiMode, onToggleUiMode }: Props) {
+export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, onToggleShowHidden, showLogs, onToggleLogs, showServerLogs, onToggleServerLogs, hideMemoryUsage, onToggleHideMemoryUsage, onClose, onLanguageChange, maxEditorSize, onMaxFileSizeChange, uiMode, onToggleUiMode }: Props) {
   const { t, i18n } = useTranslation()
   const [localHideMemoryUsage, setLocalHideMemoryUsage] = React.useState<boolean>(hideMemoryUsage)
 
@@ -97,7 +99,12 @@ export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, 
 
         <div style={{ marginTop: 8 }}>
           <label style={{ fontSize: 13 }}>
-            <input type="checkbox" checked={showLogs} onChange={e => onToggleLogs(e.target.checked)} /> {t('show_server_logs', 'Show server logs')}
+            <input type="checkbox" checked={showLogs} onChange={e => onToggleLogs(e.target.checked)} /> {t('show_console_logs', 'Show console logs (Debug)')}
+          </label>
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <label style={{ fontSize: 13 }}>
+            <input type="checkbox" checked={showServerLogs} onChange={e => onToggleServerLogs(e.target.checked)} /> {t('show_server_logs', 'Show server logs (Backend)')}
           </label>
         </div>
         <div style={{ marginTop: 8 }}>

@@ -10,8 +10,6 @@ import { TaskDef } from '../types'
 import TaskEditor from './TaskEditor'
 import TaskIcon from './TaskIcon'
 
-
-
 type int = number
 
 interface ProfileEditorProps {
@@ -21,19 +19,17 @@ interface ProfileEditorProps {
     isPremium?: boolean
 }
 
-
-
-// Define the shape locally until generated bindings are available/updated
-
-
 export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: ProfileEditorProps) {
     const { t } = useI18n()
+    const [activeTab, setActiveTab] = useState<'general' | 'tasks' | 'extended'>('general')
+
     const [name, setName] = useState(profile?.name || '')
     const [color, setColor] = useState(profile?.color || DEFAULT_COLORS[0])
     const [user, setUser] = useState(profile?.user || '')
     const [host, setHost] = useState(profile?.host || '')
     const [port, setPort] = useState(profile?.port || 22)
     const [localPort, setLocalPort] = useState(profile?.localPort || 8443)
+    const [defaultShell, setDefaultShell] = useState(profile?.defaultShell || '')
 
     // Auth Type Logic
     const [identityFile, setIdentityFile] = useState(profile?.identityFile || '')
@@ -57,6 +53,8 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             setPort(profile.port || 22)
             setLocalPort(profile.localPort || 8443)
             setIdentityFile(profile.identityFile || '')
+            setDefaultShell(profile.defaultShell || '')
+            setTasks(profile.tasks || [])
         } else {
             setName('')
             setColor(DEFAULT_COLORS[0])
@@ -65,6 +63,8 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             setPort(22)
             setLocalPort(8443)
             setIdentityFile('')
+            setDefaultShell('')
+            setTasks([])
         }
     }, [profile])
 
@@ -128,7 +128,8 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             isWindows: profile?.isWindows || false,
             lastUsed: profile?.lastUsed || 0,
             extraArgs: profile?.extraArgs || [],
-            tasks: tasks
+            tasks: tasks,
+            defaultShell: defaultShell
         })
     }
 
@@ -226,149 +227,206 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
 
     return (
         <div style={{ padding: 24, paddingBottom: 0 }}>
-            <h2 style={{ marginTop: 0, marginBottom: 20 }}>{profile ? t('edit_connection') : t('new_connection')}</h2>
+            <h2 style={{ marginTop: 0, marginBottom: 16 }}>{profile ? t('edit_connection') : t('new_connection')}</h2>
+
+            <div className="tab-header">
+                <button
+                    type="button"
+                    className={`tab-btn ${activeTab === 'general' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('general')}
+                >
+                    {t('general') || "General"}
+                </button>
+                <button
+                    type="button"
+                    className={`tab-btn ${activeTab === 'extended' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('extended')}
+                >
+                    {t('extended_settings') || "Extended"}
+                </button>
+                <button
+                    type="button"
+                    className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('tasks')}
+                >
+                    {t('quick_tasks') || "Quick Jobs"}
+                    {tasks.length > 0 && <span style={{ marginLeft: 6, opacity: 0.7, fontSize: '0.8em' }}>({tasks.length})</span>}
+                </button>
+            </div>
+
             <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
-                {/* Name & Color */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'end' }}>
-                    <div>
-                        <label className="label">{t('name')}</label>
-                        <input className="input" required value={name} onChange={e => setName(e.target.value)} placeholder="My Remote Server" />
-                    </div>
-                    <div>
-                        <label className="label">{t('color')}</label>
-                        <ColorPicker value={color} onChange={setColor} />
-                    </div>
-                </div>
 
-                {/* User & Host */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
-                    <div>
-                        <label className="label">{t('user')}</label>
-                        <input className="input" required value={user} onChange={e => setUser(e.target.value)} placeholder="root" />
-                    </div>
-                    <div>
-                        <label className="label">{t('host')}</label>
-                        <input className="input" required value={host} onChange={e => setHost(e.target.value)} placeholder="192.168.1.100" />
-                    </div>
-                </div>
-
-                {/* SSH Port & Local Port */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div>
-                        <label className="label">{t('port')}</label>
-                        <input className="input" type="number" value={port} onChange={e => setPort(Number(e.target.value))} />
-                    </div>
-                    <div>
-                        <label className="label">{t('localPort')}</label>
-                        <input className="input" type="number" value={localPort} onChange={e => setLocalPort(Number(e.target.value))} />
-                    </div>
-                </div>
-
-                <div>
-                    <label className="label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {t('auth_method')}
-                        {isVerified && <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>✓</span>}
-                    </label>
-                    <select
-                        className="input"
-                        value={authType}
-                        onChange={e => handleAuthTypeChange(e.target.value as any)}
-                        style={{ width: '100%', marginBottom: 12 }}
-                    >
-                        <option value="agent">{t('auth_agent')}</option>
-                        <option value="custom">{t('auth_custom')}</option>
-                        {isPremium && <option value="managed">{t('premium_managed')}</option>}
-                    </select>
-
-                    {authType === 'managed' && (
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
-                            {t('managed_key_info')}
-                        </div>
-                    )}
-
-                    {authType === 'custom' && (
-                        <div>
-                            <label className="label">{t('identityFile')}</label>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <input
-                                    className="input"
-                                    value={identityFile}
-                                    onChange={e => setIdentityFile(e.target.value)}
-                                    placeholder="/path/to/private/key"
-                                    style={{ flex: 1 }}
-                                />
-                                <button
-                                    type="button"
-                                    className="btn secondary"
-                                    onClick={async () => {
-                                        try {
-                                            const file = await PickIdentityFile()
-                                            if (file) setIdentityFile(file)
-                                        } catch (e) {
-                                            console.error(e)
-                                        }
-                                    }}
-                                >
-                                    {t('browse')}
-                                </button>
+                {activeTab === 'general' && (
+                    <>
+                        {/* Name & Color */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'end' }}>
+                            <div>
+                                <label className="label">{t('name')}</label>
+                                <input className="input" required value={name} onChange={e => setName(e.target.value)} placeholder="My Remote Server" />
+                            </div>
+                            <div>
+                                <label className="label">{t('color')}</label>
+                                <ColorPicker value={color} onChange={setColor} />
                             </div>
                         </div>
-                    )}
-                </div>
 
-                {/* Tasks Section */}
-                <div style={{ padding: 16, background: 'var(--bg-section)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('quick_tasks') || "Quick Tasks"}</h3>
-                        {isPremium && (
-                            <button type="button" className="btn secondary small" onClick={() => { setEditingTask(null); setShowTaskEditor(true) }}>
-                                <Icon name="icon-plus" size={12} /> {t('add_task')}
-                            </button>
-                        )}
-                        {!isPremium && <div style={{ fontSize: '0.75rem', color: '#f7b955', border: '1px solid #f7b955', padding: '2px 6px', borderRadius: 4 }}>PREMIUM</div>}
-                    </div>
-
-                    {!isPremium && (
-                        <div className="muted" style={{ fontSize: '0.9rem', fontStyle: 'italic' }}>
-                            {t('premium_tasks_upsell') || "Upgrade to Premium to create custom server shortcuts and automate your workflow."}
+                        {/* User & Host */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
+                            <div>
+                                <label className="label">{t('user')}</label>
+                                <input className="input" required value={user} onChange={e => setUser(e.target.value)} placeholder="root" />
+                            </div>
+                            <div>
+                                <label className="label">{t('host')}</label>
+                                <input className="input" required value={host} onChange={e => setHost(e.target.value)} placeholder="192.168.1.100" />
+                            </div>
                         </div>
-                    )}
 
-                    {isPremium && tasks.length === 0 && (
-                        <div className="muted" style={{ fontSize: '0.9rem', textAlign: 'center', padding: 10 }}>
-                            {t('no_tasks') || "No tasks defined. Add one to get started."}
+                        {/* SSH Port & Local Port */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div>
+                                <label className="label">{t('port')}</label>
+                                <input className="input" type="number" value={port} onChange={e => setPort(Number(e.target.value))} />
+                            </div>
+                            <div>
+                                <label className="label">{t('localPort')}</label>
+                                <input className="input" type="number" value={localPort} onChange={e => setLocalPort(Number(e.target.value))} />
+                            </div>
                         </div>
-                    )}
 
-                    {isPremium && tasks.length > 0 && (
-                        <div style={{ display: 'grid', gap: 8 }}>
-                            {tasks.map(task => (
-                                <div key={task.id} style={{
-                                    display: 'flex', alignItems: 'center', gap: 10,
-                                    padding: '8px 12px', background: 'var(--bg-panel)', borderRadius: 6,
-                                    border: '1px solid var(--border)'
-                                }}>
-                                    <TaskIcon icon={task.icon || 'play'} color={task.color || '#3b82f6'} size={20} />
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 500 }}>{task.name}</div>
-                                        <div className="muted" style={{ fontSize: '0.75rem', fontFamily: 'monospace' }}>{task.command}</div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 4 }}>
-                                        <button type="button" className="icon-btn" onClick={() => { setEditingTask(task); setShowTaskEditor(true) }}>
-                                            <Icon name="icon-settings" size={14} />
-                                        </button>
-                                        <button type="button" className="icon-btn" onClick={() => handleDeleteTask(task.id)}>
-                                            <Icon name="icon-trash" size={14} />
+                        <div>
+                            <label className="label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {t('auth_method')}
+                                {isVerified && <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>✓</span>}
+                            </label>
+                            <select
+                                className="input"
+                                value={authType}
+                                onChange={e => handleAuthTypeChange(e.target.value as any)}
+                                style={{ width: '100%', marginBottom: 12 }}
+                            >
+                                <option value="agent">{t('auth_agent')}</option>
+                                <option value="custom">{t('auth_custom')}</option>
+                                {isPremium && <option value="managed">{t('premium_managed')}</option>}
+                            </select>
+
+                            {authType === 'managed' && (
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
+                                    {t('managed_key_info')}
+                                </div>
+                            )}
+
+                            {authType === 'custom' && (
+                                <div>
+                                    <label className="label">{t('identityFile')}</label>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <input
+                                            className="input"
+                                            value={identityFile}
+                                            onChange={e => setIdentityFile(e.target.value)}
+                                            placeholder="/path/to/private/key"
+                                            style={{ flex: 1 }}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn secondary"
+                                            onClick={async () => {
+                                                try {
+                                                    const file = await PickIdentityFile()
+                                                    if (file) setIdentityFile(file)
+                                                } catch (e) {
+                                                    console.error(e)
+                                                }
+                                            }}
+                                        >
+                                            {t('browse')}
                                         </button>
                                     </div>
                                 </div>
-                            ))}
+                            )}
                         </div>
-                    )}
+                    </>
+                )}
 
-                </div>
+                {activeTab === 'extended' && (
+                    <>
+                        {/* Default Shell (Optional) */}
+                        <div>
+                            <label className="label">{t('default_shell') || "Default Shell (Optional)"}</label>
+                            <input
+                                className="input"
+                                value={defaultShell}
+                                onChange={e => setDefaultShell(e.target.value)}
+                                placeholder="e.g. bash, cmd, or /bin/zsh"
+                            />
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                                {t('default_shell_desc') || "Leave empty to auto-detect. On Windows, you can specify 'bash' or full path to Git Bash."}
+                            </div>
+                        </div>
+                    </>
+                )}
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12, alignItems: 'center' }}>
+                {activeTab === 'tasks' && (
+                    /* Tasks Section */
+                    <div style={{ padding: 4 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1rem', marginBottom: 4 }}>{t('quick_tasks') || "Quick Jobs"}</h3>
+                                <div className="muted" style={{ fontSize: '0.85rem' }}>
+                                    {t('quick_tasks_desc') || "Define shortcuts for common commands run on this server."}
+                                </div>
+                            </div>
+                            {isPremium && (
+                                <button type="button" className="btn secondary small" onClick={() => { setEditingTask(null); setShowTaskEditor(true) }}>
+                                    <Icon name="icon-plus" size={12} /> {t('add_task')}
+                                </button>
+                            )}
+                            {!isPremium && <div style={{ fontSize: '0.75rem', color: '#f7b955', border: '1px solid #f7b955', padding: '2px 6px', borderRadius: 4 }}>PREMIUM</div>}
+                        </div>
+
+                        {!isPremium && (
+                            <div className="muted" style={{ fontSize: '0.9rem', fontStyle: 'italic', padding: 20, textAlign: 'center', background: 'var(--bg-panel)', borderRadius: 8 }}>
+                                {t('premium_tasks_upsell') || "Upgrade to Premium to create custom server shortcuts and automate your workflow."}
+                            </div>
+                        )}
+
+                        {isPremium && tasks.length === 0 && (
+                            <div className="muted" style={{ fontSize: '0.9rem', textAlign: 'center', padding: 40, background: 'var(--bg-panel)', borderRadius: 8, border: '1px dashed var(--border)' }}>
+                                {t('no_tasks') || "No tasks defined. Add one to get started."}
+                            </div>
+                        )}
+
+                        {isPremium && tasks.length > 0 && (
+                            <div style={{ display: 'grid', gap: 8 }}>
+                                {tasks.map(task => (
+                                    <div key={task.id} style={{
+                                        display: 'flex', alignItems: 'center', gap: 10,
+                                        padding: '12px', background: 'var(--bg-panel)', borderRadius: 6,
+                                        border: '1px solid var(--border)'
+                                    }}>
+                                        <TaskIcon icon={task.icon || 'play'} color={task.color || '#3b82f6'} size={24} />
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 500 }}>{task.name}</div>
+                                            <div className="muted" style={{ fontSize: '0.8rem', fontFamily: 'monospace', marginTop: 2 }}>{task.command}</div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            <button type="button" className="icon-btn" onClick={() => { setEditingTask(task); setShowTaskEditor(true) }} title={t('edit')}>
+                                                <Icon name="icon-settings" size={16} />
+                                            </button>
+                                            <button type="button" className="icon-btn" onClick={() => handleDeleteTask(task.id)} title={t('delete')}>
+                                                <Icon name="icon-trash" size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                    </div>
+                )}
+
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12, alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 16 }}>
                     {testStatus && <span style={{ fontSize: '0.85rem', color: testStatus.includes('failed') ? 'var(--error)' : 'var(--accent)' }}>{testStatus}</span>}
                     <button type="button" className="btn link" onClick={handleTestConnection} style={{ marginRight: 'auto' }}>{t('test_connection')}</button>
                     <button type="button" className="btn link" onClick={onCancel}>{t('cancel')}</button>

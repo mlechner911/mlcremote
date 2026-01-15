@@ -27,6 +27,10 @@ func (l *Linux) Remove(path string) string {
 	return fmt.Sprintf("rm -rf \"%s\"", path)
 }
 
+func (l *Linux) Rename(src, dst string) string {
+	return fmt.Sprintf("mv -f \"%s\" \"%s\"", src, dst)
+}
+
 func (l *Linux) FileHash(path string) (string, func(string) string) {
 	// Uses the custom md5-util if available, fallback to md5sum
 	// For now, we assume md5-util will be deployed to ~/.mlcremote/bin/md5-util
