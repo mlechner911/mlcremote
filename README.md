@@ -18,10 +18,12 @@ Lightweight remote development environment for small servers, wrapped in a nativ
 -   **SSH Tunneling:** Securely connects via SSH tunnels; no open ports required on the remote.
 -   **Rich File Manager:**
     -   Drag & Drop Upload
-    -   Context Menu (Download, Delete, Copy Path)
-    -   Trash Support (Safety first!)
-    - **Modern UI:** Optional VSCode-like interface with sidebar navigation and tab management.
+    -   Context Menu (Download, Delete,Rename,View, Copy Path)
+    -   Trash Support (Safety first! Deleted files are moved to the trash and can be restored)
+  
 - **File Management:** Browse, edit, delete, and move files on remote servers.
+- **File Editor:** Syntax highlighting,   and basic code editing features.
+- **Rich File Manager:** Preview images, pdf, markdown, video (mp4, webm, etc.) and text files in the file manager.
 - **Terminal:** Integrated SSH terminal with multiple tabs. PTY support with resize handling and correct encoding.
 -   **Profile Manager:**
     -   **Tabbed Interface:** Organized settings for General, Extended (Default Shell), and Quick Jobs.

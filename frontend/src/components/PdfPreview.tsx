@@ -98,7 +98,7 @@ export default function PdfPreview({ path }: { path: string }) {
     <div style={{ padding: 12 }}>
       <div className="muted" style={{ color: 'var(--danger)' }}>{t('error', 'Error')}: {errorState}</div>
       <div style={{ marginTop: 8 }}>
-        <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split('/').pop()}>{t('download')}</a>
+        <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split(/[/\\]/).pop()}>{t('download')}</a>
       </div>
     </div>
   )
@@ -109,7 +109,7 @@ export default function PdfPreview({ path }: { path: string }) {
         <button className="btn" onClick={() => setPageNum(p => Math.max(1, p - 1))} disabled={pageNum <= 1}>{t('previous')}</button>
         <span>{pageNum}{numPages ? ` / ${numPages} ` : ''}</span>
         <button className="btn" onClick={() => setPageNum(p => Math.min((numPages || Infinity), p + 1))} disabled={numPages ? pageNum >= numPages : false}>{t('next')}</button>
-        <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split('/').pop()}>{t('download')}</a>
+        <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split(/[/\\]/).pop()}>{t('download')}</a>
       </div>
       <div style={{ marginTop: 8 }}>
         {(!pdfDoc) ? <div className="muted">{t('no_preview')}</div> : <canvas ref={canvasRef} style={{ maxWidth: '100%', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }} />}

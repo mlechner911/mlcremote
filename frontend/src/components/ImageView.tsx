@@ -13,7 +13,7 @@ export default function ImageView({ path, onDimensions }: { path: string; onDime
   return (
     <div style={{ marginTop: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
-        <img ref={imgRef} src={src} alt={path.split('/').pop()} style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }} onLoad={() => {
+        <img ref={imgRef} src={src} alt={path.split(/[/\\]/).pop()} style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }} onLoad={() => {
           try {
             const i = imgRef.current
             if (i && i.naturalWidth && i.naturalHeight) {
@@ -24,7 +24,7 @@ export default function ImageView({ path, onDimensions }: { path: string; onDime
         }} />
       </div>
       <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-        <a className="link" href={src} download={path.split('/').pop()}>{t('download')}</a>
+        <a className="link" href={src} download={path.split(/[/\\]/).pop()}>{t('download')}</a>
         {natural ? (
           <span className="muted" style={{ marginLeft: 8 }}>{natural.w} × {natural.h}</span>
         ) : null}

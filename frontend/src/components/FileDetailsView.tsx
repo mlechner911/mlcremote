@@ -44,7 +44,7 @@ export default function FileDetailsView({ path }: Props) {
                 </div>
                 <div style={{ textAlign: 'center' }}>
                     <h2 style={{ margin: 0, wordBreak: 'break-all', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                        {path.split('/').pop()}
+                        {path.split(/[/\\]/).pop()}
                         {meta?.isRestricted && <span className="badge badge-error" style={{ fontSize: 12, verticalAlign: 'middle' }}>{t('restricted', 'Restricted')}</span>}
                         {meta?.isReadOnly && !meta?.isRestricted && <span className="badge badge-error" style={{ fontSize: 12, verticalAlign: 'middle' }}>{t('read_only', 'Read Only')}</span>}
                     </h2>

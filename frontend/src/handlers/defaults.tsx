@@ -11,6 +11,7 @@ import { extFromPath, isProbablyText } from '../filetypes'
 const ShellView = React.lazy(() => import('../components/ShellView'))
 const MarkdownPreview = React.lazy(() => import('../components/MarkdownPreview'))
 const ArchiveViewer = React.lazy(() => import('../components/ArchiveViewer'))
+const VideoView = React.lazy(() => import('../components/VideoView'))
 
 export const ShellHandler: FileHandler = {
     name: 'Shell',
@@ -46,6 +47,25 @@ export const PdfHandler: FileHandler = {
             (!!opts.path && opts.path.toLowerCase().endsWith('.pdf'))
     },
     view: ({ path }: ViewProps) => <PdfView path={path} />,
+    isEditable: false
+}
+
+export const VideoHandler: FileHandler = {
+    name: 'Video',
+    priority: 75,
+    matches: (opts: DecideOpts) => {
+        if (opts.probe && opts.probe.mime && opts.probe.mime.startsWith('video/')) return true
+        if (opts.path) {
+            const lower = opts.path.toLowerCase()
+            return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.ogg') || lower.endsWith('.mov')
+        }
+        return false
+    },
+    view: ({ path }: ViewProps) => (
+        <React.Suspense fallback={<div className="muted">Loading video...</div>}>
+            <VideoView path={path} />
+        </React.Suspense>
+    ),
     isEditable: false
 }
 

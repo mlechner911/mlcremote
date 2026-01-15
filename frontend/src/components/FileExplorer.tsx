@@ -394,7 +394,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
               icon: <Icon name={getIcon('download')} />,
               action: () => {
                 const link = document.createElement('a')
-                link.href = makeUrl(`/api/file?path=${encodeURIComponent(contextMenu.item.path)}${localStorage.getItem('mlcremote_token') ? `&token=${encodeURIComponent(localStorage.getItem('mlcremote_token') || '')}` : ''}`)
+                link.href = makeUrl(`/api/file?path=${encodeURIComponent(contextMenu.item.path)}&download=true${localStorage.getItem('mlcremote_token') ? `&token=${encodeURIComponent(localStorage.getItem('mlcremote_token') || '')}` : ''}`)
                 link.download = contextMenu.item.name
                 document.body.appendChild(link)
                 link.click()

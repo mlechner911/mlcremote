@@ -1,11 +1,12 @@
 import { FileHandler, DecideOpts } from './types'
-import { ShellHandler, DirectoryHandler, PdfHandler, ImageHandler, MarkdownHandler, TextHandler, BinaryHandler, UnsupportedHandler, ArchiveHandler } from './defaults'
+import { ShellHandler, DirectoryHandler, PdfHandler, ImageHandler, MarkdownHandler, TextHandler, BinaryHandler, UnsupportedHandler, ArchiveHandler, VideoHandler } from './defaults'
 
 const handlers: FileHandler[] = [
     ShellHandler,
     DirectoryHandler,
     PdfHandler,
     ImageHandler,
+    VideoHandler,
     ArchiveHandler,
     MarkdownHandler,
     TextHandler,
