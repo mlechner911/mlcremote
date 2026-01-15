@@ -771,16 +771,24 @@ export default function App() {
               danger: true,
               action: async () => {
                 const item = contextMenu.entry
-                if (!confirm(t('delete_confirm', { path: item.path }))) return
-                try {
-                  await deleteFile(item.path)
-                  const parts = item.path.split('/')
-                  parts.pop()
-                  const parentPath = parts.join('/') || '/'
-                  setRefreshSignal({ path: parentPath, ts: Date.now() })
-                } catch (e: any) {
-                  setMessageBox({ title: 'Error', message: t('status_failed') + ': ' + e.message })
-                }
+                setMessageBox({
+                  title: t('delete'),
+                  message: t('delete_confirm', { path: item.path }),
+                  confirmLabel: t('delete'),
+                  cancelLabel: t('cancel'),
+                  onConfirm: async () => {
+                    try {
+                      await deleteFile(item.path)
+                      const parts = item.path.split('/')
+                      parts.pop()
+                      const parentPath = parts.join('/') || '/'
+                      setRefreshSignal({ path: parentPath, ts: Date.now() })
+                      setMessageBox(null)
+                    } catch (e: any) {
+                      setMessageBox({ title: 'Error', message: t('status_failed') + ': ' + e.message })
+                    }
+                  }
+                })
               }
             }
           ]}
