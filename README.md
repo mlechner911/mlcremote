@@ -5,8 +5,14 @@ Lightweight remote development environment for small servers, wrapped in a nativ
 
 **Status:** Production Ready (v1.2.2)
 
+## Documentation
+
+- 📘 [User Guide (English)](docs/USER_GUIDE_EN.md)
+- 📙 [Benutzerhandbuch (Deutsch)](docs/USER_GUIDE_DE.md)
+
 ## Features
 
+-   **Localization:** Fully translated interface (English 🇺🇸, German 🇩🇪, French 🇫🇷, Spanish 🇪🇸).
 -   **Native Desktop App:** Windows, macOS, and Linux support via Wails.
 -   **Zero-Setup Remote:** Automatically deploys a standalone Golang binary to the remote server.
 -   **SSH Tunneling:** Securely connects via SSH tunnels; no open ports required on the remote.
