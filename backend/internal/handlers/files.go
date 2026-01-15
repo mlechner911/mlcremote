@@ -644,3 +644,64 @@ func UploadHandler(root string) http.HandlerFunc {
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
+
+// RenameRequest represents a POST /api/rename body.
+type RenameRequest struct {
+	OldPath string `json:"oldPath"`
+	NewPath string `json:"newPath"`
+}
+
+// RenameFileHandler renames or moves a file.
+// @Summary Rename file
+// @Description Renames or moves a file.
+// @ID renameFile
+// @Tags file
+// @Security TokenAuth
+// @Accept json
+// @Param body body RenameRequest true "Rename details"
+// @Success 204
+// @Router /api/rename [post]
+func RenameFileHandler(root string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if util.IsBlocked() {
+			http.Error(w, "service temporarily unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		var req RenameRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+
+		oldTarget, err := util.SanitizePath(root, req.OldPath)
+		if err != nil {
+			http.Error(w, "invalid old path: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		newTarget, err := util.SanitizePath(root, req.NewPath)
+		if err != nil {
+			http.Error(w, "invalid new path: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Check if destination exists
+		if _, err := os.Stat(newTarget); err == nil {
+			http.Error(w, "destination already exists", http.StatusConflict)
+			return
+		}
+
+		// Ensure parent dir of new target exists
+		if err := os.MkdirAll(filepath.Dir(newTarget), 0755); err != nil {
+			http.Error(w, "mkdir failed", http.StatusInternalServerError)
+			return
+		}
+
+		if err := os.Rename(oldTarget, newTarget); err != nil {
+			http.Error(w, "rename failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}

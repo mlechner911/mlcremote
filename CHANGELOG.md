@@ -4,6 +4,7 @@
 **The Polish Update**
 - **Tabs Everywhere**: Connection profiles are now organized with tabs (General, Extended, Quick Tasks).
 - **Log Viewer**: Structured, colored logs with pause controls.
+- **File Renaming**: Added renaming for files and directories via context menu.
 - **Bug Fixes**: Resolved critical issues with PDF/ZIP previews, XML highlighting, and file selection.
 
 ## [1.1.0] - 2026-01-09

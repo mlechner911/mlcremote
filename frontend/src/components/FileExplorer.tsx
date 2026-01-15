@@ -1,5 +1,5 @@
 import React from 'react'
-import { DirEntry, listTree, deleteFile, makeUrl } from '../api'
+import { DirEntry, listTree, deleteFile, makeUrl, renameFile } from '../api'
 import { authedFetch } from '../utils/auth'
 import { Icon, iconForMimeOrFilename, iconForExtension } from '../generated/icons'
 import { getIcon } from '../generated/icon-helpers'
@@ -239,6 +239,27 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
     }
   }
 
+  const handleRename = async (item: DirEntry) => {
+    const newName = window.prompt(t('rename'), item.name)
+    if (!newName || newName === item.name) return
+
+    try {
+      // reconstruct path
+      const parts = item.path.split('/')
+      parts.pop() // remove old name
+      if (newName.includes('/')) {
+        alert(t('error') + ': Invalid filename')
+        return
+      }
+      const newPath = [...parts, newName].join('/')
+      await renameFile(item.path, newPath)
+      load(path)
+    } catch (e: any) {
+      if (showMessageBox) showMessageBox(t('error'), t('status_failed') + ': ' + e.message)
+      else alert(t('status_failed') + ': ' + e.message)
+    }
+  }
+
   const handleContextMenu = (e: React.MouseEvent, item: DirEntry) => {
     e.preventDefault()
     e.stopPropagation()
@@ -381,6 +402,11 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
               },
               separator: true
             }]),
+            {
+              label: t('rename'),
+              icon: <Icon name={getIcon('edit')} />,
+              action: () => handleRename(contextMenu.item)
+            },
             {
               label: t('copy_full_path'),
               icon: <Icon name={getIcon('copy')} />,

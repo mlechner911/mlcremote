@@ -250,6 +250,24 @@ export async function uploadFile(path: string, file: File): Promise<void> {
     }
 }
 
+/**
+ * Rename a file or directory.
+ */
+export async function renameFile(oldPath: string, newPath: string): Promise<void> {
+    info(`POST /api/rename old=${oldPath} new=${newPath}`)
+    const r = await authedFetch('/api/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPath, newPath })
+    })
+    info(`/api/rename POST => ${r.status}`)
+    if (!r.ok) {
+        warn('/api/rename failed')
+        const txt = await r.text().catch(() => '')
+        throw new Error(txt || 'rename failed')
+    }
+}
+
 export type ArchiveEntry = {
     name: string
     size: number
