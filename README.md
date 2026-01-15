@@ -3,7 +3,7 @@ MLCRemote — Desktop
 
 Lightweight remote development environment for small servers, wrapped in a native desktop application.
 
-**Status:** Production Ready (v1.0.1)
+**Status:** Production Ready (v1.2.2)
 
 ## Features
 
@@ -58,28 +58,26 @@ Lightweight remote development environment for small servers, wrapped in a nativ
 ## Development
 
 **Prerequisites:**
- 
- **Prerequisites:**
- 
+
  -   Go 1.24+ (required for backend/desktop modules)
  -   Node.js 20+
  -   Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
  -   **Task** (Build System): `go install github.com/go-task/task/v3/cmd/task@latest`
  -   Docker (Required for Linux cross-compilation)
  -   NSIS (Windows: For installer build)
- 
+
  **Local Build & Run:**
- 
+
  ```bash
  # See available targets
  task help
- 
+
  # Full Desktop Build (Dev Mode with Hot Reload)
  task dev
- 
+
  # Create Production Bundle (Windows)
  task dist
- 
+
  # Create Full Release (Installer + Linux binary)
  task release
  ```
@@ -91,7 +89,7 @@ Lightweight remote development environment for small servers, wrapped in a nativ
 For a fully isolated environment (recommended for testing backend changes):
 
 ```bash
-make docker-dev
+task docker:dev
 ```
 *See [DOCKER.md](DOCKER.md) for details.*
 

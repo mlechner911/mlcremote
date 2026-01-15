@@ -200,6 +200,11 @@ tasks:
       ROOT_DIR:
         sh: pwd
 
+  docker:dev:
+    desc: Run backend in Docker (Dev Mode)
+    cmds:
+      - docker-compose up --build
+
   # ============================================================================
   # RELEASE
   # ============================================================================
