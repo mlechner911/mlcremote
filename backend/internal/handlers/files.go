@@ -484,7 +484,16 @@ func DeleteFileHandler(root string, trashDir string, allowDelete bool) http.Hand
 				return
 			}
 			// remove original
-			_ = os.Remove(target)
+			if err := os.Remove(target); err != nil {
+				// If we fail to remove the original, the delete is incomplete.
+				// For the user, the file is still there.
+				if os.IsPermission(err) {
+					http.Error(w, "permission denied deleting original file", http.StatusForbidden)
+				} else {
+					http.Error(w, "failed to delete original file: "+err.Error(), http.StatusInternalServerError)
+				}
+				return
+			}
 		}
 		// Record deletion
 		RecordTrash(reqPath, dest)

@@ -228,7 +228,8 @@ export async function deleteFile(path: string): Promise<void> {
     info(`/api/file delete => ${r.status}`)
     if (!r.ok) {
         warn('/api/file delete failed')
-        throw new Error('delete failed')
+        const txt = await r.text().catch(() => '')
+        throw new Error(txt || 'delete failed')
     }
 }
 
