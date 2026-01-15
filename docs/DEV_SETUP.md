@@ -10,7 +10,18 @@ This document describes the tools used in the project and step-by-step instructi
 - Vite for frontend dev server and build
 - React 18 + TypeScript for frontend code
 - xterm.js for terminal UI, Prism for syntax highlighting
-- gorilla/websocket and creack/pty for backend PTY and websocket handling
+- Gorilla/websocket and creack/pty for backend PTY and websocket handling
+- Task (go-task) for build automation and cross-platform scripts
+
+## Setup
+
+1. **Install Go and Node.js** as per "Tools used".
+2. **Install Task**:
+   ```bash
+   go install github.com/go-task/task/v3/cmd/task@latest
+   ```
+   (Or see [installation guide](https://taskfile.dev/installation/) for other methods)
+
 
 ## Local setup
 
@@ -65,10 +76,25 @@ ssh -L 8443:localhost:8443 user@remote
 
 ## Useful commands
 
-- Build both projects:
-```bash
-make backend && cd frontend && npm run build
-```
+- **Start Development Mode (Backend + Frontend + Wails):**
+  ```bash
+  task dev
+  ```
+
+- **Build everything (Production):**
+  ```bash
+  task dist
+  ```
+
+- **Build Installer (Windows):**
+  ```bash
+  task installer
+  ```
+
+- **Build Backend Manual:**
+  ```bash
+  cd backend && go build ...
+  ```
 
 ## Desktop (Wails) on Linux
 
