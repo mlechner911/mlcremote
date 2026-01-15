@@ -30,8 +30,8 @@ func DefaultConfig() *Config {
 		Port:        8443,
 		Root:        "", // defaults to environment or current dir in main
 		NoAuth:      false,
-		AllowDelete: false, // Default to safe (read-only/no-delete)
-		TrashDir:    "",    // defaults to ~/.trash in server
+		AllowDelete: true, // Default to true as requested
+		TrashDir:    "",   // defaults to ~/.trash in server
 	}
 }
 
