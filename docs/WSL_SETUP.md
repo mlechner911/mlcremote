@@ -24,7 +24,7 @@ Use the existing Docker build command from your Windows terminal (PowerShell):
 ```powershell
 make build-linux
 ```
-This builds the binary and places it in:  
+This builds the binary and places it in:
 `c:\development\mlcremote\dist\linux\mlcremote`
 
 ## 3. Prepare WSL for Running GUI Apps
@@ -42,8 +42,8 @@ Open your Ubuntu terminal (WSL) and install the lightweight runtime dependencies
     cd /mnt/c/development/mlcremote
     sudo ./desktop/wails/scripts/install-linux-deps.sh
     ```
-    *(Note: This script installs `libgtk-3-dev` and `libwebkit2gtk-4.0-dev` which includes the runtime libraries required to run the app).*
-    
+    *(Note: This script installs `libgtk-3-dev` and prefers `libwebkit2gtk-4.1-dev` when available. If your distro only provides WebKitGTK 4.1 the installer will create a harmless pkg-config compatibility alias so existing build tooling that requests `webkit2gtk-4.0` continues to work.)*
+
 3.  **Install Fonts (Recommended)**:
     If text appears as boxes ("tofu") or you see missing icons/cursors, install the standard font sets:
     ```bash

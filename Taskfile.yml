@@ -33,7 +33,7 @@ tasks:
       - cmd: cd {{.FRONTEND_DIR}} && npm install
       - cmd: cd {{.WAILS_DIR}} && go mod download
       - cmd: cd cmd/icon-gen && go mod download
-      
+
   icons:
     desc: Generate icons from raw assets
     cmds:
@@ -131,7 +131,7 @@ tasks:
 
   payload:all:
     desc: Build ALL payloads (binaries for all platforms + frontend)
-    deps: 
+    deps:
       - payload:linux
       - payload:windows
       - payload:mac:amd64
@@ -153,6 +153,12 @@ tasks:
   # ============================================================================
   # DESKTOP BUILD & DIST
   # ============================================================================
+  wails:build:linux:
+    desc: Build the Wails desktop app on Linux trying WebKitGTK tags in order
+    dir: '{{.WAILS_DIR}}'
+    cmds:
+      - cmd: wails build -s -tags "desktop,production,webkit2_41" || wails build -s -tags "desktop,production,webkit2" || wails build -s -tags "desktop,production"
+
   dist:
     desc: Build Desktop App for Distribution (Production)
     deps: [payload:all]
@@ -160,7 +166,7 @@ tasks:
     cmds:
       - cmd: wails build -s -tags "desktop,production"
         platforms: [windows]
-      - cmd: wails build -s -tags "desktop,production,webkit2_41" || wails build -s -tags "desktop,production,webkit2" || wails build -s -tags "desktop,production"
+      - task: wails:build:linux
         platforms: [linux]
       - cmd: wails build -s -tags "desktop,production"
         platforms: [darwin]
@@ -171,7 +177,7 @@ tasks:
     cmds:
       - mkdir -p {{.DIST_DIR}}
       - cmd: |
-          {{if eq OS "windows"}} 
+          {{if eq OS "windows"}}
             powershell -Command "if (Test-Path '{{.WAILS_DIR}}/build/bin') { Copy-Item -Recurse -Force '{{.WAILS_DIR}}/build/bin/*' '{{.DIST_DIR}}/' }"
           {{else}}
             cp -r {{.WAILS_DIR}}/build/bin/* {{.DIST_DIR}}/

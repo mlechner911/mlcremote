@@ -144,6 +144,20 @@ If you are developing on a headless Linux server (via SSH or VS Code Remote) and
 
 > **Note**: Do *not* open the Vite URL (port 5173/5174) directly for testing app logic. It lacks the Wails runtime bridge. Always use the Wails asset server port (34115).
 
+Long-term WebKitGTK recommendation
+-------------------------------
+
+- **Preferred**: Install `libwebkit2gtk-4.1-dev` if your distribution provides it. Newer distributions ship WebKitGTK 4.1 and the project supports building against it.
+- **Compatibility**: Some build scripts and older tooling request `webkit2gtk-4.0` explicitly. The included helper script `desktop/wails/scripts/install-linux-deps.sh` will create a harmless `webkit2gtk-4.0.pc` pkg-config alias from the available 4.1 `.pc` file when needed.
+- **Best long-term fix**: Update build invocations to prefer the `webkit2_41` build tag when calling `wails build`, for example:
+
+```bash
+wails build -tags webkit2_41 || wails build -tags webkit2 || wails build
+```
+
+Or update project build scripts to try `webkit2_41` first (the repository Taskfile and Dockerfile already do this in several places).
+
+
 Remote desktop testing (Windows → Linux)
 - Start xpra on the remote and attach from Windows:
 ```bash
