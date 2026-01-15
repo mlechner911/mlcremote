@@ -240,3 +240,9 @@ icons:
     file: raw/paste.svg
     mime: application/x-ui
     extensions: ["paste"]
+
+  - id: edit
+    name: Edit
+    file: raw/edit.svg
+    mime: application/x-ui
+    extensions: ["edit"]
