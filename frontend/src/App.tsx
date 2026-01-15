@@ -1,5 +1,5 @@
 import React from 'react'
-import { statPath, type Health, saveSettings, makeUrl, DirEntry, getToken, uploadFile } from './api'
+import { statPath, type Health, saveSettings, makeUrl, DirEntry, getToken, uploadFile, renameFile, deleteFile } from './api'
 import { useAuth } from './context/AuthContext'
 import { useAppSettings } from './hooks/useAppSettings'
 import { useWorkspace } from './hooks/useWorkspace'
@@ -35,8 +35,6 @@ import { defaultStore, boolSerializer, strSerializer } from './utils/storage'
  * width. Heavy-lifted responsibilities are split into child components.
  */
 import MessageBox from './components/MessageBox'
-import StatusBar from './components/StatusBar'
-import { getHandler } from './handlers/registry'
 import StatusBar from './components/StatusBar'
 import { getHandler } from './handlers/registry'
 import { getHealth, getSettings, listTree, Settings, TaskDef } from './api'
@@ -741,7 +739,50 @@ export default function App() {
                   document.body.removeChild(a)
                 }
               }
-            ])
+            ]),
+            {
+              label: t('rename'),
+              icon: <Icon name={getIcon('edit')} />,
+              action: async () => {
+                const item = contextMenu.entry
+                const newName = window.prompt(t('rename'), item.name)
+                if (!newName || newName === item.name) return
+
+                try {
+                  const parts = item.path.split('/')
+                  parts.pop()
+                  if (newName.includes('/')) {
+                    alert(t('error') + ': Invalid filename')
+                    return
+                  }
+                  const newPath = [...parts, newName].join('/')
+                  await renameFile(item.path, newPath)
+                  // Refresh parent directory
+                  const parentPath = parts.join('/') || '/'
+                  setRefreshSignal({ path: parentPath, ts: Date.now() })
+                } catch (e: any) {
+                  setMessageBox({ title: 'Error', message: t('status_failed') + ': ' + e.message })
+                }
+              }
+            },
+            {
+              label: t('delete'),
+              icon: <Icon name={getIcon('trash')} />,
+              danger: true,
+              action: async () => {
+                const item = contextMenu.entry
+                if (!confirm(t('delete_confirm', { path: item.path }))) return
+                try {
+                  await deleteFile(item.path)
+                  const parts = item.path.split('/')
+                  parts.pop()
+                  const parentPath = parts.join('/') || '/'
+                  setRefreshSignal({ path: parentPath, ts: Date.now() })
+                } catch (e: any) {
+                  setMessageBox({ title: 'Error', message: t('status_failed') + ': ' + e.message })
+                }
+              }
+            }
           ]}
         />
       )}

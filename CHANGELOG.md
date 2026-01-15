@@ -2,6 +2,7 @@
 
 ## [1.2.3] - 2026-01-15
 - **Configuration**: Enabled file deletion by default in server config.
+- **UI**: Added **Rename** and **Delete** actions to the File Explorer context menu.
 
 ## [1.2.2] - 2026-01-15
 **The Polish Update**
