@@ -24,6 +24,12 @@ case "$OS_ID" in
     if apt-get install -y libwebkit2gtk-4.1-dev; then
       echo "Installed libwebkit2gtk-4.1-dev"
       echo "Use: wails build -tags webkit2_41"
+      # If build tooling still asks for webkit2gtk-4.0, create a harmless pkg-config alias
+      PKGDIR="/usr/lib/$(dpkg --print-architecture)/pkgconfig"
+      if [[ -f "$PKGDIR/webkit2gtk-4.1.pc" && ! -f "$PKGDIR/webkit2gtk-4.0.pc" ]]; then
+        echo "Creating compatibility alias: $PKGDIR/webkit2gtk-4.0.pc -> webkit2gtk-4.1.pc"
+        cp "$PKGDIR/webkit2gtk-4.1.pc" "$PKGDIR/webkit2gtk-4.0.pc" || true
+      fi
     else
       echo "libwebkit2gtk-4.1-dev not available; installing 4.0 dev"
       apt-get install -y libwebkit2gtk-4.0-dev
