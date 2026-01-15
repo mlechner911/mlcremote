@@ -124,8 +124,25 @@ make build-linux
 ls dist/linux
 ```
 
-Headless environments:
-- Install `xvfb` and run the app with `xvfb-run` if no display server is available.
+### Headless Environments (e.g., SSH / Remote Dev)
+
+If you are developing on a headless Linux server (via SSH or VS Code Remote) and want to test the full desktop app:
+
+1.  **Install Xvfb** (Virtual Framebuffer):
+    ```bash
+    sudo apt-get install xvfb
+    ```
+2.  **Run with Xvfb**:
+    ```bash
+    xvfb-run task dev
+    ```
+3.  **Connect via Browser**:
+    - The output will show a local URL, usually `http://localhost:34115`.
+    - **Forward this port** (34115) to your local machine (VS Code usually does this automatically).
+    - Open `http://localhost:34115` in your local Chrome/Edge.
+    - Wails will bridge the WebSocket connection, allowing functionality like "Save Profile" to work even in the browser.
+
+> **Note**: Do *not* open the Vite URL (port 5173/5174) directly for testing app logic. It lacks the Wails runtime bridge. Always use the Wails asset server port (34115).
 
 Remote desktop testing (Windows → Linux)
 - Start xpra on the remote and attach from Windows:
