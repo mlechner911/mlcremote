@@ -17,6 +17,7 @@ frontend/.npmrc
 desktop/lightdev-desktop
 
 # Desktop (Wails) build artifacts
+build/dist/
 /desktop/build/
 /desktop/wails/build/
 /desktop/wails/frontend/dist/
