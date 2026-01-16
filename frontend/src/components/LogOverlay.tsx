@@ -1,7 +1,7 @@
 import React from 'react'
 import { getLogs, subscribe, clear } from '../utils/logger'
 import { useTranslation } from 'react-i18next'
-
+// probably unused at some point ,, for now .. let me check our backend calls..
 type Props = { visible?: boolean; onClose?: () => void }
 
 export default function LogOverlay({ visible = true, onClose }: Props) {

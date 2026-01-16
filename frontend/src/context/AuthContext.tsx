@@ -1,25 +1,44 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { getHealth, authCheck, Health, login as apiLogin } from '../api'
 
+/**
+ * Defines the shape of the authentication context.
+ * Includes current health/connection status, login methods, and UI state controls.
+ */
 interface AuthContextType {
+    /** Current server health status (version, auth mode, etc.) */
     health: Health | null
+    /** Whether the browser has network connectivity */
     isOnline: boolean
+    /** Timestamp of the last successful health check */
     lastHealthAt: number | null
+    /** Manually triggers a health check */
     refreshHealth: () => Promise<void>
+    /** perform login with password */
     login: (password: string) => Promise<void>
+    /** Manually set a token (e.g. from URL or input) */
     setToken: (token: string) => void
+    /** clear token and state */
     logout: () => void
+
     // Auth UI states
+    /** Controls visibility of the password login modal */
     showLogin: boolean
     setShowLogin: (v: boolean) => void
+    /** Controls visibility of the token input modal */
     showTokenInput: boolean
     setShowTokenInput: (v: boolean) => void
+    /** Controls visibility of the initial auth method chooser */
     showAuthChooser: boolean
     setShowAuthChooser: (v: boolean) => void
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+/**
+ * Global provider for authentication state and server health monitoring.
+ * handles polling, online/offline events, and token management.
+ */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [health, setHealth] = useState<Health | null>(null)
     const [lastHealthAt, setLastHealthAt] = useState<number | null>(null)
@@ -137,6 +156,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     )
 }
 
+/**
+ * Hook to access the auth context. Must be used within an AuthProvider.
+ */
 export function useAuth() {
     const ctx = useContext(AuthContext)
     if (!ctx) throw new Error('useAuth must be used within AuthProvider')

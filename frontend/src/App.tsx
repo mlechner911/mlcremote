@@ -3,29 +3,30 @@ import { statPath, type Health, saveSettings, makeUrl, DirEntry, getToken, uploa
 import { useAuth } from './context/AuthContext'
 import { useAppSettings } from './hooks/useAppSettings'
 import { useWorkspace } from './hooks/useWorkspace'
-import AppHeader from './components/AppHeader'
+// import AppHeader from './components/AppHeader'
 import AuthOverlay from './components/AuthOverlay'
 import AboutPopup from './components/AboutPopup'
-import FileExplorer from './components/FileExplorer'
+// import FileExplorer from './components/FileExplorer'
 import { ActivityBar, SidebarPanel } from './components/ModernSidebar'
 import SettingsPopup from './components/SettingsPopup'
 import ContextMenu, { ContextMenuItem } from './components/ContextMenu'
-import { Intent } from './types/layout'
+// import { Intent } from './types/layout'
 import { useTranslation } from 'react-i18next'
 import { Icon } from './generated/icons'
 import { getIconForShell, getIconForDir, getIcon } from './generated/icon-helpers'
-import TrashView from './components/TrashView'
-import Editor from './components/Editor'
-import BinaryView from './components/BinaryView'
-import FileDetailsView from './components/FileDetailsView'
-import ServerLogsView from './components/ServerLogsView'
-const TerminalTab = React.lazy(() => import('./components/TerminalTab'))
-import TabBarComponent from './components/TabBar'
+import TrashView from './components/views/TrashView'
+// import Editor from './components/Editor'
+// import BinaryView from './components/views/BinaryView'
+// import FileDetailsView from './components/views/FileDetailsView'
+// import ServerLogsView from './components/views/ServerLogsView'
+const TerminalTab = React.lazy(() => import('./components/views/TerminalTab'))
+// import TabBarComponent from './components/TabBar'
+import LayoutManager from './components/LayoutManager'
 
 
 import LogOverlay from './components/LogOverlay'
 import './modern.css'
-import { formatBytes } from './utils/bytes'
+// import { formatBytes } from './utils/bytes'
 import { captureElementToPng } from './utils/capture'
 import { defaultStore, boolSerializer, strSerializer } from './utils/storage'
 
@@ -34,15 +35,16 @@ import { defaultStore, boolSerializer, strSerializer } from './utils/storage'
  * editor tabs, terminal tabs and global settings such as theme and sidebar
  * width. Heavy-lifted responsibilities are split into child components.
  */
-import MessageBox from './components/MessageBox'
+// import MessageBox from './components/MessageBox'
 import StatusBar from './components/StatusBar'
 import { getHandler } from './handlers/registry'
 import { getHealth, getSettings, listTree, Settings, TaskDef } from './api'
 import { Tab, ViewType } from './types/layout'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import type { LayoutNode, PaneId, PaneState } from './types/layout'
+// import type { LayoutNode, PaneId, PaneState } from './types/layout'
+import { DialogProvider, useDialog } from './context/DialogContext'
 
-export default function App() {
+function AppInner() {
   const { t, i18n } = useTranslation()
   const [quickTasks, setQuickTasks] = React.useState<TaskDef[]>(() => {
     // Try to read initial tasks from window.name (injected by desktop wrapper)
@@ -127,8 +129,10 @@ export default function App() {
   const [commandSignals, setCommandSignals] = React.useState<Record<string, { cmd: string, ts: number }>>({})
 
   // These were local state, now derived or managed by hook. 
+  // These were local state, now derived or managed by hook. 
   const [now, setNow] = React.useState<Date>(new Date())
-  const [messageBox, setMessageBox] = React.useState<{ title: string; message: string; onConfirm?: () => void; confirmLabel?: string; cancelLabel?: string } | null>(null)
+
+  const { showDialog } = useDialog()
 
   const handleContextMenu = (entry: DirEntry, x: number, y: number) => {
     setContextMenu({ x, y, entry })
@@ -221,289 +225,6 @@ export default function App() {
 
   const [binaryPath, setBinaryPath] = React.useState<string | null>(null)
 
-  // Recursive renderer using react-resizable-panels
-  const renderLayout = (node: LayoutNode, level: number = 0): React.ReactNode => {
-    if (node.type === 'leaf') {
-      return (
-        <Panel id={`pane-${node.paneId}`} order={1} minSize={10} style={{ display: 'flex', flexDirection: 'column' }}>
-          {renderPane(node.paneId)}
-        </Panel>
-      )
-    }
-
-    // Node is a split
-    const direction = node.direction === 'vertical' ? 'horizontal' : 'vertical'
-    // direction 'horizontal' means side-by-side panels, so vertical divider -> group-horizontal
-    // direction 'vertical' means stacked panels, so horizontal divider -> group-vertical
-
-    return (
-      <PanelGroup
-        direction={direction}
-        autoSaveId={`layout-split-${level}-${node.direction}`}
-      >
-        {/* We need to wrap children in Fragments or Panels depending on structure. 
-            Since renderLayout returns a Panel or PanelGroup, we can nest them directly?
-            Actually, PanelGroup expects direct Panel children mostly. 
-            But nested PanelGroups are allowed inside Panels.
-        */}
-
-        {/* First Child */}
-        {node.children[0].type === 'leaf' ? (
-          renderLayout(node.children[0], level + 1)
-        ) : (
-          <Panel minSize={10}>
-            {renderLayout(node.children[0], level + 1)}
-            {/* Resize Handle for Sidebar */}
-            {isSidebarExpanded && (
-              <PanelResizeHandle className="ResizeHandleOuter group-horizontal sidebar-handle">
-                <div className="ResizeHandleInner" />
-              </PanelResizeHandle>
-            )}
-          </Panel>
-        )}
-
-        <PanelResizeHandle className={`ResizeHandleOuter group-${direction}`}>
-          <div className="ResizeHandleInner" />
-        </PanelResizeHandle>
-
-        {/* Second Child */}
-        {node.children[1].type === 'leaf' ? (
-          renderLayout(node.children[1], level + 1)
-        ) : (
-          <Panel minSize={10}>
-            {renderLayout(node.children[1], level + 1)}
-          </Panel>
-        )}
-      </PanelGroup>
-    )
-  }
-
-  // The content of a single pane (TabBar + Editors)
-  const renderPane = (paneId: string) => {
-    const pState = panes[paneId]
-    if (!pState) return <div className="muted">Pane not found</div>
-    // Merge unsaved status and dynamic labels into tabs for rendering
-    const pTabs = pState.tabs.map(tab => {
-      let label = tab.label
-
-      // Defensive fix: Ensure metadata tab always says "Details"
-      if (tab.id === 'metadata') {
-        label = t('details', 'Details')
-      }
-
-      if (tab.type === 'terminal' && !tab.id.startsWith('task-')) {
-        const cwd = shellCwds[tab.id]
-        if (cwd) {
-          const parts = cwd.split('/').filter(Boolean)
-          if (parts.length > 0) {
-            label = parts[parts.length - 1]
-            if (parts.length > 1 && label.includes('.')) {
-              // heuristic: if it looks like a file, maybe show parent dir? 
-              // or just show the dir name. The old logic had some complex checks.
-              // Old logic:
-              /*
-                 if (last.includes('.') && parts.length > 1) {
-                     name = parts[parts.length - 2]
-                 }
-              */
-              // We'll trust the simpler 'last part' for now or match old logic if crucial.
-              // Let's match old logic for consistency.
-              label = parts[parts.length - 1]
-            }
-          } else {
-            label = '/'
-          }
-        }
-      }
-      return {
-        ...tab,
-        label,
-        dirty: unsavedChanges[tab.id] || false
-      }
-    })
-    const pActiveId = pState.activeTabId || ''
-
-    // Local handlers for this pane
-    const onActivate = (id: string) => {
-      setActivePaneId(paneId) // focus pane
-      setPanes((prev: Record<string, PaneState>) => {
-        const p = prev[paneId]
-        if (!p) return prev
-        return { ...prev, [paneId]: { ...p, activeTabId: id } }
-      })
-
-      // side effects (explorer dir sync)
-      // find the tab
-      const tab = pState.tabs.find(t => t.id === id)
-      if (tab && tab.type === 'editor' && !tab.path.includes('metadata')) {
-        const parts = tab.path.split('/').filter(Boolean)
-        parts.pop()
-        // const dir = parts.length ? `/${parts.join('/')}` : ''
-        // if (dir !== explorerDir) setExplorerDir(dir) // optional sync
-      }
-      if (tab && tab.id !== 'metadata' && tab.type === 'editor') setSelectedPath(tab.path)
-      setFocusRequest(Date.now())
-    }
-
-    const onClose = (id: string) => {
-      // close tab logic
-      const p = panes[paneId]
-      if (!p) return
-
-      const doClose = () => {
-        // logic: if this is the last tab in the pane, AND we are not root, close the pane
-        if (p.tabs.length === 1 && p.tabs[0].id === id && paneId !== 'root') {
-          closePane(paneId)
-          return
-        }
-
-        setPanes((prev: Record<string, PaneState>) => {
-          const p2 = prev[paneId]
-          if (!p2) return prev
-          const nextTabs = p2.tabs.filter(x => x.id !== id)
-          // if closing active
-          let nextActive = p2.activeTabId
-          if (p2.activeTabId === id) {
-            nextActive = nextTabs[0]?.id || ''
-          }
-          return { ...prev, [paneId]: { ...p2, tabs: nextTabs, activeTabId: nextActive } }
-        })
-      }
-
-      const hasUnsaved = unsavedChanges[id]
-      if (hasUnsaved) {
-        setMessageBox({
-          title: t('unsaved_changes_title', 'Unsaved Changes'),
-          message: t('confirm_close_unsaved', 'You have unsaved changes. Close anyway?'),
-          confirmLabel: t('close_discard', 'Close & Discard'),
-          onConfirm: () => {
-            setMessageBox(null)
-            // Force clear unsaved status
-            setUnsavedChanges(prev => {
-              const next = { ...prev }
-              delete next[id]
-              return next
-            })
-            doClose()
-          }
-        })
-        return
-      }
-
-      doClose()
-    }
-
-    const isActivePane = paneId === activePaneId
-
-    return (
-      <div className={`pane-content modern-tabs`}
-        style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', minWidth: 0, overflow: 'hidden' }}
-        onClick={() => { if (!isActivePane) setActivePaneId(paneId) }}
-      >
-        {/* Active Indicator Border */}
-        {isActivePane && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--accent)', zIndex: 10 }} />}
-
-        {pTabs.length > 0 ? (
-          <>
-            {/* TabBar Container: flex-shrink: 0 is CRITICAL to prevent the tab bar from being 
-                crushed to 0 height when content expands (like large images). 
-                minWidth: 0 allows the flex container to shrink below content size if needed (for scrolling). */}
-            <div style={{ width: '100%', minWidth: 0, overflow: 'hidden', flexShrink: 0 }} onContextMenu={(e) => {
-              e.preventDefault()
-              setActivePaneId(paneId)
-              setPaneContextMenu({ x: e.clientX, y: e.clientY })
-            }}>
-              <React.Suspense fallback={null}>
-                <TabBarComponent
-                  tabs={pTabs}
-                  activeId={pActiveId}
-                  onActivate={onActivate}
-                  onClose={onClose}
-                  onCloseOthers={(id) => {
-                    setPanes((prev: Record<string, PaneState>) => {
-                      const st = prev[paneId]
-                      if (!st) return prev
-                      const tToKeep = st.tabs.find(t => t.id === id)
-                      if (!tToKeep) return prev
-                      return { ...prev, [paneId]: { ...st, tabs: [tToKeep], activeTabId: id } }
-                    })
-                  }}
-                  onCloseLeft={(id) => {
-                    setPanes((prev: Record<string, PaneState>) => {
-                      const st = prev[paneId]
-                      if (!st) return prev
-                      const idx = st.tabs.findIndex(t => t.id === id)
-                      if (idx <= 0) return prev
-                      const newTabs = st.tabs.slice(idx)
-                      let newActive = st.activeTabId
-                      if (!newTabs.map(t => t.id).includes(newActive)) {
-                        newActive = id
-                      }
-                      return { ...prev, [paneId]: { ...st, tabs: newTabs, activeTabId: newActive } }
-                    })
-                  }}
-                  onSplitRight={(id) => splitPane('vertical', id)}
-                  onSplitDown={(id) => splitPane('horizontal', id)}
-                />
-              </React.Suspense>
-            </div>
-            {/* Content Container: minHeight: 0 and overflow: hidden are required for nested flex scrolling to work correctly. */}
-            <div style={{ flex: 1, position: 'relative', minHeight: 0, overflow: 'hidden' }}>
-              {pTabs.map(tab => (
-                <div key={tab.id} style={{ display: tab.id === pActiveId ? 'block' : 'none', height: '100%' }}>
-                  {(() => {
-                    switch (tab.type) {
-                      case 'terminal':
-                        return (
-                          <React.Suspense fallback={<div className="muted">{t('loading')}</div>}>
-                            <TerminalTab
-                              shell={(() => {
-                                const urlShell = new URLSearchParams(window.location.search).get('shell')
-                                return urlShell || (settings && settings.defaultShell) || 'bash'
-                              })()}
-                              path={shellCwds[tab.id] || ''}
-                              label={tab.label}                           // Pass the label!
-                              initialCommand={commandSignals[tab.id]?.cmd}
-                              commandSignal={commandSignals[tab.id]}
-                              onExit={() => onClose(tab.id)}
-                            />
-                          </React.Suspense>
-                        )
-                      case 'custom':
-                        if (tab.id === 'trash') return <TrashView />
-                        if (tab.id === 'metadata') return <FileDetailsView path={selectedPath} />
-                        return null
-                      case 'logs':
-                        return <ServerLogsView />
-                      case 'binary':
-                        return (
-                          <React.Suspense fallback={<div className="muted">Loading…</div>}>
-                            <BinaryView path={binaryPath || undefined} />
-                          </React.Suspense>
-                        )
-                      case 'editor':
-                      default:
-                        return (
-                          <Editor path={tab.path} settings={settings || undefined} onSaved={() => { /* no-op */ }} reloadTrigger={reloadTriggers[tab.id] || 0} onUnsavedChange={handleUnsavedChange} onMeta={(m: any) => {
-                            if (m && m.path) setFileMetas(fm => ({ ...fm, [tab.id]: m }))
-                          }} intent={tab.intent} onOpen={openFile} />
-                        )
-                    }
-                  })()}
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="welcome-message" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: '48px', marginBottom: '10px', opacity: 0.2 }}><Icon name={getIcon('folder')} size={48} /></div>
-            <div style={{ opacity: 0.5 }}>{t('no_files')}</div>
-            {paneId !== 'root' && <button className="btn link" onClick={() => closePane(paneId)}>{t('close')} Pane</button>}
-          </div>
-        )}
-      </div>
-    )
-  }
 
   if (!loadedSettings) return null // or loading spinner
 
@@ -596,7 +317,7 @@ export default function App() {
 
                         openFile(p)
                       } catch (e: any) {
-                        setMessageBox({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
+                        showDialog({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
                         return
                       }
                     })()
@@ -624,16 +345,6 @@ export default function App() {
             <div className="main-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
               {/* Unified authentication chooser/modal */}
               <AuthOverlay />
-              {messageBox && (
-                <MessageBox
-                  title={messageBox.title}
-                  message={messageBox.message}
-                  onClose={() => setMessageBox(null)}
-                  onConfirm={messageBox.onConfirm}
-                  confirmLabel={messageBox.confirmLabel}
-                  cancelLabel={messageBox.cancelLabel}
-                />
-              )}
 
               {settingsOpen && (
                 <SettingsPopup
@@ -662,7 +373,29 @@ export default function App() {
               )}
 
               {/* Recursive Panel Layout */}
-              {renderLayout(layout)}
+              <LayoutManager
+                layout={layout}
+                panes={panes}
+                activePaneId={activePaneId}
+                isSidebarExpanded={isSidebarExpanded}
+                selectedPath={selectedPath}
+                setActivePaneId={setActivePaneId}
+                setPanes={setPanes}
+                closePane={closePane}
+                splitPane={splitPane}
+                shellCwds={shellCwds}
+                commandSignals={commandSignals}
+                reloadTriggers={reloadTriggers}
+                unsavedChanges={unsavedChanges}
+                setUnsavedChanges={setUnsavedChanges}
+                setPaneContextMenu={setPaneContextMenu}
+                settings={settings}
+                openFile={openFile}
+                setActiveTab={setActiveTab}
+                setFileMetas={setFileMetas}
+                binaryPath={binaryPath}
+                onTabSelect={setSelectedPath}
+              />
 
 
             </div>
@@ -745,24 +478,35 @@ export default function App() {
               icon: <Icon name={getIcon('edit')} />,
               action: async () => {
                 const item = contextMenu.entry
-                const newName = window.prompt(t('rename'), item.name)
-                if (!newName || newName === item.name) return
 
-                try {
-                  const parts = item.path.split('/')
-                  parts.pop()
-                  if (newName.includes('/')) {
-                    alert(t('error') + ': Invalid filename')
-                    return
+                showDialog({
+                  title: t('rename'),
+                  message: t('rename_prompt', { name: item.name }),
+                  inputType: 'text',
+                  defaultValue: item.name,
+                  confirmLabel: t('rename'),
+                  onConfirm: async (newName) => {
+                    if (!newName || newName === item.name) return
+
+                    try {
+                      const parts = item.path.split('/')
+                      parts.pop()
+                      if (newName.includes('/')) {
+                        alert(t('error') + ': Invalid filename') // TODO: Toast
+                        return
+                      }
+                      const newPath = [...parts, newName].join('/')
+                      await renameFile(item.path, newPath)
+                      // Refresh parent directory
+                      const parentPath = parts.join('/') || '/'
+                      setRefreshSignal({ path: parentPath, ts: Date.now() })
+                    } catch (e: any) {
+                      // Reuse message box for error? Or separate Alert?
+                      // For now alert, but we should use a Toast or Error Dialog
+                      alert(t('status_failed') + ': ' + e.message)
+                    }
                   }
-                  const newPath = [...parts, newName].join('/')
-                  await renameFile(item.path, newPath)
-                  // Refresh parent directory
-                  const parentPath = parts.join('/') || '/'
-                  setRefreshSignal({ path: parentPath, ts: Date.now() })
-                } catch (e: any) {
-                  setMessageBox({ title: 'Error', message: t('status_failed') + ': ' + e.message })
-                }
+                })
               }
             },
             {
@@ -771,7 +515,7 @@ export default function App() {
               danger: true,
               action: async () => {
                 const item = contextMenu.entry
-                setMessageBox({
+                showDialog({
                   title: t('delete'),
                   message: t('delete_confirm', { path: item.path }),
                   confirmLabel: t('delete'),
@@ -783,9 +527,8 @@ export default function App() {
                       parts.pop()
                       const parentPath = parts.join('/') || '/'
                       setRefreshSignal({ path: parentPath, ts: Date.now() })
-                      setMessageBox(null)
                     } catch (e: any) {
-                      setMessageBox({ title: 'Error', message: t('status_failed') + ': ' + e.message })
+                      showDialog({ title: 'Error', message: t('status_failed') + ': ' + e.message })
                     }
                   }
                 })
@@ -812,5 +555,13 @@ export default function App() {
         />
       )}
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <DialogProvider>
+      <AppInner />
+    </DialogProvider>
   )
 }

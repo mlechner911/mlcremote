@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react'
-import { makeUrl, getToken } from '../api'
+import { makeUrl, getToken } from '../../api'
 import { useTranslation } from 'react-i18next'
-import { Icon } from '../generated/icons'
-import { getIcon } from '../generated/icon-helpers'
+import { Icon } from '../../generated/icons'
+import { getIcon } from '../../generated/icon-helpers'
 
-type Props = {
-    path: string
-}
+import { ViewProps, FileHandler, DecideOpts } from '../../handlers/types'
 
-export default function VideoView({ path }: Props) {
+// ... imports
+
+/**
+ * Plays video files using the native HTML5 video player.
+ */
+export default function VideoView({ path }: ViewProps) {
     const { t } = useTranslation()
     const [error, setError] = useState<string | null>(null)
     const [token, setToken] = useState<string>('')
@@ -77,4 +80,19 @@ export default function VideoView({ path }: Props) {
             </video>
         </div>
     )
+}
+
+export const VideoHandler: FileHandler = {
+    name: 'Video',
+    priority: 75,
+    matches: (opts: DecideOpts) => {
+        if (opts.probe && opts.probe.mime && opts.probe.mime.startsWith('video/')) return true
+        if (opts.path) {
+            const lower = opts.path.toLowerCase()
+            return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.ogg') || lower.endsWith('.mov')
+        }
+        return false
+    },
+    view: VideoView,
+    isEditable: false
 }

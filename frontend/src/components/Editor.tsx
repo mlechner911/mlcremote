@@ -12,8 +12,11 @@ import { getHandler } from '../handlers/registry'
 import { useTranslation } from 'react-i18next'
 import { handleBOM, restoreBOM } from '../utils/text'
 
+import { Tab } from '../types/layout'
+
 type Props = {
   path: string
+  tab?: Tab
   onSaved?: () => void
   settings?: { allowDelete?: boolean }
   reloadTrigger?: number
@@ -26,7 +29,7 @@ type Props = {
 
 import MessageBox from './MessageBox'
 
-export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta, intent, onOpen, customLabel }: Props) {
+export default function Editor({ path, tab, onSaved, settings, reloadTrigger, onUnsavedChange, onMeta, intent, onOpen, customLabel }: Props) {
   const { t } = useTranslation()
   const [content, setContent] = React.useState<string>('')
   const [origContent, setOrigContent] = React.useState<string>('')
@@ -362,6 +365,7 @@ export default function Editor({ path, onSaved, settings, reloadTrigger, onUnsav
             onDimensions={(w, h) => setImageDims({ w, h })}
             readOnly={meta?.isReadOnly}
             intent={intent}
+            tab={tab}
           />
         )}
       </div>

@@ -1,6 +1,6 @@
 {
   "name": "lightdev-frontend",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

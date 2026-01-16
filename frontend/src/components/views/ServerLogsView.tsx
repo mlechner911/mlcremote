@@ -1,14 +1,19 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { getRemoteLogs } from '../api'
-import { Icon } from '../generated/icons'
-import { getIcon } from '../generated/icon-helpers'
+import { getRemoteLogs } from '../../api'
+import { Icon } from '../../generated/icons'
+import { getIcon } from '../../generated/icon-helpers'
 import { useTranslation } from 'react-i18next'
 
 interface Props {
     // Support standard tab props if needed in future
 }
 
-export default function ServerLogsView(props: Props) {
+// ... imports
+
+/**
+ * Displays live server logs with auto-scroll and pause functionality.
+ */
+export default function ServerLogsView(_props: Props) {
     const { t } = useTranslation()
     const [logs, setLogs] = useState('')
     const [error, setError] = useState<string | null>(null)

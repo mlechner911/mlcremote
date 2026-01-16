@@ -1,5 +1,14 @@
 import { FileHandler, DecideOpts } from './types'
-import { ShellHandler, DirectoryHandler, PdfHandler, ImageHandler, MarkdownHandler, TextHandler, BinaryHandler, UnsupportedHandler, ArchiveHandler, VideoHandler } from './defaults'
+import { PdfHandler } from '../components/views/PdfView'
+import { ShellHandler } from '../components/views/ShellView'
+import { VideoHandler } from '../components/views/VideoView'
+import { ImageHandler } from '../components/views/ImageView'
+import { ArchiveHandler } from '../components/views/ArchiveViewer'
+import { MarkdownHandler } from '../components/views/MarkdownView'
+import { TextHandler } from '../components/views/TextView'
+import { DirectoryHandler } from '../components/views/DirectoryView'
+import { BinaryHandler } from '../components/views/BinaryView'
+import { UnsupportedHandler } from '../components/views/UnsupportedView'
 
 const handlers: FileHandler[] = [
     ShellHandler,

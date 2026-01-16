@@ -1,12 +1,12 @@
 import React from 'react'
-import { statPath, getApiBaseUrl } from '../api'
-import { getToken, authedFetch } from '../utils/auth'
+import { statPath, getApiBaseUrl } from '../../api'
+import { getToken, authedFetch } from '../../utils/auth'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { useTranslation } from 'react-i18next'
-import { Icon } from '../generated/icons'
-import { getIcon } from '../generated/icon-helpers'
+import { Icon } from '../../generated/icons'
+import { getIcon } from '../../generated/icon-helpers'
 
 type Props = {
   shell: string

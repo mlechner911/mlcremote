@@ -1,9 +1,14 @@
 import React from 'react'
-import { getToken } from '../utils/auth'
-import { makeUrl } from '../api'
+import { getToken } from '../../utils/auth'
+import { makeUrl } from '../../api'
 import { useTranslation } from 'react-i18next'
 
-export default function ImageView({ path, onDimensions }: { path: string; onDimensions?: (w: number, h: number) => void }) {
+import { ViewProps, FileHandler, DecideOpts } from '../../handlers/types'
+
+/**
+ * Renders an image file with basic dimensions display.
+ */
+export default function ImageView({ path, onDimensions }: ViewProps) {
   const { t } = useTranslation()
   const token = getToken()
   const src = makeUrl(`/api/file?path=${encodeURIComponent(path)}${token ? `&token=${encodeURIComponent(token)}` : ''}`)
@@ -31,4 +36,19 @@ export default function ImageView({ path, onDimensions }: { path: string; onDime
       </div>
     </div>
   )
+}
+
+export const ImageHandler: FileHandler = {
+  name: 'Image',
+  priority: 70,
+  matches: (opts: DecideOpts) => {
+    if (opts.probe && opts.probe.mime && opts.probe.mime.startsWith('image/')) return true
+    if (opts.path) {
+      const lower = opts.path.toLowerCase()
+      return lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.gif') || lower.endsWith('.svg') || lower.endsWith('.webp')
+    }
+    return false
+  },
+  view: ImageView,
+  isEditable: false
 }

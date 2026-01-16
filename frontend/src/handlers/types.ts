@@ -9,8 +9,11 @@ export interface DecideOpts {
     intent?: Intent
 }
 
+import { Tab } from '../types/layout'
+
 export interface ViewProps {
     path: string
+    tab?: Tab
     content?: string
     setContent?: (v: string) => void
     origContent?: string

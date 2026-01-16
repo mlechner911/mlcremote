@@ -1,11 +1,16 @@
 import React from 'react'
-import { Icon, iconForMimeOrFilename, iconForExtension } from '../generated/icons'
-import { formatBytes } from '../utils/bytes'
-import { authedFetch, getToken } from '../utils/auth'
+import { Icon, iconForMimeOrFilename, iconForExtension } from '../../generated/icons'
+import { formatBytes } from '../../utils/bytes'
+import { authedFetch, getToken } from '../../utils/auth'
 import { useTranslation } from 'react-i18next'
 
 type TrashEntry = { originalPath: string; trashPath: string; deletedAt: string }
 
+// ... imports
+
+/**
+ * Displays the most recently deleted item in the trash with restore/download options.
+ */
 export default function TrashView() {
   const { t } = useTranslation()
   const [entry, setEntry] = React.useState<TrashEntry | null>(null)

@@ -1,6 +1,6 @@
 import React from 'react'
 import Prism from 'prismjs'
-import { langForExt, aliasForExt } from '../grammar'
+import { langForExt, aliasForExt } from '../../grammar'
 import { useTranslation } from 'react-i18next'
 // Prism language components and theme — keep these imports local to TextView
 // to avoid loading them for non-text previews.
@@ -35,17 +35,10 @@ import 'prismjs/components/prism-jsx'
 import 'prismjs/components/prism-tsx'
 
 // editor styles
-import '../editor.css'
+import '../../editor.css'
 
-type Props = {
-    content: string
-    setContent: (s: string) => void
-    origContent: string
-    ext: string
-    alias?: string
-    textareaId: string
-    readOnly?: boolean
-}
+import { ViewProps, FileHandler, DecideOpts } from '../../handlers/types'
+import { isProbablyText } from '../../filetypes'
 
 function escapeHtml(unsafe: string) {
     return unsafe.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -64,7 +57,12 @@ function safeHighlight(text: string, ext: string) {
     }
 }
 
-export default function TextView({ content, setContent, origContent, ext, alias, textareaId, readOnly }: Props) {
+// ... imports
+
+/**
+ * A code editor/viewer component supporting syntax highlighting for various languages.
+ */
+export default function TextView({ content = '', setContent, origContent = '', ext = '', alias, textareaId, readOnly }: ViewProps) {
     const { t } = useTranslation()
     const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
     const preRef = React.useRef<HTMLElement | null>(null)
@@ -101,7 +99,7 @@ export default function TextView({ content, setContent, origContent, ext, alias,
                 name={textareaId || 'editor'}
                 id={textareaId}
                 data-grammar={alias}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={(e) => setContent && setContent(e.target.value)}
                 onScroll={() => {
                     if (textareaRef.current && preRef.current) {
                         preRef.current.scrollTop = textareaRef.current.scrollTop
@@ -117,4 +115,24 @@ export default function TextView({ content, setContent, origContent, ext, alias,
             />
         </div>
     )
+}
+
+export const TextHandler: FileHandler = {
+    name: 'Text',
+    priority: 50,
+    matches: (opts: DecideOpts) => {
+        // If probe says text, it's text.
+        if (opts.probe && opts.probe.isText) return true
+
+        // If we have a probe and it explicitly says NOT text, then we shouldn't match
+        if (opts.probe && !opts.probe.isText) return false
+
+        // Fallback to heuristic
+        if (opts.path && isProbablyText(opts.path)) return true
+        return false
+    },
+    view: (props: ViewProps) => (
+        <TextView {...props} content={props.content || ''} origContent={props.origContent || ''} ext={props.ext || ''} />
+    ),
+    isEditable: true
 }

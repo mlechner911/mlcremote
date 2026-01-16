@@ -6,7 +6,8 @@ import { authedFetch } from './utils/auth'
  * Keep this list conservative — unknown extensions default to text.
  */
 const textExtensions = new Set([
-  'txt', 'md', 'markdown', 'yaml', 'yml', 'json', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'env', 'ini', 'cfg', 'conf', 'csh', 'gitignore', 'dockerfile'
+  'txt', 'md', 'markdown', 'yaml', 'yml', 'json', 'js', 'ts', 'jsx', 'tsx',
+  'html', 'css', 'env', 'ini', 'cfg', 'conf', 'csh', 'gitignore', 'dockerfile'
   , 'sql'
 ])
 /**

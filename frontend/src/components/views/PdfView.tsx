@@ -1,8 +1,14 @@
 import React from 'react'
-import { getToken, authedFetch, makeUrl } from '../utils/auth'
+import { getToken, authedFetch, makeUrl } from '../../utils/auth'
 import { useTranslation } from 'react-i18next'
+import { ViewProps, FileHandler, DecideOpts } from '../../handlers/types'
+// We ignore unused Props for now if not used, but signature should match
+// ... imports
 
-export default function PdfPreview({ path }: { path: string }) {
+/**
+ * Renders PDF documents using an iframe or object tag with fallback support.
+ */
+export default function PdfView({ path }: ViewProps) {
   const { t } = useTranslation()
   const [pdfLib, setPdfLib] = React.useState<any | null>(null)
   const [pdfDoc, setPdfDoc] = React.useState<any | null>(null)
@@ -116,4 +122,15 @@ export default function PdfPreview({ path }: { path: string }) {
       </div>
     </div>
   )
+}
+
+export const PdfHandler: FileHandler = {
+  name: 'PDF',
+  priority: 80,
+  matches: (opts: DecideOpts) => {
+    return (opts.probe && opts.probe.mime === 'application/pdf') ||
+      (!!opts.path && opts.path.toLowerCase().endsWith('.pdf'))
+  },
+  view: PdfView,
+  isEditable: false
 }

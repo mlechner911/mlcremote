@@ -7,13 +7,18 @@ type Props = {
     title: string
     message: string
     onClose: () => void
-    onConfirm?: () => void
     confirmLabel?: string
     cancelLabel?: string
+    // Prompt extensions
+    inputType?: string
+    defaultValue?: string
+    placeholder?: string
+    onConfirm?: (value?: string) => void
 }
 
-export default function MessageBox({ title, message, onClose, onConfirm, confirmLabel, cancelLabel }: Props) {
+export default function MessageBox({ title, message, onClose, onConfirm, confirmLabel, cancelLabel, inputType, defaultValue, placeholder }: Props) {
     const { t } = useTranslation()
+    const [inputValue, setInputValue] = React.useState(defaultValue || '')
     // close on escape key
     React.useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -32,12 +37,26 @@ export default function MessageBox({ title, message, onClose, onConfirm, confirm
                 </div>
                 <div style={{ marginBottom: 24, fontSize: 14, lineHeight: '1.5', color: 'var(--text-muted)' }}>
                     {message}
+                    {inputType && (
+                        <input
+                            type={inputType}
+                            className="input"
+                            style={{ width: '100%', marginTop: 12, padding: 8 }}
+                            value={inputValue}
+                            onChange={e => setInputValue(e.target.value)}
+                            placeholder={placeholder}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter' && onConfirm) onConfirm(inputValue)
+                            }}
+                            autoFocus
+                        />
+                    )}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
                     {onConfirm ? (
                         <>
                             <button className="btn" onClick={onClose}>{cancelLabel || t('cancel')}</button>
-                            <button className="btn primary" onClick={onConfirm}>{confirmLabel || t('continue')}</button>
+                            <button className="btn primary" onClick={() => onConfirm(inputType ? inputValue : undefined)}>{confirmLabel || t('continue')}</button>
                         </>
                     ) : (
                         <button className="btn" onClick={onClose}>{t('close')}</button>

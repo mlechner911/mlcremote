@@ -1,12 +1,17 @@
 import React from 'react'
-import { ArchiveEntry, listArchive } from '../api'
-import { formatBytes } from '../utils/bytes'
+import { ArchiveEntry, listArchive } from '../../api'
+import { formatBytes } from '../../utils/bytes'
 import { useTranslation } from 'react-i18next'
-import { Icon, iconForExtension } from '../generated/icons'
-import { getIconForDir } from '../generated/icon-helpers'
-import { ViewProps } from '../handlers/types'
-import { extFromPath } from '../filetypes'
+import { Icon, iconForExtension } from '../../generated/icons'
+import { getIconForDir } from '../../generated/icon-helpers'
+import { ViewProps, FileHandler, DecideOpts } from '../../handlers/types'
+import { extFromPath } from '../../filetypes'
 
+// ... imports
+
+/**
+ * Displays the contents of an archive file (zip, tar, etc.) in a read-only list.
+ */
 export default function ArchiveViewer({ path }: ViewProps) {
     const { t } = useTranslation()
     const [entries, setEntries] = React.useState<ArchiveEntry[]>([])
@@ -59,4 +64,16 @@ export default function ArchiveViewer({ path }: ViewProps) {
             </table>
         </div>
     )
+}
+
+export const ArchiveHandler: FileHandler = {
+    name: 'Archive',
+    priority: 65,
+    matches: (opts: DecideOpts) => {
+        if (!opts.path) return false
+        const lower = opts.path.toLowerCase()
+        return lower.endsWith('.zip') || lower.endsWith('.tar') || lower.endsWith('.tar.gz') || lower.endsWith('.tgz')
+    },
+    view: ArchiveViewer,
+    isEditable: false
 }

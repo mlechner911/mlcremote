@@ -1,15 +1,18 @@
 import React from 'react'
-import { statPath, makeUrl } from '../api'
-import { formatBytes } from '../utils/bytes'
+import { statPath, makeUrl } from '../../api'
+import { formatBytes } from '../../utils/bytes'
 import { useTranslation } from 'react-i18next'
-import { Icon, iconForMimeOrFilename, iconForExtension } from '../generated/icons'
-import { getIcon } from '../generated/icon-helpers'
+import { Icon, iconForMimeOrFilename, iconForExtension } from '../../generated/icons'
+import { getIcon } from '../../generated/icon-helpers'
 
 // FileDetailsView props
 interface Props {
     path?: string
 }
 
+/**
+ * Shows detailed metadata and properties for a specific file or directory.
+ */
 export default function FileDetailsView({ path }: Props) {
     const { t } = useTranslation()
     const [meta, setMeta] = React.useState<any>(null)
