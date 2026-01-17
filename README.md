@@ -3,7 +3,7 @@
 <div align="center">
   <h3>Access Any System, Anywhere.</h3>
   <p>
-    <b>The All-in-One open-source Remote Development environment.</b><br>
+    <b>The All-in-One open-source Remote Development/System Administration environment.</b><br>
     Connect to Linux, Windows, or Mac from a native desktop application.<br>
     No complex setup. No monthly fees. Just code.
   </p>
@@ -20,11 +20,13 @@
 ## Why MLCRemote?
 
 We believe remote management should be **visual, fast, and free**.
-Most remote tools are either expensive SaaS subscriptions or complex command-line utilities.
+Most remote tools are either expensive SaaS subscriptions or complex command-line utilities, a lot
+are also unusable for small VPS or home servers.
 
 **MLCRemote** bridges this gap:
 *   **Open Source (MIT):** Free to use for personal and commercial projects.
 *   **Zero-Setup:** It deploys itself. You just need SSH access.
+*   **Extremely Lightweight:** The remote agent is a single binary (~10MB) requiring **< 20MB RAM**. Perfect for Raspberry Pis and small VPS.
 *   **Cross-Platform:** Connect *from* Windows/Mac/Linux *to* Windows/Mac/Linux.
 
 ## Features at a Glance
@@ -34,9 +36,10 @@ Most remote tools are either expensive SaaS subscriptions or complex command-lin
 | **🚀 Instant Access** | Connect to any server in seconds. The app automatically deploys a lightweight, static Go binary to handle all operations. |
 | **📁 Rich File Manager** | Drag & Drop uploads, context menus, trash support, and full file operations (Copy/Move/Delete). |
 | **💻 Terminal & PTY** | Integrated, resize-aware SSH terminal with multiple tabs and full encoding support. |
-| **🖼️ Media Preview** | View images, PDFs, Markdown, Videos, and Code directly in the remote file manager. |
+| **� Admin Tools** | Monitor system health, manage processes (HTOP style), and execute one-click maintenance scripts via Quick Jobs. |
+| **�🖼️ Media Preview** | View images, PDFs, Markdown, Videos, and Code directly in the remote file manager. |
 | **🔒 Secure Tunneling** | All traffic flows through a secure SSH tunnel. No extra ports need to be opened on your firewall. |
-| **⚡ Smart Tools** | Quick Jobs for one-click scripts, persistent workspace state, split-view editing, and more. |
+| **⚡ Smart Workflow** | Persistent workspace state, split-view editing, and rapid-fire navigation. |
 
 ## Documentation
 
