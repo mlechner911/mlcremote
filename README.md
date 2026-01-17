@@ -39,8 +39,8 @@ Lightweight remote development environment for small servers, wrapped in a nativ
 ## Screenshots
 
 <p align="center">
-  <img src="screenshots/startup.png" width="45%" alt="Connection Screen">
-  <img src="screenshots/remote_terminal.png" width="45%" alt="Remote Terminal">
+  <img src="screenshots/startup_light.png" width="45%" alt="Connection Screen Light">
+  <img src="screenshots/startup_dark.png" width="45%" alt="Connection Screen Dark">
 </p>
 <p align="center">
   <img src="screenshots/example.png" width="45%" alt="File Editor">
