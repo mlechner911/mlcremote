@@ -31,5 +31,5 @@ const (
 	InstallMetaFile   = "install.json"
 
 	// AgentVersion is the current version of the remote agent
-	AgentVersion = "0.3.4"
+	AgentVersion = "0.3.5"
 )

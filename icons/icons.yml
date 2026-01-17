@@ -246,3 +246,17 @@ icons:
     file: raw/edit.svg
     mime: application/x-ui
     extensions: ["edit"]
+  - id: os-windows
+    name: Windows
+    file: raw/windows.svg
+    extensions: ["os-windows"]
+
+  - id: os-apple
+    name: Apple
+    file: raw/apple.svg
+    extensions: ["os-apple"]
+
+  - id: os-ubuntu
+    name: Ubuntu
+    file: raw/ubuntu.svg
+    extensions: ["os-ubuntu"]

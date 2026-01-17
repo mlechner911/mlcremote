@@ -66,7 +66,7 @@ func (m *Manager) DetectRemoteOS(profileJSON string) (remotesystem.RemoteOS, rem
 }
 
 func getRemoteSystem(osType remotesystem.RemoteOS) remotesystem.Remote {
-	if osType == remotesystem.OSWindows {
+	if strings.HasPrefix(string(osType), "windows") {
 		return &remotesystem.Windows{}
 	}
 	if osType == remotesystem.OSDarwin {
@@ -171,16 +171,21 @@ func (m *Manager) checkExistingSession(runRemote func(string) (string, error), r
 }
 
 func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys remotesystem.Remote, target string, scpArgs []string, tmpDir, remoteBinDir, remoteFrontendDir, binName, md5Name string, targetOS remotesystem.RemoteOS, targetArch remotesystem.RemoteArch, token string, forceNew bool) error {
-	devServerContent, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, binName))
+	assetOS := targetOS
+	if strings.HasPrefix(string(targetOS), "windows") {
+		assetOS = remotesystem.OSWindows
+	}
+
+	devServerContent, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", assetOS, targetArch, binName))
 	if err != nil {
-		return fmt.Errorf("payload binary not found for %s/%s: %w", targetOS, targetArch, err)
+		return fmt.Errorf("payload binary not found for %s/%s: %w", assetOS, targetArch, err)
 	}
 	if err := os.WriteFile(filepath.Join(tmpDir, binName), devServerContent, 0755); err != nil {
 		return fmt.Errorf("failed to write backend binary to tmp: %w", err)
 	}
 
 	if md5Name != "" {
-		md5Content, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, md5Name))
+		md5Content, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", assetOS, targetArch, md5Name))
 		if err == nil {
 			os.WriteFile(filepath.Join(tmpDir, md5Name), md5Content, 0755)
 		} else {
@@ -516,7 +521,11 @@ func (m *Manager) prepareSSHArgs(profileJSON string) (string, []string, error) {
 
 func (m *Manager) verifyRemoteBinary(runRemote func(string) (string, error), remoteSys remotesystem.Remote, home, remoteBinDir, binName string, targetOS remotesystem.RemoteOS, targetArch remotesystem.RemoteArch) (bool, error) {
 	// Read local binary to get hash
-	devServerContent, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, binName))
+	assetOS := targetOS
+	if strings.HasPrefix(string(targetOS), "windows") {
+		assetOS = remotesystem.OSWindows
+	}
+	devServerContent, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", assetOS, targetArch, binName))
 	if err != nil {
 		// If we can't read local binary, we can't verify, so we assume we need to deploy (or fail later)
 		return false, nil

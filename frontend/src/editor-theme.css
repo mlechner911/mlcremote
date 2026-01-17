@@ -6,7 +6,7 @@ body pre[class*="language-"] {
     color: var(--token-text, #c21616);
     background: none;
 
-    /* Layout properties removed: strict reliance on editor.css */
+
     text-align: left;
 
     -moz-tab-size: 4;

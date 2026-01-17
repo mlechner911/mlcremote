@@ -322,7 +322,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
             setPromptDeploy(null)
             handleConnect(p)
         } catch (e: any) {
-            alert(t('status_failed') + ": " + (e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)))
+            showAlert('Error', t('status_failed') + ": " + (e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)))
         } finally {
             setDeployLoading(false)
         }
@@ -362,7 +362,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
             handleConnect(promptManaged)
 
         } catch (e: any) {
-            alert(t('status_failed') + ": " + (e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)))
+            showAlert('Error', t('status_failed') + ": " + (e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)))
         } finally {
             setDeployLoading(false)
         }

@@ -307,7 +307,8 @@ export interface Settings {
     language?: string
     lastProfileId?: string
     autoOpen?: boolean
-    showHidden?: boolean
+    showHiddenFiles?: boolean
+    onboardingCompleted?: boolean
     showLogs?: boolean
     showServerLogs?: boolean
     hideMemoryUsage?: boolean

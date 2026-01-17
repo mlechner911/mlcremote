@@ -20,6 +20,7 @@ import TrashView from './components/views/TrashView'
 // import FileDetailsView from './components/views/FileDetailsView'
 // import ServerLogsView from './components/views/ServerLogsView'
 const TerminalTab = React.lazy(() => import('./components/views/TerminalTab'))
+const OnboardingTour = React.lazy(() => import('./components/OnboardingTour'))
 // import TabBarComponent from './components/TabBar'
 import LayoutManager from './components/LayoutManager'
 
@@ -147,6 +148,8 @@ function AppInner() {
 
   // -- Effects --
 
+  type oureventtypes = 'set-theme' | 'screenshot' | 'run-task' | 'app-ready' | 'set-tasks' | 'open-logs'
+
   // Listen for messages from parent (Desktop wrapper)
   React.useEffect(() => {
     // Notify parent that we are ready to receive data
@@ -154,7 +157,8 @@ function AppInner() {
 
     const handleMessage = (e: MessageEvent) => {
       if (!e.data) return
-      if (e.data.type === 'set-theme') {
+      let eventtype: oureventtypes = e.data.type as oureventtypes
+      if (eventtype === 'set-theme') {
         const t = e.data.theme
         if (t === 'light' || t === 'dark') {
           setTheme(t)
@@ -163,12 +167,12 @@ function AppInner() {
           else document.documentElement.classList.remove('theme-light')
         }
       }
-      if (e.data.type === 'screenshot') {
+      if (eventtype === 'screenshot') {
         const root = document.querySelector('.app') as HTMLElement
         const name = e.data.filename || 'mlcremote-screenshot.png'
         if (root) captureElementToPng(root, name)
       }
-      if (e.data.type === 'run-task') {
+      if (eventtype === 'run-task') {
         const cmd = e.data.command
         const name = e.data.name || 'Task'
         console.log("[MLCRemote] Received run-task command:", name)
@@ -181,7 +185,7 @@ function AppInner() {
           setCommandSignals(s => ({ ...s, [shellName]: { cmd, ts: Date.now() } }))
 
           // This will focus if exists, or open new if not
-          // Pass icon and color as extra metadata
+          // we pass icon and color as extra metadata
           const extra = {
             icon: e.data.icon,
             iconColor: e.data.color
@@ -189,12 +193,12 @@ function AppInner() {
           openFile(shellName, 'terminal', name, undefined, extra)
         }
       }
-      if (e.data.type === 'set-tasks') {
+      if (eventtype === 'set-tasks') {
         if (Array.isArray(e.data.tasks)) {
           setQuickTasks(e.data.tasks)
         }
       }
-      if (e.data.type === 'open-logs') {
+      if (eventtype === 'open-logs') {
         openFile('server-logs', 'logs', 'Server Logs')
         setActiveTab('server-logs')
       }
@@ -246,7 +250,7 @@ function AppInner() {
       <div className="app-body" style={{ display: 'flex', flexDirection: 'row', flex: 1, overflow: 'hidden', alignItems: 'stretch' }}>
 
         {/* Activity Bar - Always Visible */}
-        <div style={{ width: 48, flexShrink: 0, zIndex: 1000, height: '100%', borderRight: '1px solid var(--border)' }}>
+        <div className="modern-sidebar" style={{ width: 48, flexShrink: 0, zIndex: 1000, height: '100%', borderRight: '1px solid var(--border)' }}>
           <ActivityBar
             isExpanded={isSidebarExpanded}
             onToggleSidebar={toggleSidebar}
@@ -369,6 +373,7 @@ function AppInner() {
                   onMaxFileSizeChange={updateMaxEditorSize}
                   uiMode={uiMode}
                   onToggleUiMode={setUiMode}
+                  onLogout={useAuth().logout}
                 />
               )}
 
@@ -538,14 +543,19 @@ function AppInner() {
         />
       )}
 
-      <StatusBar
-        health={health}
-        isOnline={isOnline}
-        hideMemoryUsage={hideMemoryUsage}
-        lastHealthAt={lastHealthAt}
-      />
+      <div className="status-bar-container">
+        <StatusBar
+          health={health}
+          isOnline={isOnline}
+          hideMemoryUsage={hideMemoryUsage}
+          lastHealthAt={lastHealthAt}
+        />
+      </div>
 
       <LogOverlay visible={showLogs} onClose={() => setShowLogs(false)} />
+      <React.Suspense fallback={null}>
+        <OnboardingTour />
+      </React.Suspense>
 
       {aboutOpen && (
         <AboutPopup

@@ -39,7 +39,7 @@ export default function ConnectionSidebar({
             <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ margin: 0 }}>
                     {t('connections')}
-                    {isPremium && <span style={{ fontSize: 10, color: '#f7b955', marginLeft: 8, border: '1px solid #f7b955', borderRadius: 4, padding: '1px 4px' }}>PRO</span>}
+                    {isPremium && <span style={{ fontSize: 10, color: '#f7b955', marginLeft: 8, border: '1px solid #f7b955', borderRadius: 4, padding: '1px 4px', textShadow: '0 0 1px rgba(0,0,0,0.5)' }}>PRO</span>}
                 </h3>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <button className="link icon-btn" onClick={onShowAbout} title={t('about')}>
@@ -69,7 +69,21 @@ export default function ConnectionSidebar({
                             <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
                             <div className="muted" style={{ fontSize: 11 }}>
                                 {p.user}@{p.host}
-                                {p.remoteOS && <span style={{ marginLeft: 6, opacity: 0.8 }}> • {p.remoteOS} {p.remoteVersion && `v${p.remoteVersion}`}</span>}
+                                {p.remoteOS && (
+                                    <span style={{ marginLeft: 6, opacity: 0.8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                        {(() => {
+                                            const os = p.remoteOS.toLowerCase()
+                                            let icon = ''
+                                            if (os.includes('windows')) icon = 'icon-os-windows'
+                                            else if (os.includes('darwin') || os.includes('macos') || os.includes('apple')) icon = 'icon-os-apple'
+                                            else if (os.includes('ubuntu') || os.includes('linux')) icon = 'icon-os-ubuntu' // Fallback to ubuntu for general linux for now? Or maybe a generic terminal icon if not found
+
+                                            if (icon) return <Icon name={icon} size={12} />
+                                            return null
+                                        })()}
+                                        {p.remoteOS} {p.remoteVersion && `v${p.remoteVersion}`}
+                                    </span>
+                                )}
                             </div>
                         </div>
                         <div className="muted" style={{ fontSize: 10, minWidth: 60, textAlign: 'right' }}>

@@ -94,7 +94,7 @@ export function useWorkspace(maxTabs = 8) {
         setActiveTab(path)
 
         // fetch and cache metadata only for real files
-        if (!path.startsWith('shell-') && path !== 'metadata' && path !== 'binary' && path !== 'trash') {
+        if (!path.startsWith('shell-') && path !== 'metadata' && path !== 'binary' && path !== 'trash' && path !== 'server-logs') {
             statPath(path).then(m => {
                 setFileMetas(fm => ({ ...fm, [path]: m }))
             }).catch(() => {

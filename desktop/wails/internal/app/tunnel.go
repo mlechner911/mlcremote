@@ -82,6 +82,10 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		}
 
 		// Save Updated Profile with OS Info
+		// We should load existing profile first to ensure we don't overwrite other fields?
+		// But in this context, 'cp' usually comes from the frontend which has the latest state.
+		// However, to be safe and robust (especially if we add more hidden fields), logic could be improved.
+		// For now, standard save is acceptable as frontend sends full object.
 		a.Config.SaveProfile(cp)
 	}
 

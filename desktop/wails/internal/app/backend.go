@@ -23,7 +23,7 @@ func (a *App) DetectRemoteOS(profileJSON string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/%s", os, arch), nil
+	return fmt.Sprintf("%s %s", os, arch), nil
 }
 
 // DeployAgent ensures the correct binary and assets are on the remote host
@@ -36,7 +36,7 @@ func (a *App) DeployAgent(profileJSON string, osArch string, token string) (stri
 	targetArch := remotesystem.RemoteArch(parts[1])
 
 	// Basic validation (optional but good)
-	if targetOS != remotesystem.OSLinux && targetOS != remotesystem.OSDarwin && targetOS != remotesystem.OSWindows {
+	if targetOS != remotesystem.OSLinux && targetOS != remotesystem.OSDarwin && !strings.HasPrefix(string(targetOS), "windows") {
 		return "failed", fmt.Errorf("unknown os: %s", targetOS)
 	}
 

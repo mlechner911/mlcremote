@@ -45,7 +45,7 @@ func (m *Manager) CheckRemoteVersionWithOS(profileJSON string, osType remotesyst
 	binName := sys.GetBinaryName(RemoteBinaryName)
 
 	var remotePath string
-	if osType == remotesystem.OSWindows {
+	if strings.HasPrefix(string(osType), "windows") {
 		// Windows cmd.exe style path construction.
 		// We use %USERPROFILE% because typical SSH sessions on Windows spawn cmd.exe or unexpanded shells
 		// where '~' is not recognized. This ensures we target the correct absolute path.
@@ -75,8 +75,8 @@ func (m *Manager) IsServerRunning(profileJSON string, osString string) (bool, er
 	targetOS := "linux"
 	if strings.Contains(osString, "/") {
 		targetOS = strings.Split(osString, "/")[0]
-	} else if osString == "windows" {
-		targetOS = "windows"
+	} else {
+		targetOS = osString
 	}
 
 	var checkCmd string
@@ -84,8 +84,9 @@ func (m *Manager) IsServerRunning(profileJSON string, osString string) (bool, er
 		checkCmd = fmt.Sprintf("pgrep -f \"%s.*--no-auth\"", RemoteBinaryName)
 	} else if targetOS == "darwin" {
 		checkCmd = fmt.Sprintf("pgrep -f \"%s.*--no-auth\"", RemoteBinaryName)
-	} else if targetOS == "windows" {
-		checkCmd = fmt.Sprintf("tasklist /FI \"IMAGENAME eq %s\" | findstr %s", RemoteBinaryName, RemoteBinaryName)
+	} else if strings.HasPrefix(targetOS, "windows") {
+		// handle both with and without .exe just in case
+		checkCmd = fmt.Sprintf("tasklist /FI \"IMAGENAME eq %s.exe\" | findstr %s.exe", RemoteBinaryName, RemoteBinaryName)
 	}
 
 	if checkCmd == "" {

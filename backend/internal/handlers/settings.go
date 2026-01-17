@@ -26,24 +26,27 @@ func SettingsHandler(allowDelete bool, settingsPath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			// Update settings
-			var updates config.UserSettings
-			if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
+			// Load existing settings to support partial updates
+			existing, err := config.LoadSettings(settingsPath)
+			if err != nil {
+				// If load fails (e.g. permission or corruption), start with defaults
+				existing = config.DefaultSettings()
+			}
+
+			// Decode updates into the existing settings struct
+			// JSON decoder will only update fields present in the request body
+			if err := json.NewDecoder(r.Body).Decode(existing); err != nil {
 				http.Error(w, "invalid json", http.StatusBadRequest)
 				return
 			}
 
-			// Load existing to merge/preserve if needed (though we mostly overwrite)
-			// For now, simple save.
-			// Actually ideally we load, update fields, save.
-			// However the struct is small and flat.
-
-			if err := config.SaveSettings(settingsPath, &updates); err != nil {
+			if err := config.SaveSettings(settingsPath, existing); err != nil {
 				http.Error(w, "failed to save settings: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(updates)
+			_ = json.NewEncoder(w).Encode(existing)
 			return
 		}
 
@@ -56,17 +59,18 @@ func SettingsHandler(allowDelete bool, settingsPath string) http.HandlerFunc {
 
 		// Merge system settings (read-only) with user settings
 		resp := map[string]interface{}{
-			"allowDelete":     allowDelete,
-			"defaultShell":    detectDefaultShell(),
-			"theme":           userSettings.Theme,
-			"autoOpen":        userSettings.AutoOpen,
-			"showHidden":      userSettings.ShowHidden,
-			"showLogs":        userSettings.ShowLogs,
-			"showServerLogs":  userSettings.ShowServerLogs,
-			"hideMemoryUsage": userSettings.HideMemoryUsage,
-			"maxEditorSize":   userSettings.MaxEditorSize,
-			"language":        userSettings.Language,
-			"uiMode":          userSettings.UiMode,
+			"allowDelete":         allowDelete,
+			"defaultShell":        detectDefaultShell(),
+			"theme":               userSettings.Theme,
+			"autoOpen":            userSettings.AutoOpen,
+			"showHidden":          userSettings.ShowHidden,
+			"showLogs":            userSettings.ShowLogs,
+			"showServerLogs":      userSettings.ShowServerLogs,
+			"hideMemoryUsage":     userSettings.HideMemoryUsage,
+			"maxEditorSize":       userSettings.MaxEditorSize,
+			"language":            userSettings.Language,
+			"uiMode":              userSettings.UiMode,
+			"onboardingCompleted": userSettings.OnboardingCompleted,
 		}
 
 		w.Header().Set("Content-Type", "application/json")

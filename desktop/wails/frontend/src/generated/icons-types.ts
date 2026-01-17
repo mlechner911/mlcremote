@@ -8,70 +8,73 @@
 
 
 export type IconExtKey =
-  'bz2'|
-  'cfg'|
-  'cl'|
-  'close'|
-  'copy'|
-  'cr'|
-  'dir'|
-  'download'|
-  'flag-de'|
-  'flag-es'|
-  'flag-fr'|
-  'flag-gb'|
-  'gif'|
-  'gz'|
-  'home'|
-  'info'|
-  'jpeg'|
-  'jpg'|
-  'js'|
-  'json'|
-  'link'|
-  'log'|
-  'markdown'|
-  'md'|
-  'minus'|
-  'mjs'|
-  'moon'|
-  'pdf'|
-  'plus'|
-  'png'|
-  'refresh'|
-  'run'|
-  'screenshot'|
-  'search'|
-  'server'|
-  'settings'|
-  'sh'|
-  'shell'|
-  'stop'|
-  'sun'|
-  'svg'|
-  'tar'|
-  'trash'|
-  'txt'|
-  'up'|
-  'upload'|
-  'user'|
-  'view'|
-  'warn'|
-  'x'|
+  'bz2' |
+  'cfg' |
+  'cl' |
+  'close' |
+  'copy' |
+  'cr' |
+  'dir' |
+  'download' |
+  'flag-de' |
+  'flag-es' |
+  'flag-fr' |
+  'flag-gb' |
+  'gif' |
+  'gz' |
+  'home' |
+  'info' |
+  'jpeg' |
+  'jpg' |
+  'js' |
+  'json' |
+  'link' |
+  'log' |
+  'markdown' |
+  'md' |
+  'minus' |
+  'mjs' |
+  'moon' |
+  'os-apple' |
+  'os-ubuntu' |
+  'os-windows' |
+  'pdf' |
+  'plus' |
+  'png' |
+  'refresh' |
+  'run' |
+  'screenshot' |
+  'search' |
+  'server' |
+  'settings' |
+  'sh' |
+  'shell' |
+  'stop' |
+  'sun' |
+  'svg' |
+  'tar' |
+  'trash' |
+  'txt' |
+  'up' |
+  'upload' |
+  'user' |
+  'view' |
+  'warn' |
+  'x' |
   'zip'
 
 
 export type IconMimeKey =
-  'application/javascript'|
-  'application/json'|
-  'application/octet-stream'|
-  'application/pdf'|
-  'application/x-directory'|
-  'application/x-settings'|
-  'application/x-terminal'|
-  'application/x-ui'|
-  'application/zip'|
-  'image/*'|
-  'text/markdown'|
+  'application/javascript' |
+  'application/json' |
+  'application/octet-stream' |
+  'application/pdf' |
+  'application/x-directory' |
+  'application/x-settings' |
+  'application/x-terminal' |
+  'application/x-ui' |
+  'application/zip' |
+  'image/*' |
+  'text/markdown' |
   'text/plain'
 

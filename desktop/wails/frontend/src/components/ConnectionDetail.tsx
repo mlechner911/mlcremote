@@ -64,7 +64,16 @@ export default function ConnectionDetail({
             )}
 
             <div style={{ display: 'flex', gap: 16 }}>
-                <button className="btn primary" style={{ padding: '12px 32px', fontSize: 16, boxShadow: '0 4px 12px rgba(0,123,255,0.3)' }} onClick={() => onConnect()} disabled={loading}>
+                <button className="btn primary" style={{ padding: '12px 32px', fontSize: 16, boxShadow: '0 4px 12px rgba(0,123,255,0.3)', display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => onConnect()} disabled={loading}>
+                    {(() => {
+                        const os = (profile.remoteOS || '').toLowerCase()
+                        let icon = ''
+                        if (os.includes('windows')) icon = 'icon-os-windows'
+                        else if (os.includes('darwin') || os.includes('macos') || os.includes('apple')) icon = 'icon-os-apple'
+                        else if (os.includes('ubuntu') || os.includes('linux')) icon = 'icon-os-ubuntu'
+
+                        return icon ? <Icon name={icon} size={18} /> : null
+                    })()}
                     {loading ? t('connecting') : t('connect')}
                 </button>
                 <button className="btn" style={{ padding: '12px 24px' }} onClick={onEdit} disabled={loading}>
@@ -84,7 +93,8 @@ export default function ConnectionDetail({
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: 6,
                                     padding: '8px 16px', background: 'var(--bg-panel)', border: '1px solid var(--border)',
-                                    color: task.color || 'var(--text-primary)'
+                                    color: task.color || 'var(--text-primary)',
+                                    textShadow: '0 0 1px rgba(0,0,0,0.3)'
                                 }}
                                 onClick={() => onConnect(task)}
                                 disabled={loading}

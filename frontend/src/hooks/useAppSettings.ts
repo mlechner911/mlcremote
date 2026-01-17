@@ -21,7 +21,7 @@ export function useAppSettings() {
 
     // Setters that also persist
     const setAutoOpen = (v: boolean) => { setAutoOpenState(v); saveSettings({ autoOpen: v }).catch(console.error) }
-    const setShowHidden = (v: boolean) => { setShowHiddenState(v); saveSettings({ showHidden: v }).catch(console.error) }
+    const setShowHidden = (v: boolean) => { setShowHiddenState(v); saveSettings({ showHiddenFiles: v }).catch(console.error) }
     const toggleLogs = (v: boolean) => { setShowLogs(v); saveSettings({ showLogs: v }).catch(console.error) }
     const toggleServerLogs = (v: boolean) => { setShowServerLogs(v); saveSettings({ showServerLogs: v }).catch(console.error) }
     const toggleHideMemoryUsage = (v: boolean) => { setHideMemoryUsage(v); saveSettings({ hideMemoryUsage: v }).catch(console.error) }
@@ -42,7 +42,7 @@ export function useAppSettings() {
                 // Apply user prefs
                 if (s.theme) setTheme(s.theme as any)
                 if (typeof s.autoOpen !== 'undefined') setAutoOpenState(s.autoOpen)
-                if (typeof s.showHidden !== 'undefined') setShowHiddenState(s.showHidden)
+                if (typeof s.showHiddenFiles !== 'undefined') setShowHiddenState(s.showHiddenFiles)
                 if (typeof s.showLogs !== 'undefined') setShowLogs(s.showLogs)
                 if (typeof s.showServerLogs !== 'undefined') setShowServerLogs(s.showServerLogs)
                 if (s.hideMemoryUsage) setHideMemoryUsage(s.hideMemoryUsage)
@@ -95,6 +95,12 @@ export function useAppSettings() {
     // Let's keep the message listener in App.tsx for now to avoid complexity, 
     // but expose setTheme so App.tsx can update the state.
 
+    // Generic updater
+    const updateSettings = (updates: Partial<Settings>) => {
+        setSettings(prev => prev ? { ...prev, ...updates } : updates as Settings)
+        saveSettings(updates).catch(console.error)
+    }
+
     return {
         settings,
         loadedSettings,
@@ -107,6 +113,7 @@ export function useAppSettings() {
         maxEditorSize, updateMaxEditorSize,
         canChangeRoot,
         uiMode, setUiMode,
+        updateSettings, // Export generic updater
         i18n
     }
 }

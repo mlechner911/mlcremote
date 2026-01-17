@@ -10,7 +10,7 @@ export const Icon: React.FC<IconProps> = ({ name, className, title, size = 16 })
   if (!name) return null
   const href = `#${name}`
   return (
-    <svg className={className} width={size} height={size} aria-hidden={title? undefined : 'true'} role={title? 'img' : undefined}>
+    <svg className={className} width={size} height={size} aria-hidden={title ? undefined : 'true'} role={title ? 'img' : undefined}>
       {title ? <title>{title}</title> : null}
       <use href={href} />
     </svg>
@@ -65,6 +65,9 @@ export const extensionToIcon: Record<IconExtKey, string> = {
   'info': 'icon-info',
   'view': 'icon-view',
   'moon': 'icon-moon',
+  'os-apple': 'icon-os-apple',
+  'os-windows': 'icon-os-windows',
+  'os-ubuntu': 'icon-os-ubuntu',
   'x': 'icon-close',
   'shell': 'icon-terminal',
   'screenshot': 'icon-screenshot',
@@ -73,7 +76,7 @@ export const extensionToIcon: Record<IconExtKey, string> = {
 
 export function iconForExtension(ext?: string) {
   if (!ext) return undefined
-  return (extensionToIcon as Record<string,string>)[ext.toLowerCase()]
+  return (extensionToIcon as Record<string, string>)[ext.toLowerCase()]
 }
 
 export const mimeToIcon: Record<IconMimeKey, string> = {
@@ -94,21 +97,21 @@ export const mimeToIcon: Record<IconMimeKey, string> = {
 export function iconForMimeOrFilename(mime?: string, filename?: string) {
   // try mime exact match
   if (mime) {
-    const m = (mimeToIcon as Record<string,string>)[mime]
+    const m = (mimeToIcon as Record<string, string>)[mime]
     if (m) return m
     // try type/* fallback
     const parts = mime.split('/')
     if (parts.length === 2) {
       const star = parts[0] + '/*'
-      const ms = (mimeToIcon as Record<string,string>)[star]
+      const ms = (mimeToIcon as Record<string, string>)[star]
       if (ms) return ms
     }
   }
   // fallback to extension
   if (filename) {
     const dot = filename.lastIndexOf('.')
-    if (dot >= 0 && dot < filename.length-1) {
-      const ext = filename.slice(dot+1).toLowerCase()
+    if (dot >= 0 && dot < filename.length - 1) {
+      const ext = filename.slice(dot + 1).toLowerCase()
       return iconForExtension(ext)
     }
   }

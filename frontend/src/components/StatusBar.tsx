@@ -74,7 +74,20 @@ export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealt
                         {health.os && (
                             <>
                                 <span className="sep" />
-                                <span title={`OS: ${health.os} ${health.distro || ''}`}>{health.distro || health.os}</span>
+                                {(() => {
+                                    const os = (health.os || '').toLowerCase()
+                                    let icon = ''
+                                    if (os.includes('windows')) icon = 'icon-os-windows'
+                                    else if (os.includes('darwin') || os.includes('macos') || os.includes('apple')) icon = 'icon-os-apple'
+                                    else if (os.includes('ubuntu') || os.includes('linux')) icon = 'icon-os-ubuntu'
+
+                                    return (
+                                        <span title={`OS: ${health.os} ${health.distro || ''}`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            {icon && <Icon name={icon} size={12} />}
+                                            {health.distro || health.os}
+                                        </span>
+                                    )
+                                })()}
                             </>
                         )}
 

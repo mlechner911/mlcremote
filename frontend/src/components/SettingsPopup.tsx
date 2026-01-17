@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Icon } from '../generated/icons'
 import { getIcon } from '../generated/icon-helpers'
 import { useTranslation } from 'react-i18next'
+import { captureElementToPng } from '../utils/capture'
 
 type Props = {
   autoOpen: boolean
@@ -20,9 +21,10 @@ type Props = {
   onMaxFileSizeChange?: (size: number) => void
   uiMode: 'classic' | 'modern'
   onToggleUiMode: (m: 'classic' | 'modern') => void
+  onLogout?: () => void
 }
 
-export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, onToggleShowHidden, showLogs, onToggleLogs, showServerLogs, onToggleServerLogs, hideMemoryUsage, onToggleHideMemoryUsage, onClose, onLanguageChange, maxEditorSize, onMaxFileSizeChange, uiMode, onToggleUiMode }: Props) {
+export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, onToggleShowHidden, showLogs, onToggleLogs, showServerLogs, onToggleServerLogs, hideMemoryUsage, onToggleHideMemoryUsage, onClose, onLanguageChange, maxEditorSize, onMaxFileSizeChange, uiMode, onToggleUiMode, onLogout }: Props) {
   const { t, i18n } = useTranslation()
   const [localHideMemoryUsage, setLocalHideMemoryUsage] = React.useState<boolean>(hideMemoryUsage)
 
@@ -138,6 +140,32 @@ export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, 
         </div>
 
 
+        <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 8, display: 'flex', gap: 8 }}>
+          <button className="btn" onClick={() => {
+            const app = document.querySelector('.app') as HTMLElement
+            if (app) captureElementToPng(app, 'screenshot.png')
+            onClose()
+          }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ marginRight: 6, display: 'flex' }}>
+              <Icon name="icon-camera" size={14} />
+            </div>
+            {t('screenshot', 'Screenshot')}
+          </button>
+
+          {onLogout && (
+            <button className="btn btn-danger" onClick={() => {
+              if (confirm(t('confirm_logout', 'Disconnect?'))) {
+                onLogout()
+                onClose()
+              }
+            }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ marginRight: 6, display: 'flex' }}>
+                <Icon name="icon-logout" size={14} />
+              </div>
+              {t('disconnect', 'Disconnect')}
+            </button>
+          )}
+        </div>
       </div >
     </div >
   )
