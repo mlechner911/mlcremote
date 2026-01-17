@@ -69,8 +69,66 @@ func (l *Linux) StartProcess(bin, args, logFile, pidFile string) string {
 }
 
 func (l *Linux) GetStartupScript() (string, string) {
-	// Return the filename handled by deploy.go (reading from assets)
-	return "start_agent_linux.sh", ""
+	script := `#!/bin/sh
+#
+# MLCRemote Agent Startup Script (Linux)
+# --------------------------------------
+# This script handles the robust startup of the mlcremote-server binary.
+# It ensures the process is detatched (nohup), logs are redirected,
+# and the PID is correctly written for process management.
+#
+# Arguments:
+#   $1: Binary Path (absolute)
+#   $2: Arguments for the binary (quoted string)
+#   $3: Log File Path (absolute)
+#   $4: PID File Path (absolute)
+#
+# Usage:
+#   ./start_agent_linux.sh /path/to/bin "-arg1 -arg2" /path/to/log /path/to/pid
+
+set -e
+
+BIN_PATH="$1"
+ARGS="$2"
+LOG_FILE="$3"
+PID_FILE="$4"
+
+# Validate arguments
+if [ -z "$BIN_PATH" ] || [ -z "$LOG_FILE" ] || [ -z "$PID_FILE" ]; then
+    echo "Error: Missing arguments."
+    echo "Usage: $0 <bin_path> <args> <log_file> <pid_file>"
+    exit 1
+fi
+
+# Ensure the binary is executable
+chmod +x "$BIN_PATH"
+
+# Start the process in the background with nohup
+# We use 'sh -c' to ensure clean redirection and PID capture
+# 1. nohup detaches from terminal
+# 2. > "$LOG_FILE" 2>&1 redirects stdout and stderr to log
+# 3. & puts it in background
+# 4. echo $! > "$PID_FILE" writes the PID of the background process
+nohup "$BIN_PATH" $ARGS > "$LOG_FILE" 2>&1 &
+PID=$!
+echo $PID > "$PID_FILE"
+
+# Wait a brief moment to ensure it didn't crash immediately (e.g. invalid args)
+sleep 0.2
+
+# Check if process is still running
+if kill -0 $PID 2>/dev/null; then
+    echo "Success: Started $BIN_PATH with PID $PID"
+    exit 0
+else
+    echo "Error: Process $PID died immediately after start."
+    echo "Check log file: $LOG_FILE"
+    # Dump last few lines of log to stdout for debugging
+    tail -n 5 "$LOG_FILE" 2>/dev/null || true
+    exit 1
+fi
+`
+	return "start_agent_linux.sh", script
 }
 
 func (l *Linux) ReadFile(path string) string {

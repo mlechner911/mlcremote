@@ -3,7 +3,6 @@ package main
 import (
 	"embed"
 	"fmt"
-	"io/fs"
 	"os"
 	"runtime"
 
@@ -32,16 +31,6 @@ func main() {
 			os.Exit(1)
 		}
 	}
-
-	// DEBUG: Print all embedded assets to verify what's actually there
-	fmt.Println("DEBUG: Dumping embedded assets structure:")
-	fs.WalkDir(assets, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		fmt.Printf(" - %s\n", path)
-		return nil
-	})
 
 	// Create an instance of the app structure
 	application := app.NewApp(assets)
