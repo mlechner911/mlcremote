@@ -82,6 +82,17 @@ Currently, you need to **build from source**.
     ```
     The binary will be created in the `dist/` directory.
 
+### Headless Development (Remote Linux)
+If you are developing on a remote Linux machine without a display, you can use `xvfb` to simulate a display server:
+
+```bash
+# Install xvfb
+sudo apt install xvfb
+
+# Run with virtual framebuffer
+task dev:headless
+```
+
 ## Security
 
 MLCRemote prioritizes security:

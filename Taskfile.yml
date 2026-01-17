@@ -46,6 +46,13 @@ tasks:
     cmds:
       - wails dev -tags dev
 
+  dev:headless:
+    desc: Run in headless mode (Linux) using xvfb
+    deps: [payload:all]
+    dir: '{{.WAILS_DIR}}'
+    cmds:
+      - xvfb-run -a wails dev -tags dev
+
   # ============================================================================
   # PAYLOAD BUILDING (Cross-Platform Backend Binaries)
   # ============================================================================
