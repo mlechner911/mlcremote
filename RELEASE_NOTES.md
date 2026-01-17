@@ -6,18 +6,18 @@
 - **Tour Persistence**: Fixed an issue where changing the root directory caused the onboarding tour to reappear. 
 - **Invalid Root**: Added graceful fallback to the home directory if the configured root path does not exist, with a user warning.
 
-## [1.3.2] - 2025-07-27
+## [1.3.2] - 2026-01-17
 ### Fixed
 - **Persistence**: Fixed an issue where the "Root Directory" setting was not being saved.
 - **Translations**: Added missing translations for Root Directory settings.
 
-## [1.3.1] - 2025-07-27
+## [1.3.1] - 2026-01-16
 ### Fixed
 - Fixed SVG file handling: now correctly served as `image/svg+xml` to prevent broken previews and text-only downloads.
 - Added proper SVG preview and syntax highlighting in the editor.
 - Updated documentation and screenshots.
 
-## [1.3.0] - 2025-07-27
+## [1.3.0] - 2026-01-15
 ### New Features
 - **Enhanced Windows Support**: Improved detection for Windows 10 and Windows 11, including specific OS icons in the connection UI.
 - **UI Improvements**: Added better contrast for "PRO" badges and task buttons in Light Mode.
