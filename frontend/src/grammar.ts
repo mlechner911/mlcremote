@@ -21,7 +21,7 @@ export function langForExt(ext: string) {
     case 'makefile': return L.makefile
     case 'bashrc': case 'zshrc': case 'bash_history': case 'profile': return L.bash
     case 'sh': case 'bash': return L.bash
-    case 'xml': return L.xml || L.markup
+    case 'xml': case 'svg': return L.xml || L.markup
     case 'xml-doc': return L['xml-doc']
     case 'html': case 'htm': return L.markup
     case 'css': case 'sass': case 'scss': return L.sass
@@ -48,7 +48,7 @@ export function aliasForExt(ext: string) {
     case 'dockerfile': return 'dockerfile'
     case 'sh': case 'bash': case 'csh': return 'bash'
     case 'bashrc': case 'zshrc': case 'bash_history': case 'profile': return 'bash'
-    case 'xml': return 'xml'
+    case 'xml': case 'svg': return 'xml'
     case 'xml-doc': return 'xml-doc'
     case 'html': case 'htm': return 'markup'
     case 'sass': case 'scss': return 'sass'

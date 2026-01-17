@@ -45,7 +45,7 @@ export const ImageHandler: FileHandler = {
     if (opts.probe && opts.probe.mime && opts.probe.mime.startsWith('image/')) return true
     if (opts.path) {
       const lower = opts.path.toLowerCase()
-      return lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.gif') || lower.endsWith('.svg') || lower.endsWith('.webp')
+      return lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.gif') || lower.endsWith('.webp')
     }
     return false
   },

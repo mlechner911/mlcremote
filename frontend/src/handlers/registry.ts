@@ -10,10 +10,13 @@ import { DirectoryHandler } from '../components/views/DirectoryView'
 import { BinaryHandler } from '../components/views/BinaryView'
 import { UnsupportedHandler } from '../components/views/UnsupportedView'
 
+import { SvgHandler } from '../components/views/SvgView'
+
 const handlers: FileHandler[] = [
     ShellHandler,
     DirectoryHandler,
     PdfHandler,
+    SvgHandler,
     ImageHandler,
     VideoHandler,
     ArchiveHandler,

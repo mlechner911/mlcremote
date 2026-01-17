@@ -314,7 +314,7 @@ export default function Editor({ path, tab, onSaved, settings, reloadTrigger, on
             <Icon name={iconForExtension('refresh') || 'icon-refresh'} title={t('refresh')} size={16} />
           </button>
 
-          {(ext === 'md' || ext === 'markdown') && onOpen && (
+          {(ext === 'md' || ext === 'markdown' || ext === 'svg') && onOpen && (
             <button
               className="link icon-btn"
               title={intent === 'view' ? t('edit') : t('preview')}
