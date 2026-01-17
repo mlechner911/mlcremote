@@ -11,6 +11,7 @@ The deployment logic is contained within the `InstallBackend` function in `deskt
 3.  **Service Stoppage**: Ensure the file system is unlocked.
 4.  **File Transfer**: Upload binaries, scripts, and frontend assets via SCP.
 5.  **Service Registration**: Configure and start a `systemd` user service.
+    *   *Note: This systemd service is primarily for persistent testing/direct browser access. The Desktop App typically manages the process lifecycle via SSH for the session.*
 
 ## 1. Directory Structure
 

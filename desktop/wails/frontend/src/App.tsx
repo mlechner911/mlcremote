@@ -268,7 +268,7 @@ function AppContent() {
             <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
           </div>
           <h2 style={{ margin: 0, fontWeight: 500 }}>{t('disconnecting')}</h2>
-          <p style={{ marginTop: 8, opacity: 0.7 }}>Closing remote tunnels safely.</p>
+          <p style={{ marginTop: 8, opacity: 0.7 }}>{t('disconnecting_desc')}</p>
         </div>
       )}
     </div>
