@@ -3,7 +3,7 @@ MLCRemote — Desktop
 
 Lightweight remote development environment for small servers, wrapped in a native desktop application.
 
-**Status:** Production Ready (v1.2.3)
+**Status:** Production Ready (v1.3.0)
 
 ## Documentation
 
