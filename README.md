@@ -67,6 +67,21 @@ are also unusable for small VPS or home servers.
 
 That's it. The app handles the rest.
 
+
+## macOS & Linux Users
+
+> [!NOTE]
+> **Pre-built installers for macOS and Linux are coming soon.**
+
+Currently, you need to **build from source**.
+1.  Ensure you have **Go 1.24+**, **Node.js 20+**, and the **Wails CLI** installed.
+2.  Follow the [Developer Guide](CONTRIBUTING.md) to build:
+    ```bash
+    # Build for your platform
+    task dist
+    ```
+    The binary will be created in the `dist/` directory.
+
 ## Security
 
 MLCRemote prioritizes security:
