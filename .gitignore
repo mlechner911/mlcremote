@@ -52,3 +52,5 @@ tmp/
 
 # Allow installer binary
 !dist/*installer.exe
+
+desktop/wails/frontend/src/wailsjs/
