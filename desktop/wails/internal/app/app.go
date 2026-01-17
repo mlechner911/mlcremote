@@ -1,6 +1,7 @@
 package app
 
 import (
+	"archive/zip"
 	"context"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/backend"
@@ -274,7 +276,15 @@ func (a *App) ClipboardCopy(remotePaths []string, token string) error {
 	var localPaths []string
 	client := http.Client{Timeout: 30 * time.Second} // Timeout per file?
 
-	for _, rPath := range remotePaths {
+	for i, rPath := range remotePaths {
+		// Emit start progress
+		runtime.EventsEmit(a.ctx, "clipboard-progress", map[string]interface{}{
+			"currentFile":  filepath.Base(rPath),
+			"totalFiles":   len(remotePaths),
+			"currentIndex": i,
+			"status":       "downloading",
+		})
+
 		// Download file
 		url := fmt.Sprintf("http://localhost:%d/api/file?path=%s&download=true", port, rPath)
 		req, err := http.NewRequest("GET", url, nil)
@@ -295,17 +305,48 @@ func (a *App) ClipboardCopy(remotePaths []string, token string) error {
 			return fmt.Errorf("server returned %s for %s", resp.Status, rPath)
 		}
 
-		localPath := filepath.Join(tempDir, filepath.Base(rPath))
+		contentType := resp.Header.Get("Content-Type")
+		isZip := contentType == "application/zip"
+
+		// Dest Filename
+		baseName := filepath.Base(rPath)
+		destName := baseName
+		if isZip {
+			destName = baseName + ".zip"
+		}
+		localPath := filepath.Join(tempDir, destName)
+
 		out, err := os.Create(localPath)
 		if err != nil {
 			return fmt.Errorf("failed to create local file: %w", err)
 		}
+
+		// Copy with progress? For now just Copy.
+		// If we want detailed progress of bytes, we need a proxy reader.
 		if _, err := io.Copy(out, resp.Body); err != nil {
 			out.Close()
 			return fmt.Errorf("failed to save file: %w", err)
 		}
 		out.Close()
-		localPaths = append(localPaths, localPath)
+
+		if isZip {
+			// Update progress
+			runtime.EventsEmit(a.ctx, "clipboard-progress", map[string]interface{}{
+				"currentFile": baseName,
+				"status":      "unzipping",
+			})
+
+			// Unzip
+			extractDir := filepath.Join(tempDir, baseName)
+			if err := unzip(localPath, extractDir); err != nil {
+				return fmt.Errorf("failed to unzip: %w", err)
+			}
+			localPaths = append(localPaths, extractDir)
+			// Remove zip file to keep clean?
+			_ = os.Remove(localPath)
+		} else {
+			localPaths = append(localPaths, localPath)
+		}
 	}
 
 	// Write to Clipboard
@@ -313,6 +354,56 @@ func (a *App) ClipboardCopy(remotePaths []string, token string) error {
 		return fmt.Errorf("failed to write to clipboard: %w", err)
 	}
 
+	return nil
+}
+
+func unzip(src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	if err := os.MkdirAll(dest, 0755); err != nil {
+		return err
+	}
+
+	for _, f := range r.File {
+		fpath := filepath.Join(dest, f.Name)
+
+		// Check for ZipSlip
+		if !filepath.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return fmt.Errorf("illegal file path: %s", fpath)
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(fpath, os.ModePerm)
+			continue
+		}
+
+		if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return err
+		}
+
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			return err
+		}
+
+		_, err = io.Copy(outFile, rc)
+		outFile.Close()
+		rc.Close()
+
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -355,6 +446,38 @@ func (a *App) ClipboardPasteTo(remoteDir string, token string) error {
 		}
 		defer f.Close()
 
+		// Determine unique filename
+		baseName := filepath.Base(localPath)
+		ext := filepath.Ext(baseName)
+		nameWithoutExt := strings.TrimSuffix(baseName, ext)
+		finalName := baseName
+		counter := 1
+
+		for {
+			// Check if exists
+			// We can use HEAD or just GET /api/stat (simpler as we generally use stat)
+			// GET /api/stat?path=...
+			checkUrl := fmt.Sprintf("http://localhost:%d/api/stat?path=%s", port, filepath.Join(remoteDir, finalName))
+			req, _ := http.NewRequest("GET", checkUrl, nil)
+			if token != "" {
+				req.Header.Set("X-Auth-Token", token)
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				return fmt.Errorf("failed to check existence: %w", err)
+			}
+			exists := resp.StatusCode == http.StatusOK
+			resp.Body.Close()
+
+			if !exists {
+				break
+			}
+
+			// Rename and retry
+			finalName = fmt.Sprintf("%s (%d)%s", nameWithoutExt, counter, ext)
+			counter++
+		}
+
 		// Start multipart upload
 		r, w := io.Pipe()
 		m := multipart.NewWriter(w)
@@ -362,7 +485,8 @@ func (a *App) ClipboardPasteTo(remoteDir string, token string) error {
 		go func() {
 			defer w.Close()
 			defer m.Close()
-			part, err := m.CreateFormFile("file", filepath.Base(localPath))
+			// Use finalName here so backend saves it with new name
+			part, err := m.CreateFormFile("file", finalName)
 			if err != nil {
 				return
 			}

@@ -5,6 +5,7 @@
 package handlers
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -358,10 +359,80 @@ func GetFileHandler(root string) http.HandlerFunc {
 			return
 		}
 		fi, err := os.Stat(target)
-		if err != nil || fi.IsDir() {
-			if err != nil && os.IsNotExist(err) {
+		if err != nil {
+			if os.IsNotExist(err) {
 				util.RecordMissingAccess(target)
+				http.Error(w, "not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "stat failed", http.StatusInternalServerError)
 			}
+			return
+		}
+
+		// Handle Directory Download (ZIP streaming)
+		if fi.IsDir() {
+			if r.URL.Query().Get("download") == "true" {
+				// Stream ZIP
+				filename := filepath.Base(target) + ".zip"
+				w.Header().Set("Content-Type", "application/zip")
+				w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
+
+				zw := zip.NewWriter(w)
+				defer zw.Close()
+
+				rootLen := len(target)
+				err := filepath.Walk(target, func(path string, info os.FileInfo, err error) error {
+					if err != nil {
+						return err
+					}
+					// Create relative path for zip entry
+					relPath := path[rootLen:]
+					if len(relPath) > 0 && (relPath[0] == '/' || relPath[0] == '\\') {
+						relPath = relPath[1:]
+					}
+					if relPath == "" {
+						return nil // skip root dir entry itself usually, or keep if you want?
+					}
+					// Convert to forward slash for zip spec
+					relPath = filepath.ToSlash(relPath)
+
+					if info.IsDir() {
+						relPath += "/"
+					}
+
+					header, err := zip.FileInfoHeader(info)
+					if err != nil {
+						return err
+					}
+					header.Name = relPath
+					header.Method = zip.Deflate
+
+					writer, err := zw.CreateHeader(header)
+					if err != nil {
+						return err
+					}
+
+					if !info.IsDir() {
+						file, err := os.Open(path)
+						if err != nil {
+							return err
+						}
+						defer file.Close()
+						_, err = io.Copy(writer, file)
+						if err != nil {
+							return err
+						}
+					}
+					return nil
+				})
+				if err != nil {
+					// Too late to send HTTP error if we started writing?
+					// But we can log.
+					// Since we stream, user gets partial zip.
+				}
+				return
+			}
+			// If not download, return error as before (editor can't open dir)
 			http.Error(w, "not a file", http.StatusBadRequest)
 			return
 		}

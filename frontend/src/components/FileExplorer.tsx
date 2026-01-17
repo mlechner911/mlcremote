@@ -428,7 +428,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
             },
             {
               label: t('paste_from_local', 'Paste from Local Clipboard'),
-              icon: <Icon name="icon-clipboard" />,
+              icon: <Icon name="icon-paste" />,
               action: () => {
                 window.parent.postMessage({
                   type: 'paste-from-local',

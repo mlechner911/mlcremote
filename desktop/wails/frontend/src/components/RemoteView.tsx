@@ -3,6 +3,7 @@ import { Icon } from '../generated/icons'
 import { useI18n } from '../utils/i18n'
 // Import from wailsjs
 import { ClipboardCopy, ClipboardPasteTo } from '../wailsjs/go/app/App'
+import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime'
 import AlertDialog from './AlertDialog'
 
 import TaskBar from './TaskBar'
@@ -101,10 +102,10 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
 
     // --- Clipboard Implementation ---
     const [activeRemotePath, setActiveRemotePath] = React.useState<string>('')
-    const [alertState, setAlertState] = React.useState<{ open: boolean, title: string, message: string, type: 'info' | 'error' | 'question' } | null>(null)
+    const [alertState, setAlertState] = React.useState<{ open: boolean, title: string, message: string, type: 'info' | 'error' | 'question' | 'progress', progress?: number } | null>(null)
 
-    const showAlert = (title: string, message: string, type: 'info' | 'error' | 'question' = 'info') => {
-        setAlertState({ open: true, title, message, type })
+    const showAlert = (title: string, message: string, type: 'info' | 'error' | 'question' | 'progress' = 'info', progress?: number) => {
+        setAlertState({ open: true, title, message, type, progress })
     }
 
     const handlePasteToRemote = async (path: string) => {
@@ -164,9 +165,25 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
         }
         window.addEventListener('keydown', handleKey)
 
+        // Listen for Wails events
+        const logProgress = (data: any) => {
+            console.log("Clipboard Progress:", data)
+            if (data.status === 'downloading') {
+                // Calculate pseudo-progress based on files?
+                // data.currentIndex / data.totalFiles * 100 (halfway) + some buffer
+                // For now just indeterminate cycling or simple text update
+                const percent = ((data.currentIndex || 0) / (data.totalFiles || 1)) * 100
+                showAlert("Smart Clipboard", `Downloading ${data.currentFile}...`, 'progress', percent)
+            } else if (data.status === 'unzipping') {
+                showAlert("Smart Clipboard", `Unzipping ${data.currentFile}...`, 'progress', 100)
+            }
+        }
+        EventsOn("clipboard-progress", logProgress)
+
         return () => {
             window.removeEventListener('message', handleMessage)
             window.removeEventListener('keydown', handleKey)
+            EventsOff("clipboard-progress")
         }
     }, [activeRemotePath, url]) // Re-bind if path changes
 
@@ -361,6 +378,7 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                     title={alertState.title}
                     message={alertState.message}
                     type={alertState.type}
+                    progress={alertState.progress}
                     onClose={() => setAlertState(null)}
                 />
             )}
