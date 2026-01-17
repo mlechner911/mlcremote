@@ -93,6 +93,10 @@ sudo apt install xvfb
 task dev:headless
 ```
 
+> **Tip (VS Code / Remote SSH):**
+> If you are running `task dev` remotely and accessing the web UI locally, you must **forward port 8443** (or your configured local port) from the remote machine to your local machine.
+> The frontend running in your local browser tries to connect to `localhost:8443`, which must map to the active tunnel on the remote server.
+
 ## Security
 
 MLCRemote prioritizes security:
