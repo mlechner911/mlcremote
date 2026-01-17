@@ -1,6 +1,9 @@
 import React from 'react'
 import { Icon } from '../generated/icons'
 import { useI18n } from '../utils/i18n'
+// Import from wailsjs
+import { ClipboardCopy, ClipboardPasteTo } from '../wailsjs/go/app/App'
+import AlertDialog from './AlertDialog'
 
 import TaskBar from './TaskBar'
 import { TaskDef } from '../types'
@@ -96,6 +99,77 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
         }
     }, [tasks])
 
+    // --- Clipboard Implementation ---
+    const [activeRemotePath, setActiveRemotePath] = React.useState<string>('')
+    const [alertState, setAlertState] = React.useState<{ open: boolean, title: string, message: string, type: 'info' | 'error' | 'question' } | null>(null)
+
+    const showAlert = (title: string, message: string, type: 'info' | 'error' | 'question' = 'info') => {
+        setAlertState({ open: true, title, message, type })
+    }
+
+    const handlePasteToRemote = async (path: string) => {
+        const token = new URLSearchParams(new URL(url).search).get('token') || ''
+        try {
+            console.log("Pasting to remote:", path)
+            await ClipboardPasteTo(path, token)
+            // Trigger refresh in iframe
+            if (iframeRef.current && iframeRef.current.contentWindow) {
+                iframeRef.current.contentWindow.postMessage({ type: 'refresh-path', path }, '*')
+            }
+        } catch (e: any) {
+            console.error("Paste failed:", e)
+            alert("Paste failed: " + e.message)
+        }
+    }
+
+    React.useEffect(() => {
+        const handleMessage = (e: MessageEvent) => {
+            if (!e.data) return
+            if (e.data.type === 'path-change') {
+                setActiveRemotePath(e.data.path)
+            }
+            if (e.data.type === 'copy-to-local') {
+                const token = new URLSearchParams(new URL(url).search).get('token') || ''
+                const count = e.data.count || e.data.paths.length
+                const size = e.data.totalSize
+                const names = e.data.names || []
+
+                ClipboardCopy(e.data.paths, token)
+                    .then(() => {
+                        let msg = "Copied to local clipboard!"
+                        if (count > 0 && size !== undefined) {
+                            const sizeStr = (size > 1024 * 1024) ? (size / (1024 * 1024)).toFixed(1) + ' MB' : (size / 1024).toFixed(1) + ' KB'
+                            const fileLabel = count === 1 ? (names[0] || 'file') : `${count} files`
+                            msg = `Copied ${fileLabel} (${sizeStr}) to local clipboard.`
+                        }
+                        showAlert("Smart Clipboard", msg, 'info')
+                    })
+                    .catch((err: any) => showAlert("Clipboard Error", "Copy failed: " + err, 'error'))
+            }
+            if (e.data.type === 'paste-from-local') {
+                handlePasteToRemote(e.data.path)
+            }
+        }
+        window.addEventListener('message', handleMessage)
+
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.ctrlKey && e.key === 'v') {
+                // If focus is in iframe, iframe handles it.
+                // This only fires if focus is on the wrapper (e.g. clicked on header).
+                if (activeRemotePath) {
+                    handlePasteToRemote(activeRemotePath)
+                    e.preventDefault()
+                }
+            }
+        }
+        window.addEventListener('keydown', handleKey)
+
+        return () => {
+            window.removeEventListener('message', handleMessage)
+            window.removeEventListener('keydown', handleKey)
+        }
+    }, [activeRemotePath, url]) // Re-bind if path changes
+
     const handleScreenshot = () => {
         if (iframeRef.current && iframeRef.current.contentWindow) {
             // "servername+date (without special chars)"
@@ -181,6 +255,15 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                     <span style={{ opacity: 0.6, fontSize: 13 }}>
                         Port: {localPort}
                     </span>
+                    {/* Active Remote Dir Indicator for Debug/Confirmation */}
+                    {activeRemotePath && (
+                        <>
+                            <span style={{ opacity: 0.3 }}>|</span>
+                            <span style={{ opacity: 0.6, fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {activeRemotePath}
+                            </span>
+                        </>
+                    )}
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
 
@@ -272,6 +355,15 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                     title="Remote Backend"
                 />
             </div>
+            {alertState && (
+                <AlertDialog
+                    open={alertState.open}
+                    title={alertState.title}
+                    message={alertState.message}
+                    type={alertState.type}
+                    onClose={() => setAlertState(null)}
+                />
+            )}
         </div>
     )
 }

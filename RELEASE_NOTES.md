@@ -1,5 +1,14 @@
 # MLCRemote Release Notes
 
+## [1.3.4] - 2026-01-17
+### New Features
+- **Smart Clipboard (Premium)**: 
+    - **Remote to Local**: Seamlessly copy files from the remote server to your local Windows clipboard (`Ctrl+V` in persistent temp folder).
+    - **Local to Remote**: Paste files from your local machine directly to the active remote directory.
+
+### Bug Fixes
+- **Clipboard Fixes**: Fixed a critical issue with Windows `DROPFILES` struct preventing pastes in Explorer.
+
 ## [1.3.3] - 2026-01-17
 ### Fixed
 - **SSH Improvements**: Added automatic reconnect mechanism when the SSH tunnel drops (e.g., due to network interruptions), including a new "Connection Lost" dialog.

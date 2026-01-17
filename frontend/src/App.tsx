@@ -148,7 +148,7 @@ function AppInner() {
 
   // -- Effects --
 
-  type oureventtypes = 'set-theme' | 'screenshot' | 'run-task' | 'app-ready' | 'set-tasks' | 'open-logs'
+  type oureventtypes = 'set-theme' | 'screenshot' | 'run-task' | 'app-ready' | 'set-tasks' | 'open-logs' | 'refresh-path'
 
   // Listen for messages from parent (Desktop wrapper)
   React.useEffect(() => {
@@ -202,10 +202,20 @@ function AppInner() {
         openFile('server-logs', 'logs', 'Server Logs')
         setActiveTab('server-logs')
       }
+      if (eventtype === 'refresh-path') {
+        const path = e.data.path || '/'
+        console.log("[MLCRemote] Refreshing path:", path)
+        setRefreshSignal({ path, ts: Date.now() })
+      }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
   }, [])
+
+  // Notify parent of selected path changes for clipboard targets
+  React.useEffect(() => {
+    window.parent.postMessage({ type: 'path-change', path: selectedPath }, '*')
+  }, [selectedPath])
 
 
   const [reloadTriggers, setReloadTriggers] = React.useState<Record<string, number>>({})
@@ -445,8 +455,44 @@ function AppInner() {
                   }
                   input.click()
                 }
+              },
+              {
+                label: t('copy_to_local', 'Copy to Local Clipboard'),
+                icon: <Icon name="icon-copy" />,
+                action: () => {
+                  window.parent.postMessage({
+                    type: 'copy-to-local',
+                    paths: [contextMenu.entry.path],
+                    count: 1,
+                    names: [contextMenu.entry.name],
+                    totalSize: contextMenu.entry.size || 0
+                  }, '*')
+                }
+              },
+              {
+                label: t('paste_from_local', 'Paste from Local Clipboard'),
+                icon: <Icon name="icon-clipboard" />,
+                action: () => {
+                  window.parent.postMessage({
+                    type: 'paste-from-local',
+                    path: contextMenu.entry.path,
+                  }, '*')
+                }
               }
             ] : [
+              {
+                label: t('copy_to_local', 'Copy to Local Clipboard'),
+                icon: <Icon name="icon-copy" />,
+                action: () => {
+                  window.parent.postMessage({
+                    type: 'copy-to-local',
+                    paths: [contextMenu.entry.path],
+                    count: 1,
+                    names: [contextMenu.entry.name],
+                    totalSize: contextMenu.entry.size || 0
+                  }, '*')
+                }
+              },
               {
                 label: t('open', 'Open'),
                 icon: <Icon name={getIcon('terminal')} />,

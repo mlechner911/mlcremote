@@ -3,11 +3,16 @@ package app
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/backend"
+	"github.com/mlechner911/mlcremote/desktop/wails/internal/clipboard"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/config"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/ssh"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -246,4 +251,145 @@ func (a *App) RunTask(profile config.ConnectionProfile, task config.TaskDef, pas
 
 	// Just call SSH manager
 	return a.SSH.RunCommand(profile.Host, profile.User, profile.Port, password, idFile, task.Command)
+}
+
+// ClipboardCopy downloads remote files to a local temp directory and sets them on the OS clipboard.
+func (a *App) ClipboardCopy(remotePaths []string, token string) error {
+	if !a.IsPremium() {
+		return fmt.Errorf("premium feature required")
+	}
+
+	port := a.SSH.GetActivePort()
+	if port == 0 {
+		return fmt.Errorf("no active connection")
+	}
+
+	tempDir := filepath.Join(os.TempDir(), "mlcremote_clipboard")
+	// Recreate temp dir to clean up old copies
+	_ = os.RemoveAll(tempDir)
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return fmt.Errorf("failed to create temp dir: %w", err)
+	}
+
+	var localPaths []string
+	client := http.Client{Timeout: 30 * time.Second} // Timeout per file?
+
+	for _, rPath := range remotePaths {
+		// Download file
+		url := fmt.Sprintf("http://localhost:%d/api/file?path=%s&download=true", port, rPath)
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return err
+		}
+		if token != "" {
+			req.Header.Set("X-Auth-Token", token)
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to download %s: %w", rPath, err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("server returned %s for %s", resp.Status, rPath)
+		}
+
+		localPath := filepath.Join(tempDir, filepath.Base(rPath))
+		out, err := os.Create(localPath)
+		if err != nil {
+			return fmt.Errorf("failed to create local file: %w", err)
+		}
+		if _, err := io.Copy(out, resp.Body); err != nil {
+			out.Close()
+			return fmt.Errorf("failed to save file: %w", err)
+		}
+		out.Close()
+		localPaths = append(localPaths, localPath)
+	}
+
+	// Write to Clipboard
+	if err := clipboard.Get().WriteFiles(localPaths); err != nil {
+		return fmt.Errorf("failed to write to clipboard: %w", err)
+	}
+
+	return nil
+}
+
+// ClipboardPaste returns the list of file paths currently on the OS clipboard.
+func (a *App) ClipboardPaste() ([]string, error) {
+	if !a.IsPremium() {
+		return nil, fmt.Errorf("premium feature required")
+	}
+	return clipboard.Get().ReadFiles()
+}
+
+// ClipboardPasteTo reads files from OS clipboard and uploads them to the remote directory.
+func (a *App) ClipboardPasteTo(remoteDir string, token string) error {
+	if !a.IsPremium() {
+		return fmt.Errorf("premium feature required")
+	}
+
+	files, err := clipboard.Get().ReadFiles()
+	if err != nil {
+		return fmt.Errorf("failed to read clipboard: %w", err)
+	}
+	if len(files) == 0 {
+		return nil // Nothing to paste
+	}
+
+	port := a.SSH.GetActivePort()
+	if port == 0 {
+		return fmt.Errorf("no active connection")
+	}
+
+	// Just use a simple multipart upload for each file
+	// Optimally we'd do parallel or batch
+	client := http.Client{Timeout: 60 * time.Second}
+
+	for _, localPath := range files {
+		// Open local file
+		f, err := os.Open(localPath)
+		if err != nil {
+			return fmt.Errorf("failed to open local file %s: %w", localPath, err)
+		}
+		defer f.Close()
+
+		// Start multipart upload
+		r, w := io.Pipe()
+		m := multipart.NewWriter(w)
+
+		go func() {
+			defer w.Close()
+			defer m.Close()
+			part, err := m.CreateFormFile("file", filepath.Base(localPath))
+			if err != nil {
+				return
+			}
+			if _, err := io.Copy(part, f); err != nil {
+				return
+			}
+		}()
+
+		url := fmt.Sprintf("http://localhost:%d/api/upload?path=%s", port, remoteDir)
+		req, err := http.NewRequest("POST", url, r)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Content-Type", m.FormDataContentType())
+		if token != "" {
+			req.Header.Set("X-Auth-Token", token)
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to upload %s: %w", localPath, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+			return fmt.Errorf("upload failed with status %s", resp.Status)
+		}
+	}
+
+	return nil
 }

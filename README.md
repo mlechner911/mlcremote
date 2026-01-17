@@ -15,7 +15,7 @@
   <br>
 </div>
 
-**Status:** Production Ready (v1.3.0)
+**Status:** Production Ready (v1.3.4)
 
 ## Why MLCRemote?
 
@@ -40,6 +40,7 @@ are also unusable for small VPS or home servers.
 | **�🖼️ Media Preview** | View images, PDFs, Markdown, Videos, and Code directly in the remote file manager. |
 | **🔒 Secure Tunneling** | All traffic flows through a secure SSH tunnel. No extra ports need to be opened on your firewall. |
 | **⚡ Smart Workflow** | Persistent workspace state, split-view editing, and rapid-fire navigation. |
+| **📋 Smart Clipboard** | Seamlessly copy/paste files between your local machine and the remote server (Bidirectional). |
 
 ## Documentation
 

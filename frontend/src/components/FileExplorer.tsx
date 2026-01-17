@@ -411,9 +411,42 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
                 document.body.appendChild(link)
                 link.click()
                 document.body.removeChild(link)
+                link.click()
+                document.body.removeChild(link)
+              },
+              separator: true
+            },
+            {
+              label: t('copy_to_local', 'Copy to Local Clipboard'),
+              icon: <Icon name="icon-copy" />,
+              action: () => {
+                window.parent.postMessage({
+                  type: 'copy-to-local',
+                  paths: [contextMenu.item.path],
+                }, '*')
+              }
+            },
+            {
+              label: t('paste_from_local', 'Paste from Local Clipboard'),
+              icon: <Icon name="icon-clipboard" />,
+              action: () => {
+                window.parent.postMessage({
+                  type: 'paste-from-local',
+                  path: contextMenu.item.path,
+                }, '*')
               },
               separator: true
             }]),
+            {
+              label: t('copy_to_local', 'Copy to Local Clipboard'),
+              icon: <Icon name="icon-copy" />,
+              action: () => {
+                window.parent.postMessage({
+                  type: 'copy-to-local',
+                  paths: [contextMenu.item.path],
+                }, '*')
+              }
+            },
             {
               label: t('rename'),
               icon: <Icon name={getIcon('edit')} />,

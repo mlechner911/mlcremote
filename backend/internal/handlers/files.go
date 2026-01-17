@@ -743,3 +743,69 @@ func RenameFileHandler(root string) http.HandlerFunc {
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
+
+// CopyRequest represents a POST /api/copy body.
+type CopyRequest struct {
+	SourcePath string `json:"sourcePath"`
+	DestPath   string `json:"destPath"`
+}
+
+// CopyFileHandler copies a file or directory recursively.
+// @Summary Copy file/directory
+// @Description Copies a file or directory to a new location.
+// @ID copyFile
+// @Tags file
+// @Security TokenAuth
+// @Accept json
+// @Param body body CopyRequest true "Copy details"
+// @Success 204
+// @Router /api/copy [post]
+func CopyFileHandler(root string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if util.IsBlocked() {
+			http.Error(w, "service temporarily unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		var req CopyRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+
+		srcTarget, err := util.SanitizePath(root, req.SourcePath)
+		if err != nil {
+			http.Error(w, "invalid source path: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		destTarget, err := util.SanitizePath(root, req.DestPath)
+		if err != nil {
+			http.Error(w, "invalid destination path: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Check if source exists
+		if _, err := os.Stat(srcTarget); err != nil {
+			if os.IsNotExist(err) {
+				http.Error(w, "source not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "failed to stat source", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		// Check if destination exists
+		if _, err := os.Stat(destTarget); err == nil {
+			http.Error(w, "destination already exists", http.StatusConflict)
+			return
+		}
+
+		// Perform recursive copy
+		if err := util.CopyRecursive(srcTarget, destTarget); err != nil {
+			http.Error(w, "copy failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}

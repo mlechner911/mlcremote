@@ -36,6 +36,7 @@ type Manager struct {
 	cmd         *exec.Cmd
 	tunnelState string
 	stopping    bool
+	activePort  int
 }
 
 func NewManager() *Manager {
@@ -131,6 +132,7 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 		if m.cmd == cmd { // Only if it's still the active command
 			m.cmd = nil
 			m.tunnelState = "disconnected"
+			m.activePort = 0
 			wailsRuntime.EventsEmit(ctx, "tunnel-status", "disconnected")
 
 			// Only log error if not stopping intentionally
@@ -140,7 +142,14 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 		}
 	}()
 
+	m.activePort = profile.LocalPort
 	return "started", nil
+}
+
+func (m *Manager) GetActivePort() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.activePort
 }
 
 func (m *Manager) StopTunnel() (string, error) {

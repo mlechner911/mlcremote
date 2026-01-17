@@ -216,6 +216,7 @@ func (s *Server) Routes() {
 	// Upload endpoint for drag & drop file uploads
 	s.Mux.HandleFunc("/api/upload", handlers.UploadHandler(s.Root))
 	s.Mux.Handle("/api/rename", handlers.RenameFileHandler(s.Root))
+	s.Mux.Handle("/api/copy", handlers.CopyFileHandler(s.Root))
 
 	// Static files (for dev)
 	if s.StaticDir != "" {
