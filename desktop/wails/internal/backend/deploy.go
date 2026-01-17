@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -246,9 +247,17 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 	if scriptName != "" {
 		if scriptContent == "" {
 			// Content is empty, read from assets/payload/{scriptName}
-			if content, err := fs.ReadFile(m.payload, "assets/payload/"+scriptName); err == nil {
+			// Use path.Join (forward slashes) for embed.FS, NOT filepath.Join (OS specific)
+			embedKey := path.Join("assets", "payload", scriptName)
+			if content, err := fs.ReadFile(m.payload, embedKey); err == nil {
 				scriptContent = string(content)
 			} else {
+				// DEBUG: List all files in assets/payload to see what's wrong
+				fmt.Printf("DEBUG: Failed to read %s. Available assets:\n", embedKey)
+				fs.WalkDir(m.payload, "assets/payload", func(path string, d fs.DirEntry, err error) error {
+					fmt.Println(" -", path)
+					return nil
+				})
 				return fmt.Errorf("failed to read script asset %s: %w", scriptName, err)
 			}
 		}
