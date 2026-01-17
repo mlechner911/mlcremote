@@ -132,10 +132,13 @@ func (m *Manager) DeployAgent(profileJSON string, targetOS remotesystem.RemoteOS
 	}
 
 	// 4. Start Backend & Verify
-	res, err := m.startBackend(runRemote, remoteSys, home, remoteBinDir, binName, token, forceNew)
+	var p ssh.TunnelProfile
+	json.Unmarshal([]byte(profileJSON), &p)
+
+	res, err := m.startBackend(runRemote, remoteSys, home, remoteBinDir, binName, token, p.RootPath, forceNew)
 	if err != nil && !forceNew {
 		fmt.Printf("Startup on default port failed (%v). Retrying with random port...\n", err)
-		return m.startBackend(runRemote, remoteSys, home, remoteBinDir, binName, token, true)
+		return m.startBackend(runRemote, remoteSys, home, remoteBinDir, binName, token, p.RootPath, true)
 	}
 	return res, err
 }
@@ -319,7 +322,7 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 	return nil
 }
 
-func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys remotesystem.Remote, home, remoteBinDir, binName, token string, forceNew bool) (string, error) {
+func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys remotesystem.Remote, home, remoteBinDir, binName, token, rootPath string, forceNew bool) (string, error) {
 	if token == "" {
 		return "failed", fmt.Errorf("backend token is required")
 	}
@@ -333,6 +336,12 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 	}
 	hostArg := "-host=127.0.0.1"
 
+	// Append root arg if specified
+	rootArg := ""
+	if rootPath != "" {
+		rootArg = fmt.Sprintf("-root=\"%s\"", rootPath)
+	}
+
 	logFile := LogFileCurrent
 	if forceNew {
 		logFile = fmt.Sprintf("session-%d.log", time.Now().Unix())
@@ -342,7 +351,7 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 
 	startCmd := remoteSys.StartProcess(
 		remoteSys.JoinPath(home, remoteBinDir, binName),
-		fmt.Sprintf("%s %s %s", authArg, portArg, hostArg),
+		fmt.Sprintf("%s %s %s %s", authArg, portArg, hostArg, rootArg),
 		remoteSys.JoinPath(home, RemoteBaseDir, logFile),
 		pidFile,
 	)

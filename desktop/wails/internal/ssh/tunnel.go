@@ -28,6 +28,7 @@ type TunnelProfile struct {
 	ExtraArgs    []string `json:"extraArgs"`
 	Mode         string   `json:"mode"`         // "default" or "parallel"
 	DefaultShell string   `json:"defaultShell"` // e.g. "bash" or "powershell"
+	RootPath     string   `json:"rootPath"`     // Optional root directory override
 }
 
 type Manager struct {

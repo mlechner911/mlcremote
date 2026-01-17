@@ -44,9 +44,17 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
     setLoading(true)
     setError('')
     try {
-      const list = await listTree(p, { showHidden })
+      const { entries: list, fallback } = await listTree(p, { showHidden })
       setEntries(list)
       setPath(p)
+
+      // Fallback Warning
+      if (p === '' && fallback && !fallbackWarned.current) {
+        if (showMessageBox) showMessageBox(t('warning'), t('root_fallback_warning', "The configured root directory does not exist. Using home directory instead."))
+        else alert(t('root_fallback_warning', "The configured root directory does not exist. Using home directory instead."))
+        fallbackWarned.current = true
+      }
+
       // notify parent which directory is currently displayed, but only when it actually changes
       try {
         // use a ref to avoid calling onDirChange repeatedly
@@ -79,6 +87,8 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
         // ignore
       }
     } catch (e: any) {
+      // Check for specific backend 404 "root directory not found" message if needed, 
+      // though header fallback covers the requirement gracefully.
       if (e.message === 'Permission denied') {
         setError(t('permission_denied'))
       } else {
@@ -88,6 +98,8 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
       setLoading(false)
     }
   }, [showHidden, onBackendActive, onDirChange, t])
+
+  const fallbackWarned = React.useRef(false)
 
   const currentPathRef = React.useRef<string>('')
 

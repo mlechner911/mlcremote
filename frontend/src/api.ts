@@ -137,7 +137,7 @@ export async function authCheck(): Promise<boolean> {
  * List directory entries under `path`. When `path` is empty the server root
  * is listed.
  */
-export async function listTree(path = '', opts?: { showHidden?: boolean }): Promise<DirEntry[]> {
+export async function listTree(path = '', opts?: { showHidden?: boolean }): Promise<{ entries: DirEntry[], fallback: boolean }> {
     const params = new URLSearchParams()
     if (path) params.set('path', path)
     if (opts?.showHidden) params.set('showHidden', '1')
@@ -153,7 +153,9 @@ export async function listTree(path = '', opts?: { showHidden?: boolean }): Prom
         warn('/api/tree not ok')
         throw new Error('tree failed')
     }
-    return r.json()
+    const entries = await r.json()
+    const fallback = r.headers.get('X-Root-Fallback') === 'true'
+    return { entries, fallback }
 }
 
 /**

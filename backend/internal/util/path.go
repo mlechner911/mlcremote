@@ -37,5 +37,23 @@ func SanitizePath(root string, req string) (string, error) {
 	if strings.HasPrefix(rel, "..") {
 		return "", errors.New("path outside root")
 	}
+
+	// Check for protected files
+	base := strings.ToLower(filepath.Base(abs))
+	protected := []string{
+		"ntuser.dat",
+		"system volume information",
+		"$recycle.bin",
+		"pagefile.sys",
+		"hiberfil.sys",
+		"swapfile.sys",
+		"dumpstack.log.tmp",
+	}
+	for _, p := range protected {
+		if base == p {
+			return "", errors.New("access denied: protected system file")
+		}
+	}
+
 	return abs, nil
 }

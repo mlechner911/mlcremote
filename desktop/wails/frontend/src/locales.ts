@@ -103,7 +103,15 @@ export const translations = {
         session_key_copied: "Session Key copied to clipboard!",
         default_shell: "Default Shell (Optional)",
         default_shell_desc: "Leave empty to auto-detect. On Windows, you can specify 'bash' or full path to Git Bash.",
+        root_path: "Root Directory (Optional)",
+        root_path_desc: "Leave empty to use the default user home directory.",
         server_logs: "Server Logs",
+        connection_lost: "Connection Lost",
+        connection_lost_desc: "The connection to the remote server was interrupted.",
+        return_home: "Return Home",
+        reconnect: "Reconnect",
+        reconnecting: "Reconnecting...",
+        reconnect_failed: "Reconnect Failed",
 
         // Premium
         premium_managed: "Managed Identity (Beta)",
@@ -251,6 +259,8 @@ export const translations = {
         delete: "Löschen",
         custom_color: "Benutzerdefinierte Farbe",
         default_shell_desc: "Leer lassen für automatische Erkennung. Unter Windows können Sie 'bash' oder den vollen Pfad zu Git Bash angeben.",
+        root_path: "Root-Verzeichnis (Optional)",
+        root_path_desc: "Leer lassen, um das Standard-Benutzerverzeichnis zu verwenden.",
 
         // Session
         session_found: "Bestehende Sitzung gefunden",
@@ -259,7 +269,13 @@ export const translations = {
         start_parallel: "Neue Instanz starten",
         join_session: "Sitzung beitreten",
         share_session: "Sitzung teilen",
-        session_key_copied: "Sitzungsschlüssel in die Zwischenablage kopiert!"
+        session_key_copied: "Sitzungsschlüssel in die Zwischenablage kopiert!",
+        connection_lost: "Verbindung verloren",
+        connection_lost_desc: "Die Verbindung zum Remote-Server wurde unterbrochen.",
+        return_home: "Zurück zum Start",
+        reconnect: "Verbinden",
+        reconnecting: "Verbinde...",
+        reconnect_failed: "Verbindung fehlgeschlagen"
     },
     es: {
         app_title: "MLCRemote Desktop",
@@ -374,8 +390,15 @@ export const translations = {
         quick_tasks_desc: "Defina accesos directos para comandos comunes en este servidor.",
         delete: "Eliminar",
         custom_color: "Color personalizado",
-        default_shell: "Shell predeterminado (Opcional)",
         default_shell_desc: "Dejar vacío para detección automática. En Windows, puede especificar 'bash' o la ruta completa a Git Bash.",
+        root_path: "Directorio Raíz (Opcional)",
+        root_path_desc: "Dejar vacío para usar el directorio de inicio predeterminado.",
+        connection_lost: "Conexión Perdida",
+        connection_lost_desc: "La conexión con el servidor remoto fue interrumpida.",
+        return_home: "Volver al Inicio",
+        reconnect: "Reconectar",
+        reconnecting: "Reconectando...",
+        reconnect_failed: "Fallo al reconectar"
     },
     fr: {
         app_title: "MLCRemote Desktop",
@@ -492,6 +515,12 @@ export const translations = {
         delete: "Supprimer",
         custom_color: "Couleur personnalisée",
         default_shell_desc: "Laisser vide pour la détection automatique. Sur Windows, vous pouvez spécifier 'bash' ou le chemin complet vers Git Bash.",
+        connection_lost: "Connexion Perdue",
+        connection_lost_desc: "La connexion au serveur distant a été interrompue.",
+        return_home: "Retour à l'accueil",
+        reconnect: "Reconnecter",
+        reconnecting: "Connexion...",
+        reconnect_failed: "Échec de reconnexion"
     }
 };
 

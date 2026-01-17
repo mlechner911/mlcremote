@@ -54,6 +54,13 @@ func main() {
 		*root = os.Getenv("HOME")
 	}
 
+	fallback := false
+	if _, err := os.Stat(*root); os.IsNotExist(err) {
+		log.Printf("Configured root %s does not exist, falling back to HOME", *root)
+		*root = os.Getenv("HOME")
+		fallback = true
+	}
+
 	token := *tokenFlag
 	if token == "" && !*noAuth {
 		token = generateToken()
@@ -63,6 +70,10 @@ func main() {
 	// AllowDelete = true for dev server
 	trashDir := filepath.Join(os.Getenv("HOME"), ".trash")
 	s := server.New(*host, *root, *staticDir, *openapi, token, "", true, trashDir)
+
+	if fallback {
+		s.RootFallback = true
+	}
 
 	s.Routes()
 

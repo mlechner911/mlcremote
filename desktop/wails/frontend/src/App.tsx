@@ -7,7 +7,8 @@ import {
   StartTunnel, StopTunnel, TunnelStatus, DetectRemoteOS,
   InstallBackend, DeployAgent, CheckBackend, ProbeConnection,
   ListProfiles, SaveProfile, DeleteProfile,
-  SetMasterPassword, VerifyMasterPassword, HasMasterPassword, RunTask, StopBackend
+  SetMasterPassword, VerifyMasterPassword, HasMasterPassword, RunTask, StopBackend,
+  StartTunnelWithProfile
 } from './wailsjs/go/app/App'
 import { I18nProvider, useI18n } from './utils/i18n'
 // @ts-ignore
@@ -110,9 +111,21 @@ function AppContent() {
         }
       }
       rt.EventsOn('navigate', handler)
-      return () => { try { rt.EventsOff('navigate', handler) } catch (e) { } }
+
+      // Listen for unexpected tunnel disconnects
+      const tunnelHandler = (status: string) => {
+        if (status === 'disconnected' && view === 'remote' && !shuttingDown) {
+          setConnectionLost(true)
+        }
+      }
+      rt.EventsOn('tunnel-status', tunnelHandler)
+
+      return () => {
+        try { rt.EventsOff('navigate', handler) } catch (e) { }
+        try { rt.EventsOff('tunnel-status', tunnelHandler) } catch (e) { }
+      }
     }
-  }, [])
+  }, [view, shuttingDown])
 
   useEffect(() => {
     // 2. Check Lock Status
@@ -212,6 +225,48 @@ function AppContent() {
     }
   }
 
+  const [connectionLost, setConnectionLost] = useState(false)
+  const [reconnecting, setReconnecting] = useState(false)
+
+  const handleReconnect = async () => {
+    if (!currentProfile) return
+    setReconnecting(true)
+    try {
+      // Reconstruct backend profile (Logic from LaunchScreen)
+      const p = currentProfile as any // Cast to access extended fields like mode/rootPath
+      const backendProfile = {
+        user: p.user,
+        host: p.host,
+        localPort: p.localPort,
+        remoteHost: '127.0.0.1',
+        remotePort: 8443,
+        identityFile: p.identityFile,
+        extraArgs: [...(p.extraArgs || [])],
+        mode: p.mode,
+        rootPath: p.rootPath
+      }
+      if (p.port && p.port !== 22) {
+        backendProfile.extraArgs.push('-p', String(p.port))
+      }
+
+      await StartTunnelWithProfile(JSON.stringify(backendProfile))
+      setConnectionLost(false)
+
+      // Refresh iframe by forcing update or just notify user
+      // Toggle view to force reload if needed, or simply rely on iframe retry?
+      // Best to reload the iframe to be sure.
+      const current = remoteUrl
+      setRemoteUrl('')
+      setTimeout(() => setRemoteUrl(current), 100)
+
+    } catch (e: any) {
+      console.error("Reconnect failed", e)
+      alert(t('reconnect_failed') + ": " + e.message)
+    } finally {
+      setReconnecting(false)
+    }
+  }
+
   if (view === 'init') return <div style={{ background: 'var(--bg-root)', height: '100vh' }} />
 
   return (
@@ -252,6 +307,38 @@ function AppContent() {
           onSetTheme={setTheme}
           onClose={() => setView('launch')}
         />
+      )}
+
+      {connectionLost && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          color: 'white'
+        }}>
+          <div style={{ marginBottom: 20, padding: 20, background: '#1f2937', borderRadius: 8, maxWidth: 400, textAlign: 'center', border: '1px solid #374151' }}>
+            <h2 style={{ margin: '0 0 10px 0', fontWeight: 600 }}>{t('connection_lost') || 'Connection Lost'}</h2>
+            <p style={{ opacity: 0.8, marginBottom: 20 }}>{t('connection_lost_desc') || 'The connection to the remote server was interrupted.'}</p>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                onClick={() => { setConnectionLost(false); handleDisconnect(); }}
+                className="btn"
+                style={{ background: 'transparent', border: '1px solid #4b5563', color: 'white', padding: '8px 16px', borderRadius: 4, cursor: 'pointer' }}
+              >
+                {t('return_home') || 'Return Home'}
+              </button>
+              <button
+                onClick={handleReconnect}
+                className="btn"
+                disabled={reconnecting}
+                style={{ background: '#3b82f6', border: 'none', color: 'white', padding: '8px 16px', borderRadius: 4, cursor: 'pointer', opacity: reconnecting ? 0.7 : 1 }}
+              >
+                {reconnecting ? (t('reconnecting') || 'Reconnecting...') : (t('reconnect') || 'Reconnect')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {shuttingDown && (

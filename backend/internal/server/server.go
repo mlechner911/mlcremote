@@ -40,6 +40,9 @@ type Server struct {
 	// TrashDir is the directory where deleted files are moved
 	TrashDir string
 
+	// RootFallback indicates if the server fell back to default root due to invalid config
+	RootFallback bool
+
 	Mux        *http.ServeMux
 	httpServer *http.Server
 	// clients
@@ -62,7 +65,7 @@ func New(host, root, staticDir string, openapiPath string, authToken string, pas
 }
 
 // allowCORS adds headers for Wails and other local prototyping origins
-func allowCORS(w http.ResponseWriter, r *http.Request) {
+func (s *Server) allowCORS(w http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
 		origin = "*"
@@ -71,6 +74,9 @@ func allowCORS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", origin)
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Auth-Token")
+	if s.RootFallback {
+		w.Header().Set("X-Root-Fallback", "true")
+	}
 }
 
 // authMiddleware wraps an http.Handler and checks for the valid AuthToken.
@@ -80,8 +86,7 @@ func (s *Server) authMiddleware(next http.Handler) http.Handler {
 		if !strings.Contains(r.URL.Path, "/api/logs") {
 			log.Printf("[ACCESS] %s %s (Remote: %s)", r.Method, r.URL.String(), r.RemoteAddr)
 		}
-
-		allowCORS(w, r)
+		s.allowCORS(w, r)
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)

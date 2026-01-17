@@ -30,6 +30,7 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
     const [port, setPort] = useState(profile?.port || 22)
     const [localPort, setLocalPort] = useState(profile?.localPort || 8443)
     const [defaultShell, setDefaultShell] = useState(profile?.defaultShell || '')
+    const [rootPath, setRootPath] = useState(profile?.rootPath || '')
 
     // Auth Type Logic
     const [identityFile, setIdentityFile] = useState(profile?.identityFile || '')
@@ -54,6 +55,7 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             setLocalPort(profile.localPort || 8443)
             setIdentityFile(profile.identityFile || '')
             setDefaultShell(profile.defaultShell || '')
+            setRootPath(profile.rootPath || '')
             setTasks(profile.tasks || [])
         } else {
             setName('')
@@ -64,6 +66,7 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             setLocalPort(8443)
             setIdentityFile('')
             setDefaultShell('')
+            setRootPath('')
             setTasks([])
         }
     }, [profile])
@@ -129,7 +132,8 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             lastUsed: profile?.lastUsed || 0,
             extraArgs: profile?.extraArgs || [],
             tasks: tasks,
-            defaultShell: defaultShell
+            defaultShell: defaultShell,
+            rootPath: rootPath
         })
     }
 
@@ -350,8 +354,22 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
 
                 {activeTab === 'extended' && (
                     <>
-                        {/* Default Shell (Optional) */}
+                        {/* Root Path (Optional) */}
                         <div>
+                            <label className="label">{t('root_path') || "Root Directory (Optional)"}</label>
+                            <input
+                                className="input"
+                                value={rootPath}
+                                onChange={e => setRootPath(e.target.value)}
+                                placeholder="e.g. /home/user or C:\Data"
+                            />
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                                {t('root_path_desc') || "Leave empty to use the default user home directory."}
+                            </div>
+                        </div>
+
+                        {/* Default Shell (Optional) */}
+                        <div style={{ marginTop: 16 }}>
                             <label className="label">{t('default_shell') || "Default Shell (Optional)"}</label>
                             <input
                                 className="input"

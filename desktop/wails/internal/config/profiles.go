@@ -28,6 +28,7 @@ type ConnectionProfile struct {
 	RemoteArch    string    `json:"remoteArch"`    // e.g. amd64, arm64
 	RemoteVersion string    `json:"remoteVersion"` // e.g. 1.0.0
 	Mode          string    `json:"mode"`          // "default" or "parallel"
+	RootPath      string    `json:"rootPath"`      // Optional root directory override
 	Tasks         []TaskDef `json:"tasks"`
 }
 

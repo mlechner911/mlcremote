@@ -1,5 +1,16 @@
 # MLCRemote Release Notes
 
+## [1.3.3] - 2026-01-17
+### Fixed
+- **SSH Improvements**: Added automatic reconnect mechanism when the SSH tunnel drops (e.g., due to network interruptions), including a new "Connection Lost" dialog.
+- **Tour Persistence**: Fixed an issue where changing the root directory caused the onboarding tour to reappear. 
+- **Invalid Root**: Added graceful fallback to the home directory if the configured root path does not exist, with a user warning.
+
+## [1.3.2] - 2025-07-27
+### Fixed
+- **Persistence**: Fixed an issue where the "Root Directory" setting was not being saved.
+- **Translations**: Added missing translations for Root Directory settings.
+
 ## [1.3.1] - 2025-07-27
 ### Fixed
 - Fixed SVG file handling: now correctly served as `image/svg+xml` to prevent broken previews and text-only downloads.

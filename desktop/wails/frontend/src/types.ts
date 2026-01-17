@@ -22,6 +22,7 @@ export interface Profile {
     color?: string
     tasks?: TaskDef[]
     defaultShell?: string
+    rootPath?: string
 }
 
 export interface ConnectionProfile {
@@ -42,4 +43,5 @@ export interface ConnectionProfile {
     mode?: string
     tasks?: TaskDef[]
     defaultShell?: string
+    rootPath?: string
 }

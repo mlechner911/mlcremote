@@ -159,7 +159,7 @@ export default function Editor({ path, tab, onSaved, settings, reloadTrigger, on
       ; (async () => {
         if (!meta || !meta.isDir || !path) return
         try {
-          const entries = await listTree(path)
+          const { entries } = await listTree(path)
           if (!mounted) return
           setContent('')
           setOrigContent(entries.map((e: any) => e.name).join('\n'))

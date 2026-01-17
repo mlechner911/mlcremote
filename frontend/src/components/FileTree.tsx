@@ -111,7 +111,7 @@ const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, 
     const loadChildren = async () => {
         setLoading(true)
         try {
-            const list = await listTree(entry.path, { showHidden })
+            const { entries: list } = await listTree(entry.path, { showHidden })
             // Sort: Directories first, then files
             list.sort((a, b) => {
                 if (a.isDir === b.isDir) return a.name.localeCompare(b.name)
@@ -196,7 +196,7 @@ export default function FileTree({ selectedPath, onSelect, onOpen, root = '/', s
     const fetchRoot = () => {
         setLoading(true)
         listTree(root, { showHidden })
-            .then(list => {
+            .then(({ entries: list }) => {
                 list.sort((a, b) => {
                     if (a.isDir === b.isDir) return a.name.localeCompare(b.name)
                     return a.isDir ? -1 : 1

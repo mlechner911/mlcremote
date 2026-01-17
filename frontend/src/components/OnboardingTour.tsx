@@ -10,7 +10,11 @@ export default function OnboardingTour() {
     const { settings, updateSettings } = useAppSettings()
 
     useEffect(() => {
-        // Only run if not completed
+        // Check local storage first (robust against backend resets)
+        const localCompleted = localStorage.getItem('onboarding_completed')
+        if (localCompleted === 'true') return
+
+        // Only run if not completed in settings
         if (!settings || settings.onboardingCompleted) return
 
         const drive = driver({
@@ -22,6 +26,7 @@ export default function OnboardingTour() {
             allowClose: true,
             onDestroyed: () => {
                 // Mark as completed when tour is finished or closed
+                localStorage.setItem('onboarding_completed', 'true')
                 updateSettings({ onboardingCompleted: true })
             },
             steps: [

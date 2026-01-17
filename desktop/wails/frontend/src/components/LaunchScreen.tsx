@@ -166,7 +166,8 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 remotePort: 8443,
                 identityFile: p.identityFile,
                 extraArgs: [...(p.extraArgs || [])],
-                mode: p.mode
+                mode: p.mode,
+                rootPath: p.rootPath
             }
 
             // Handle non-standard SSH port via extra args
@@ -285,7 +286,8 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
         try {
             const backendProfile = {
                 user: p.user, host: p.host, localPort: p.localPort, remoteHost: '127.0.0.1', remotePort: 8443,
-                identityFile: p.identityFile, extraArgs: [...(p.extraArgs || [])]
+                identityFile: p.identityFile, extraArgs: [...(p.extraArgs || [])],
+                rootPath: p.rootPath
             }
             if (p.port && p.port !== 22) backendProfile.extraArgs.push('-p', String(p.port))
 
@@ -447,7 +449,8 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                         try {
                             const backendProfile = {
                                 user: p.user, host: p.host, localPort: p.localPort, remoteHost: '127.0.0.1', remotePort: 8443,
-                                identityFile: p.identityFile, extraArgs: [...(p.extraArgs || [])]
+                                identityFile: p.identityFile, extraArgs: [...(p.extraArgs || [])],
+                                rootPath: p.rootPath
                             }
                             if (p.port && p.port !== 22) backendProfile.extraArgs.push('-p', String(p.port))
 

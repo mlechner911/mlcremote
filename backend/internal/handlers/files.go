@@ -239,6 +239,11 @@ func TreeHandler(root string) http.HandlerFunc {
 			// if the file does not exist, record and block
 			if os.IsNotExist(err) {
 				util.RecordMissingAccess(target)
+				// If requesting root specifically (or root path is bad)
+				if reqPath == "" || reqPath == "." || reqPath == "/" {
+					http.Error(w, "root directory not found", http.StatusNotFound)
+					return
+				}
 			}
 			http.Error(w, "not found", http.StatusNotFound)
 			return
@@ -250,10 +255,14 @@ func TreeHandler(root string) http.HandlerFunc {
 		f, err := os.Open(target)
 		if err != nil {
 			if os.IsPermission(err) {
-				http.Error(w, "permission denied", http.StatusForbidden)
+				http.Error(w, "permission denied opening directory", http.StatusForbidden)
 				return
 			}
-			http.Error(w, "cannot open dir", http.StatusInternalServerError)
+			if os.IsNotExist(err) {
+				http.Error(w, "directory does not exist", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "cannot open dir: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		defer f.Close()
@@ -383,10 +392,23 @@ func GetFileHandler(root string) http.HandlerFunc {
 		if r.URL.Query().Get("download") == "true" {
 			filename := filepath.Base(target)
 			w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
+			// For downloads, we might WANT the BOM?
+			// Usually yes. But if the user complains about "seeing" it, maybe they mean in the editor.
+			// The screenshot is of the EDITOR.
+			// The editor loads this endpoint usually without ?download=true
 		}
 
-		// rewind to start
-		if _, err := f.Seek(0, 0); err == nil {
+		// Check for UTF-8 BOM
+		startOffset := int64(0)
+		// Only strip BOM if NOT downloading (i.e. viewing in editor)
+		if r.URL.Query().Get("download") != "true" {
+			if n >= 3 && buf[0] == 0xEF && buf[1] == 0xBB && buf[2] == 0xBF {
+				startOffset = 3
+			}
+		}
+
+		// rewind to start (or skip BOM)
+		if _, err := f.Seek(startOffset, 0); err == nil {
 			_, _ = io.Copy(w, f)
 		}
 	}
