@@ -366,10 +366,17 @@ func GetFileHandler(root string) http.HandlerFunc {
 			return
 		}
 		defer f.Close()
+
 		// detect content type from the first bytes
 		buf := make([]byte, 512)
 		n, _ := f.Read(buf)
 		mime := http.DetectContentType(buf[:n])
+
+		// Override mime for SVG if detected as text/plain or text/xml
+		if filepath.Ext(target) == ".svg" && (mime == "text/plain" || mime == "text/xml") {
+			mime = "image/svg+xml"
+		}
+
 		w.Header().Set("Content-Type", mime)
 
 		// Check if download is requested
