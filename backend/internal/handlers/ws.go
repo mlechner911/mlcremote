@@ -85,6 +85,8 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 			// attach this websocket to the session
 			s.addConn(conn)
 			log.Printf("ws: attached conn %p to session %s", conn, s.id)
+			WriteAuditLog("Terminal Session Connected (Ephemeral, shell=%s) from %s", shell, r.RemoteAddr)
+
 			defer func() {
 				s.removeConn(conn)
 				log.Printf("ws: detached conn %p from session %s", conn, s.id)
@@ -94,6 +96,7 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 				sessionsMu.Lock()
 				delete(sessions, s.id)
 				sessionsMu.Unlock()
+				WriteAuditLog("Terminal Session Disconnected (Ephemeral) from %s", r.RemoteAddr)
 			}()
 
 			// WS -> PTY (write into session's PTY). Support resize JSON messages.
@@ -133,6 +136,8 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 		}
 
 		s.addConn(conn)
+		WriteAuditLog("Terminal Session Attached (Persistent, id=%s) from %s", sessionID, r.RemoteAddr)
+
 		defer func() {
 			s.removeConn(conn)
 			// If this was the last connection attached to a persistent session,
@@ -146,6 +151,9 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 				sessionsMu.Lock()
 				delete(sessions, s.id)
 				sessionsMu.Unlock()
+				WriteAuditLog("Terminal Session Closed (Persistent, id=%s) from %s", sessionID, r.RemoteAddr)
+			} else {
+				WriteAuditLog("Terminal Session Detached (Persistent, id=%s) from %s", sessionID, r.RemoteAddr)
 			}
 		}()
 

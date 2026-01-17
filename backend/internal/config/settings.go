@@ -9,29 +9,31 @@ import (
 
 // UserSettings represents the user-configurable settings persisted to disk.
 type UserSettings struct {
-	Theme           string `json:"theme"`
-	AutoOpen        bool   `json:"autoOpen"`
-	ShowHidden      bool   `json:"showHidden"`
-	ShowLogs        bool   `json:"showLogs"`
-	ShowServerLogs  bool   `json:"showServerLogs"`
-	HideMemoryUsage bool   `json:"hideMemoryUsage"`
-	MaxEditorSize   int64  `json:"maxEditorSize"`
-	Language        string `json:"language"`
-	UiMode          string `json:"uiMode"`
+	Theme               string `json:"theme"`
+	AutoOpen            bool   `json:"autoOpen"`
+	ShowHidden          bool   `json:"showHidden"`
+	ShowLogs            bool   `json:"showLogs"`
+	ShowServerLogs      bool   `json:"showServerLogs"`
+	HideMemoryUsage     bool   `json:"hideMemoryUsage"`
+	MaxEditorSize       int64  `json:"maxEditorSize"`
+	Language            string `json:"language"`
+	UiMode              string `json:"uiMode"`
+	OnboardingCompleted bool   `json:"onboardingCompleted"`
 }
 
 // DefaultSettings returns the default user settings.
 func DefaultSettings() *UserSettings {
 	return &UserSettings{
-		Theme:           "dark",
-		AutoOpen:        true,
-		ShowHidden:      false,
-		ShowLogs:        false,
-		ShowServerLogs:  false,
-		HideMemoryUsage: false,
-		MaxEditorSize:   1024 * 1024, // 1MB
-		Language:        "en",
-		UiMode:          "classic",
+		Theme:               "dark",
+		AutoOpen:            true,
+		ShowHidden:          false,
+		ShowLogs:            false,
+		ShowServerLogs:      false,
+		HideMemoryUsage:     false,
+		MaxEditorSize:       1024 * 1024, // 1MB
+		Language:            "en",
+		UiMode:              "classic",
+		OnboardingCompleted: false,
 	}
 }
 

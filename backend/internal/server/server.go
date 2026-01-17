@@ -165,6 +165,8 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]string{"token": s.AuthToken}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
+
+	handlers.WriteAuditLog("Login Success from %s", r.RemoteAddr)
 }
 
 // Routes registers all HTTP handlers on the server mux.
