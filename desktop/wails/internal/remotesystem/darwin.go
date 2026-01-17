@@ -55,10 +55,14 @@ func (d *Darwin) FallbackKill(name string) string {
 }
 
 func (d *Darwin) StartProcess(bin, args, logFile, pidFile string) string {
-	return fmt.Sprintf("sh -c 'nohup %s %s > \"%s\" 2>&1 & echo $! > \"%s\"'", bin, args, logFile, pidFile)
+	// Execute the uploaded shell script.
+	scriptPath := "~/.mlcremote/start_agent_darwin.sh"
+	return fmt.Sprintf("sh %s \"%s\" \"%s\" \"%s\" \"%s\"", scriptPath, bin, args, logFile, pidFile)
 }
+
 func (d *Darwin) GetStartupScript() (string, string) {
-	return "", ""
+	// Return the filename handled by deploy.go (reading from assets)
+	return "start_agent_darwin.sh", ""
 }
 
 func (d *Darwin) ReadFile(path string) string {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/config"
+	"github.com/mlechner911/mlcremote/desktop/wails/internal/remotesystem"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/ssh"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -56,10 +57,11 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		osArch = fmt.Sprintf("%s/%s", cp.RemoteOS, cp.RemoteArch)
 	} else {
 		// We pass the raw JSON because Backend service expects it (to avoid re-marshalling)
-		osArch, err = a.Backend.DetectRemoteOS(profileJSON)
+		os, arch, err := a.Backend.DetectRemoteOS(profileJSON)
 		if err != nil {
 			return "failed", fmt.Errorf("failed to detect remote OS: %w", err)
 		}
+		osArch = fmt.Sprintf("%s/%s", os, arch)
 	}
 
 	// 4. Deploy Agent
@@ -73,7 +75,7 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		cp.RemoteArch = parts[1]
 
 		// Fetch Version efficiently using known OS to handle pathing correctly
-		if version, err := a.Backend.CheckRemoteVersionWithOS(profileJSON, cp.RemoteOS); err == nil {
+		if version, err := a.Backend.CheckRemoteVersionWithOS(profileJSON, remotesystem.RemoteOS(cp.RemoteOS)); err == nil {
 			cp.RemoteVersion = version
 		} else {
 			cp.RemoteVersion = "unknown"
@@ -89,7 +91,12 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 	runtime.EventsEmit(a.ctx, "connection-status", "deploying_agent")
 
 	forceNew := cp.Mode == "parallel"
-	deployRes, err := a.Backend.DeployAgent(profileJSON, osArch, token, forceNew)
+	parts := strings.Split(osArch, "/")
+	// Parts length checked above
+	targetOS := remotesystem.RemoteOS(parts[0])
+	targetArch := remotesystem.RemoteArch(parts[1])
+
+	deployRes, err := a.Backend.DeployAgent(profileJSON, targetOS, targetArch, token, forceNew)
 	if err != nil {
 		return deployRes, err
 	}

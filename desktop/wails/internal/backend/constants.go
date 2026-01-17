@@ -21,4 +21,15 @@ const (
 
 	// SystemdUserDir is the standard user systemd directory
 	SystemdUserDir = ".config/systemd/user"
+
+	// Log files
+	LogFileCurrent    = "current.log"
+	LogFileStderr     = "current.log.err"
+	LogFileStartupErr = "startup_err.log"
+	PidFile           = "pid"
+	TokenFile         = "token"
+	InstallMetaFile   = "install.json"
+
+	// AgentVersion is the current version of the remote agent
+	AgentVersion = "0.3.4"
 )

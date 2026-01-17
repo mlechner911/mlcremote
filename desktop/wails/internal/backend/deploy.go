@@ -17,28 +17,16 @@ import (
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/ssh"
 )
 
-// DetectRemoteOS attempts to determine the remote operating system and architecture
-func (m *Manager) DetectRemoteOS(profileJSON string) (string, error) {
-	// ... (Previous implementation remains valid or can be refactored too)
-	// For now, let's keep the existing probe logic or move it?
-	// The problem is we need OS to instantiate the right System.
-	// So we keep this probe logic here to decide which System to create.
-
-	var p ssh.TunnelProfile
-	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
-		return "", fmt.Errorf("invalid profile JSON: %w", err)
+// DetectRemoteOS attempts to determine the remote operating system and architecture.
+// It connects via SSH and runs probing commands (uname, ver) to identify the platform.
+// Returns the detected OS and Architecture enums, or an error if detection fails.
+func (m *Manager) DetectRemoteOS(profileJSON string) (remotesystem.RemoteOS, remotesystem.RemoteArch, error) {
+	target, sshBaseArgs, err := m.prepareSSHArgs(profileJSON)
+	if err != nil {
+		return remotesystem.OSUnknown, remotesystem.UnknownArch, err
 	}
 
-	target := fmt.Sprintf("%s@%s", p.User, p.Host)
-	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
-	if p.IdentityFile != "" {
-		sshBaseArgs = append(sshBaseArgs, "-i", p.IdentityFile)
-	}
-	if len(p.ExtraArgs) > 0 {
-		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
-	}
-
-	probeCmd := "uname -sm || echo 'windows-check'"
+	probeCmd := remotesystem.ProbeCommand
 
 	cmdArgs := append([]string{}, sshBaseArgs...)
 	cmdArgs = append(cmdArgs, target, probeCmd)
@@ -50,104 +38,50 @@ func (m *Manager) DetectRemoteOS(profileJSON string) (string, error) {
 	fmt.Printf("[DEBUG] DetectRemoteOS: 'uname' probe output: %q\n", output)
 
 	if err != nil {
-		// Check for auth errors in output
 		if strings.Contains(output, "Permission denied") || strings.Contains(output, "publickey") {
-			return "", fmt.Errorf("ssh: permission denied")
+			return remotesystem.OSUnknown, remotesystem.UnknownArch, fmt.Errorf("ssh: permission denied")
 		}
 		if strings.Contains(err.Error(), "exit status 255") {
-			return "", fmt.Errorf("ssh-unreachable: %s", output)
+			return remotesystem.OSUnknown, remotesystem.UnknownArch, fmt.Errorf("ssh-unreachable: %s", output)
 		}
-		// Don't fail immediately, try fallback if unkown error?
-		// But usually exit status 255 is bad.
-		// If just command failed (exit 1), we continue to fallback.
 		fmt.Printf("[DEBUG] DetectRemoteOS: 'uname' returned error: %v (continuing to fallback)\n", err)
 	}
 
-	outputLower := strings.ToLower(output)
-
-	if strings.Contains(outputLower, "linux") {
-		arch := "amd64" // default
-		if strings.Contains(outputLower, "aarch64") || strings.Contains(outputLower, "arm64") {
-			arch = "arm64"
-		}
-		return fmt.Sprintf("linux/%s", arch), nil
+	if os, arch := remotesystem.ParseOS(output); os != remotesystem.OSUnknown {
+		return os, arch, nil
 	}
 
-	// Detect Git Bash / Cygwin / MSYS (Windows)
-	// Example output: "MINGW64_NT-10.0-19045 x86_64"
-	if strings.Contains(outputLower, "mingw") || strings.Contains(outputLower, "msys") || strings.Contains(outputLower, "cygwin") {
-		arch := "amd64"
-		if strings.Contains(outputLower, "aarch64") || strings.Contains(outputLower, "arm64") {
-			arch = "arm64"
-		}
-		return fmt.Sprintf("windows/%s", arch), nil
-	}
-
-	if strings.Contains(outputLower, "darwin") {
-		arch := "amd64"
-		if strings.Contains(outputLower, "arm64") {
-			arch = "arm64"
-		}
-		return fmt.Sprintf("darwin/%s", arch), nil
-	}
-
-	// Probe succeeded with fallback echo? Matches "windows-check"
-	if strings.Contains(outputLower, "windows-check") {
-		return "windows/amd64", nil
-	}
-
-	// Fallback: If we haven't identified Linux/Darwin/Mingw, it might be Windows (Cmd or PowerShell)
-	// where 'uname' failed (e.g. "Syntaxfehler" or "Command not found").
-	// We explicitly try to invoke cmd.exe to check the version.
 	fmt.Println("[DEBUG] DetectRemoteOS: Trying Windows fallback 'cmd /c ver'...")
 	winArgs := append([]string{}, sshBaseArgs...)
 	winArgs = append(winArgs, target, "cmd /c ver")
 	if validOut, err := createSilentCmd("ssh", winArgs...).Output(); err == nil {
 		fmt.Printf("[DEBUG] DetectRemoteOS: Fallback output: %q\n", string(validOut))
-		if strings.Contains(strings.ToLower(string(validOut)), "windows") {
-			return "windows/amd64", nil
-		}
+		os, arch := remotesystem.ParseOS(string(validOut))
+		return os, arch, nil
 	} else {
 		fmt.Printf("[DEBUG] DetectRemoteOS: Fallback failed: %v\n", err)
 	}
 
-	return "unknown", nil
+	return remotesystem.OSUnknown, remotesystem.UnknownArch, nil
 }
 
-func getRemoteSystem(osType string) remotesystem.Remote {
-	if osType == "windows" {
+func getRemoteSystem(osType remotesystem.RemoteOS) remotesystem.Remote {
+	if osType == remotesystem.OSWindows {
 		return &remotesystem.Windows{}
 	}
-	if osType == "darwin" {
+	if osType == remotesystem.OSDarwin {
 		return &remotesystem.Darwin{}
 	}
 	return &remotesystem.Linux{}
 }
 
 // DeployAgent ensures the correct binary and assets are on the remote host.
-func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, forceNew bool) (string, error) {
-	var p ssh.TunnelProfile
-	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
-		return "failed", fmt.Errorf("invalid profile JSON: %w", err)
+func (m *Manager) DeployAgent(profileJSON string, targetOS remotesystem.RemoteOS, targetArch remotesystem.RemoteArch, token string, forceNew bool) (string, error) {
+	target, sshBaseArgs, err := m.prepareSSHArgs(profileJSON)
+	if err != nil {
+		return "", err
 	}
 
-	parts := strings.Split(osArch, "/")
-	if len(parts) != 2 {
-		return "failed", fmt.Errorf("invalid os/arch format: %s", osArch)
-	}
-	targetOS, targetArch := parts[0], parts[1]
-
-	// SSH Setup
-	target := fmt.Sprintf("%s@%s", p.User, p.Host)
-	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
-	if p.IdentityFile != "" {
-		sshBaseArgs = append(sshBaseArgs, "-i", p.IdentityFile)
-	}
-	if len(p.ExtraArgs) > 0 {
-		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
-	}
-
-	// Closure for running remote commands via SSH
 	runRemote := func(cmd string) (string, error) {
 		args := append([]string{}, sshBaseArgs...)
 		args = append(args, target, cmd)
@@ -158,41 +92,22 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 	remoteSys := getRemoteSystem(targetOS)
 	home := remoteSys.GetHomeDir()
 
-	remoteBinDir := remoteSys.JoinPath(".mlcremote", "bin")
-	remoteFrontendDir := remoteSys.JoinPath(".mlcremote", "frontend")
-	binName := remoteSys.GetBinaryName("dev-server")
+	remoteBinDir := remoteSys.JoinPath(RemoteBinDir)
+	remoteFrontendDir := remoteSys.JoinPath(RemoteFrontendDir)
+	binName := remoteSys.GetBinaryName(RemoteBinaryName)
 	md5Name := remoteSys.GetMD5UtilityName()
 
 	// 0. Pre-check: If session exists, is the binary up to date?
-	// If not, we MUST force a new deployment.
 	if !forceNew {
-		// Read local binary to get hash
-		if devServerContent, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, binName)); err == nil {
-			localSum := fmt.Sprintf("%x", md5.Sum(devServerContent))
-
-			// Check remote hash
-			hashCmd, hashParser := remoteSys.FileHash(remoteSys.JoinPath(home, remoteBinDir, binName))
-			if out, err := runRemote(hashCmd); err == nil {
-				remoteSum := hashParser(out)
-				if !strings.EqualFold(remoteSum, localSum) {
-					fmt.Printf("Remote binary hash mismatch (Local: %s, Remote: %s). Forcing update.\n", localSum, remoteSum)
-					forceNew = true
-				}
-			} else {
-				// Failed to hash? Maybe binary missing. Force new.
-				forceNew = true
-			}
+		isUpToDate, _ := m.verifyRemoteBinary(runRemote, remoteSys, home, remoteBinDir, binName, targetOS, targetArch)
+		if !isUpToDate {
+			forceNew = true
 		}
 	}
 
 	// 1. Cleanup Stale / Zombie Processes
 	if !forceNew {
-		fmt.Println("Cleaning up potential zombie processes...")
-		runRemote(remoteSys.FallbackKill(binName))
-		// Cleanup old logs
-		runRemote(remoteSys.Remove(remoteSys.JoinPath(".mlcremote", "startup_err.log")))
-		runRemote(remoteSys.Remove(remoteSys.JoinPath(".mlcremote", "current.log.err")))
-		runRemote(remoteSys.Remove(remoteSys.JoinPath(".mlcremote", "current.log")))
+		m.cleanupRemoteState(runRemote, remoteSys, binName)
 		time.Sleep(1 * time.Second)
 	}
 
@@ -211,7 +126,7 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 	}
 	defer os.RemoveAll(tmpDir)
 
-	scpArgs := append([]string{}, sshBaseArgs...) // Copy base args
+	scpArgs := append([]string{}, sshBaseArgs...)
 	if err := m.uploadAssets(runRemote, remoteSys, target, scpArgs, tmpDir, remoteBinDir, remoteFrontendDir, binName, md5Name, targetOS, targetArch, token, forceNew); err != nil {
 		return "setup-failed", err
 	}
@@ -219,26 +134,19 @@ func (m *Manager) DeployAgent(profileJSON string, osArch string, token string, f
 	// 4. Start Backend & Verify
 	res, err := m.startBackend(runRemote, remoteSys, home, remoteBinDir, binName, token, forceNew)
 	if err != nil && !forceNew {
-		// Fallback: If default port (8443) failed, try a random port (forceNew=true)
-		// This handles cases where port 8443 is occupied by a zombie process that wasn't cleaning up.
 		fmt.Printf("Startup on default port failed (%v). Retrying with random port...\n", err)
 		return m.startBackend(runRemote, remoteSys, home, remoteBinDir, binName, token, true)
 	}
 	return res, err
 }
 
-// --------------------------------------------------------------------------------
-// Helper Functions
-// --------------------------------------------------------------------------------
-
 func (m *Manager) checkExistingSession(runRemote func(string) (string, error), remoteSys remotesystem.Remote) (string, bool) {
-	pidFile := remoteSys.JoinPath(".mlcremote", "pid")
+	pidFile := remoteSys.JoinPath(RemoteBaseDir, PidFile)
 	if out, err := runRemote(remoteSys.ReadFile(pidFile)); err == nil {
 		pidStr := strings.TrimSpace(out)
 		if pidStr != "" {
 			if _, err := runRemote(remoteSys.IsProcessRunning(pidStr)); err == nil {
-				// Running! Reuse token.
-				tokenFile := remoteSys.JoinPath(".mlcremote", "token")
+				tokenFile := remoteSys.JoinPath(RemoteBaseDir, TokenFile)
 				if tokenOut, err := runRemote(remoteSys.ReadFile(tokenFile)); err == nil && tokenOut != "" {
 					cleanToken := strings.TrimSpace(tokenOut)
 					cleanToken = strings.Map(func(r rune) rune {
@@ -250,21 +158,19 @@ func (m *Manager) checkExistingSession(runRemote func(string) (string, error), r
 					if fields := strings.Fields(cleanToken); len(fields) > 0 {
 						cleanToken = fields[0]
 					}
-					// Default to 8443 for existing sessions
 					return fmt.Sprintf("deployed:8443:%s", cleanToken), true
 				}
 			} else {
 				fmt.Println("checkExistingSession: Stale PID, cleaning up.")
 				runRemote(remoteSys.Remove(pidFile))
-				runRemote(remoteSys.Remove(remoteSys.JoinPath(".mlcremote", "token")))
+				runRemote(remoteSys.Remove(remoteSys.JoinPath(RemoteBaseDir, TokenFile)))
 			}
 		}
 	}
 	return "", false
 }
 
-func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys remotesystem.Remote, target string, scpArgs []string, tmpDir, remoteBinDir, remoteFrontendDir, binName, md5Name, targetOS, targetArch, token string, forceNew bool) error {
-	// Read dev-server locally
+func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys remotesystem.Remote, target string, scpArgs []string, tmpDir, remoteBinDir, remoteFrontendDir, binName, md5Name string, targetOS remotesystem.RemoteOS, targetArch remotesystem.RemoteArch, token string, forceNew bool) error {
 	devServerContent, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, binName))
 	if err != nil {
 		return fmt.Errorf("payload binary not found for %s/%s: %w", targetOS, targetArch, err)
@@ -273,7 +179,6 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 		return fmt.Errorf("failed to write backend binary to tmp: %w", err)
 	}
 
-	// Read md5-util locally
 	if md5Name != "" {
 		md5Content, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, md5Name))
 		if err == nil {
@@ -283,16 +188,14 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 		}
 	}
 
-	// Ensure remote directories exist
 	runRemote(remoteSys.Mkdir(remoteBinDir))
 	runRemote(remoteSys.Mkdir(remoteFrontendDir))
 
-	// Check MD5 to skip binary upload
 	skipBinary := false
 	localSum := fmt.Sprintf("%x", md5.Sum(devServerContent))
 	home := remoteSys.GetHomeDir()
 
-	hashCmd, hashParser := remoteSys.FileHash(remoteSys.JoinPath(home, remoteBinDir, binName)) // Use home-based path for check
+	hashCmd, hashParser := remoteSys.FileHash(remoteSys.JoinPath(home, remoteBinDir, binName))
 	if out, err := runRemote(hashCmd); err == nil {
 		remoteSum := hashParser(out)
 		if strings.EqualFold(remoteSum, localSum) {
@@ -302,31 +205,22 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 	}
 
 	if !skipBinary {
-		// Force kill existing process to ensure we can overwrite binary
-		// This handles cases where forceNew=true (update required) but the process is still running.
 		fmt.Println("Ensuring remote process is stopped before update...")
 		runRemote(remoteSys.FallbackKill(binName))
 		time.Sleep(1 * time.Second)
 
-		// Remove old binary if possible, or rename it if locked (Windows)
-		// We try standard remove first.
 		runRemote(remoteSys.Remove(remoteSys.JoinPath(remoteBinDir, binName)))
-
-		// Try to rename it to .old just in case Remove failed due to locking (common on Windows)
-		// This moves the "locked" file out of the way so we can write a new one.
 		runRemote(remoteSys.Rename(
 			remoteSys.JoinPath(remoteBinDir, binName),
 			remoteSys.JoinPath(remoteBinDir, binName+".old"),
 		))
 
-		// SCP Binaries
 		scpBinArgs := append([]string{}, scpArgs...)
 		scpBinArgs = append(scpBinArgs, filepath.Join(tmpDir, binName), fmt.Sprintf("%s:~/%s/%s", target, remoteBinDir, binName))
 		if out, err := createSilentCmd("scp", scpBinArgs...).CombinedOutput(); err != nil {
 			return fmt.Errorf("scp binary failed: %s", string(out))
 		}
 
-		// SCP MD5 Util (if needed)
 		if md5Name != "" {
 			if _, err := os.Stat(filepath.Join(tmpDir, md5Name)); err == nil {
 				runRemote(remoteSys.Remove(remoteSys.JoinPath(remoteBinDir, md5Name)))
@@ -339,22 +233,33 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 		}
 	}
 
-	// Upload Startup Script
-	if scriptName, scriptContent := remoteSys.GetStartupScript(); scriptName != "" {
+	// Upload startup script
+	scriptName, scriptContent := remoteSys.GetStartupScript()
+	if scriptName != "" {
+		if scriptContent == "" {
+			// Content is empty, read from assets/payload/{scriptName}
+			if content, err := fs.ReadFile(m.payload, "assets/payload/"+scriptName); err == nil {
+				scriptContent = string(content)
+			} else {
+				return fmt.Errorf("failed to read script asset %s: %w", scriptName, err)
+			}
+		}
+
 		scriptTmp := filepath.Join(tmpDir, scriptName)
 		if err := os.WriteFile(scriptTmp, []byte(scriptContent), 0644); err == nil {
-			runRemote(remoteSys.Remove(remoteSys.JoinPath(".mlcremote", scriptName)))
+			runRemote(remoteSys.Remove(remoteSys.JoinPath(RemoteBaseDir, scriptName)))
 			scpScriptArgs := append([]string{}, scpArgs...)
-			scpScriptArgs = append(scpScriptArgs, scriptTmp, fmt.Sprintf("%s:~/.mlcremote/%s", target, scriptName))
+			scpScriptArgs = append(scpScriptArgs, scriptTmp, fmt.Sprintf("%s:~/%s/%s", target, RemoteBaseDir, scriptName))
 			if out, err := createSilentCmd("scp", scpScriptArgs...).CombinedOutput(); err != nil {
 				return fmt.Errorf("scp script failed: %s", string(out))
 			}
+			// Important: Ensure script is executable
+			runRemote(fmt.Sprintf("chmod +x ~/%s/%s", RemoteBaseDir, scriptName))
 		} else {
 			return fmt.Errorf("failed to write script temp: %w", err)
 		}
 	}
 
-	// Upload Frontend
 	shouldUploadFrontend := true
 	localIndex, err := fs.ReadFile(m.payload, "assets/payload/frontend-dist/index.html")
 	if err == nil {
@@ -391,20 +296,18 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 		}
 	}
 
-	// Meta file
-	metaContent := fmt.Sprintf(`{"version": "0.3.2", "updated": "%s", "os": "%s", "arch": "%s"}`, time.Now().Format(time.RFC3339), targetOS, targetArch)
-	metaPath := filepath.Join(tmpDir, "install.json")
+	metaContent := fmt.Sprintf(`{"version": "%s", "updated": "%s", "os": "%s", "arch": "%s"}`, AgentVersion, time.Now().Format(time.RFC3339), targetOS, targetArch)
+	metaPath := filepath.Join(tmpDir, InstallMetaFile)
 	os.WriteFile(metaPath, []byte(metaContent), 0644)
 	scpMetaArgs := append([]string{}, scpArgs...)
-	scpMetaArgs = append(scpMetaArgs, metaPath, fmt.Sprintf("%s:~/.mlcremote/install.json", target))
+	scpMetaArgs = append(scpMetaArgs, metaPath, fmt.Sprintf("%s:~/%s/%s", target, RemoteBaseDir, InstallMetaFile))
 	createSilentCmd("scp", scpMetaArgs...).Run()
 
-	// Token File
 	if token != "" && !forceNew {
-		tokenPath := filepath.Join(tmpDir, "token")
+		tokenPath := filepath.Join(tmpDir, TokenFile)
 		os.WriteFile(tokenPath, []byte(token), 0600)
 		scpTokenArgs := append([]string{}, scpArgs...)
-		scpTokenArgs = append(scpTokenArgs, tokenPath, fmt.Sprintf("%s:~/.mlcremote/token", target))
+		scpTokenArgs = append(scpTokenArgs, tokenPath, fmt.Sprintf("%s:~/%s/%s", target, RemoteBaseDir, TokenFile))
 		createSilentCmd("scp", scpTokenArgs...).Run()
 	}
 
@@ -425,17 +328,17 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 	}
 	hostArg := "-host=127.0.0.1"
 
-	logFile := "current.log"
+	logFile := LogFileCurrent
 	if forceNew {
 		logFile = fmt.Sprintf("session-%d.log", time.Now().Unix())
 	}
 
-	pidFile := remoteSys.JoinPath(home, ".mlcremote", "pid")
+	pidFile := remoteSys.JoinPath(home, RemoteBaseDir, PidFile)
 
 	startCmd := remoteSys.StartProcess(
 		remoteSys.JoinPath(home, remoteBinDir, binName),
 		fmt.Sprintf("%s %s %s", authArg, portArg, hostArg),
-		remoteSys.JoinPath(home, ".mlcremote", logFile),
+		remoteSys.JoinPath(home, RemoteBaseDir, logFile),
 		pidFile,
 	)
 
@@ -446,23 +349,20 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 		fmt.Printf("[DEBUG] START ERROR: %v | OUTPUT: %s\n", err, out)
 	}
 
-	// Verification Phase
 	time.Sleep(3 * time.Second)
 
-	pidPath := remoteSys.JoinPath(".mlcremote", "pid")
-	logPath := remoteSys.JoinPath(".mlcremote", logFile)
+	pidPath := remoteSys.JoinPath(RemoteBaseDir, PidFile)
+	logPath := remoteSys.JoinPath(RemoteBaseDir, logFile)
 
 	startWait := time.Now()
 	pidFound := false
 
 	for time.Since(startWait) < 15*time.Second {
-		// Check PID
 		if out, err := runRemote(remoteSys.ReadFile(pidPath)); err == nil {
 			pidStr := strings.TrimSpace(out)
 			if pidStr != "" {
 				pidFound = true
 
-				// Debug: Check if process is alive
 				isRunning := false
 				if _, err := runRemote(remoteSys.IsProcessRunning(pidStr)); err == nil {
 					isRunning = true
@@ -470,7 +370,6 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 					fmt.Printf("DEBUG: PID %s found but process not running (crashed).\n", pidStr)
 				}
 
-				// Check Log
 				if out, err := runRemote(remoteSys.ReadFile(logPath)); err == nil {
 					if isRunning && strings.TrimSpace(out) == "" {
 						fmt.Printf("DEBUG: Process %s running, log empty (buffering?).\n", pidStr)
@@ -478,7 +377,6 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 					if strings.Contains(out, "Server started") {
 						fmt.Printf("Backend started successfully! PID: %s (verified via log).\n", pidStr)
 
-						// Dynamic Port parsing (simplified for now to match current logic needs)
 						if targetPort == 0 {
 							lines := strings.Split(out, "\n")
 							for _, line := range lines {
@@ -486,7 +384,6 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 									parts := strings.Split(line, ":")
 									if len(parts) >= 3 {
 										pStr := strings.TrimSpace(parts[len(parts)-1])
-										// Handle comma or extra text
 										endIdx := strings.IndexAny(pStr, " ,")
 										if endIdx != -1 {
 											pStr = pStr[:endIdx]
@@ -499,8 +396,6 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 							}
 						}
 						fmt.Printf("Backend listening on port: %d\n", targetPort)
-
-						// Return success with provided token
 						return fmt.Sprintf("deployed:%d:%s", targetPort, token), nil
 					}
 				}
@@ -513,15 +408,13 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 		return "startup-failed", fmt.Errorf("backend failed to write PID file (timeout)")
 	}
 
-	// Failure Report
-	time.Sleep(500 * time.Millisecond) // Give OS time to flush logs
+	time.Sleep(500 * time.Millisecond)
 	logContent := ""
 	fmt.Printf("Reading log file %s...\n", logPath)
 	if out, err := runRemote(remoteSys.ReadFile(logPath)); err == nil {
 		logContent = out
 	}
 
-	// Check stderr log (current.log.err)
 	if logContent == "" || !strings.Contains(logContent, "Server started") {
 		fmt.Printf("Log potentially missing info. Reading stderr file %s.err...\n", logPath)
 		if out, err := runRemote(remoteSys.ReadFile(logPath + ".err")); err == nil && strings.TrimSpace(out) != "" {
@@ -529,12 +422,11 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 		}
 	}
 
-	errLogPath := remoteSys.JoinPath(".mlcremote", "startup_err.log")
+	errLogPath := remoteSys.JoinPath(RemoteBaseDir, LogFileStartupErr)
 	if out, err := runRemote(remoteSys.ReadFile(errLogPath)); err == nil && strings.TrimSpace(out) != "" {
 		logContent += "\n\n--- Startup Error details (startup_err.log) ---\n" + out
 	}
 
-	// Analyze specific errors
 	if strings.Contains(strings.ToLower(logContent), "address already in use") || strings.Contains(strings.ToLower(logContent), "bind: only one usage of each socket address") {
 		return "startup-failed", fmt.Errorf("backend failed to start: Port %d is already in use.\nPlease stop the existing process or use a different port.\n\nLog: %s", targetPort, logContent)
 	}
@@ -542,32 +434,29 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 	return "startup-failed", fmt.Errorf("backend process died or timed out. Log output:\n%s", logContent)
 }
 
-// SaveIdentityFile writes a base64-encoded private key payload to a temp file and returns the path.
 func (m *Manager) SaveIdentityFile(b64 string, filename string) (string, error) {
 	decoded, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
 		return "", err
 	}
 
-	tmpDir := os.TempDir() // or use UserConfigDir
+	tmpDir := os.TempDir()
 	path := filepath.Join(tmpDir, filename)
 
-	// Write with 0600 permissions
 	if err := os.WriteFile(path, decoded, 0600); err != nil {
 		return "", err
 	}
 	return path, nil
 }
 
-// KillRemoteServer terminates the running backend on the remote host
 func (m *Manager) KillRemoteServer(profileJSON string) error {
 	var p ssh.TunnelProfile
 	json.Unmarshal([]byte(profileJSON), &p)
 
-	osArch, _ := m.DetectRemoteOS(profileJSON)
-	targetOS := "linux"
-	if strings.Contains(osArch, "windows") {
-		targetOS = "windows"
+	targetOS, _, err := m.DetectRemoteOS(profileJSON)
+	if err != nil {
+		fmt.Printf("KillRemoteServer warning: could not detect OS: %v. Defaulting to Linux.\n", err)
+		targetOS = remotesystem.OSLinux
 	}
 
 	remoteSys := getRemoteSystem(targetOS)
@@ -588,26 +477,72 @@ func (m *Manager) KillRemoteServer(profileJSON string) error {
 		return strings.TrimSpace(string(out)), err
 	}
 
-	// Read PID
-	pidFile := remoteSys.JoinPath(".mlcremote", "pid")
+	pidFile := remoteSys.JoinPath(RemoteBaseDir, PidFile)
 	if out, err := runRemote(remoteSys.ReadFile(pidFile)); err == nil {
 		pidStr := strings.TrimSpace(out)
 		if pidStr != "" {
 			fmt.Printf("Killing PID: %s\n", pidStr)
 			runRemote(remoteSys.KillProcess(pidStr))
 
-			// Verify
 			if _, err := runRemote(remoteSys.IsProcessRunning(pidStr)); err != nil {
-				// Gone
 				runRemote(remoteSys.Remove(pidFile))
-				runRemote(remoteSys.Remove(remoteSys.JoinPath(".mlcremote", "token")))
+				runRemote(remoteSys.Remove(remoteSys.JoinPath(RemoteBaseDir, TokenFile)))
 				return nil
 			}
 		}
 	}
 
-	// Fallback
-	runRemote(remoteSys.FallbackKill("dev-server"))
+	runRemote(remoteSys.FallbackKill(RemoteBinaryName))
 	runRemote(remoteSys.Remove(pidFile))
 	return nil
+}
+
+func (m *Manager) prepareSSHArgs(profileJSON string) (string, []string, error) {
+	var p ssh.TunnelProfile
+	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
+		return "", nil, fmt.Errorf("invalid profile JSON: %w", err)
+	}
+
+	target := fmt.Sprintf("%s@%s", p.User, p.Host)
+	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
+	if p.IdentityFile != "" {
+		sshBaseArgs = append(sshBaseArgs, "-i", p.IdentityFile)
+	}
+	if len(p.ExtraArgs) > 0 {
+		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
+	}
+	return target, sshBaseArgs, nil
+}
+
+func (m *Manager) verifyRemoteBinary(runRemote func(string) (string, error), remoteSys remotesystem.Remote, home, remoteBinDir, binName string, targetOS remotesystem.RemoteOS, targetArch remotesystem.RemoteArch) (bool, error) {
+	// Read local binary to get hash
+	devServerContent, err := fs.ReadFile(m.payload, fmt.Sprintf("assets/payload/%s/%s/%s", targetOS, targetArch, binName))
+	if err != nil {
+		// If we can't read local binary, we can't verify, so we assume we need to deploy (or fail later)
+		return false, nil
+	}
+
+	localSum := fmt.Sprintf("%x", md5.Sum(devServerContent))
+	hashCmd, hashParser := remoteSys.FileHash(remoteSys.JoinPath(home, remoteBinDir, binName))
+
+	out, err := runRemote(hashCmd)
+	if err != nil {
+		return false, nil
+	}
+
+	remoteSum := hashParser(out)
+	if !strings.EqualFold(remoteSum, localSum) {
+		fmt.Printf("Remote binary hash mismatch (Local: %s, Remote: %s). Forcing update.\n", localSum, remoteSum)
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (m *Manager) cleanupRemoteState(runRemote func(string) (string, error), remoteSys remotesystem.Remote, binName string) {
+	fmt.Println("Cleaning up potential zombie processes...")
+	runRemote(remoteSys.FallbackKill(binName))
+	runRemote(remoteSys.Remove(remoteSys.JoinPath(RemoteBaseDir, LogFileStartupErr)))
+	runRemote(remoteSys.Remove(remoteSys.JoinPath(RemoteBaseDir, LogFileStderr)))
+	runRemote(remoteSys.Remove(remoteSys.JoinPath(RemoteBaseDir, LogFileCurrent)))
 }

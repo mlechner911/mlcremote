@@ -62,11 +62,15 @@ func (l *Linux) FallbackKill(name string) string {
 }
 
 func (l *Linux) StartProcess(bin, args, logFile, pidFile string) string {
-	// Wrap in sh -c to ensure shell features ($!) work regardless of login shell
-	return fmt.Sprintf("sh -c 'nohup %s %s > \"%s\" 2>&1 & echo $! > \"%s\"'", bin, args, logFile, pidFile)
+	// Execute the uploaded shell script.
+	// We assume the script is at ~/.mlcremote/start_agent_linux.sh
+	scriptPath := "~/.mlcremote/start_agent_linux.sh"
+	return fmt.Sprintf("sh %s \"%s\" \"%s\" \"%s\" \"%s\"", scriptPath, bin, args, logFile, pidFile)
 }
+
 func (l *Linux) GetStartupScript() (string, string) {
-	return "", ""
+	// Return the filename handled by deploy.go (reading from assets)
+	return "start_agent_linux.sh", ""
 }
 
 func (l *Linux) ReadFile(path string) string {

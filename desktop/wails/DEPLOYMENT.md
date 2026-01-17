@@ -55,19 +55,14 @@ systemctl --user stop mlcremote.service
     *   *Note: This is the main IDE interface, not the desktop dashboard.*
 3.  **Startup Script**: A generated `run-server.sh` wrapper is uploaded to `~/.mlcremote/run-server.sh`.
 
-### D. Startup Script Logic (`run-server.sh`)
-This script serves as the entry point for the service:
-```bash
-#!/usr/bin/env bash
-cd "$HOME"
-exec "$HOME/.mlcremote/bin/dev-server" \
-  --port 8443 \
-  --root "$HOME" \
-  --static-dir "$HOME/.mlcremote/frontend" \
-  --no-auth
-```
--   **`--static-dir`**: Serves the uploaded frontend assets.
--   **`--no-auth`**: Disables backend authentication (security is handled by the SSH tunnel).
+### D. Startup Script Logic
+Instead of a single wrapper, the app now uses platform-specific startup scripts uploaded to `~/.mlcremote/`:
+- **Linux**: `start_agent_linux.sh`
+- **macOS**: `start_agent_darwin.sh`
+- **Windows**: `start_agent.ps1`
+
+These scripts handle `nohup`/detachment, logging to `current.log`, and PID management (`pid` file).
+The backend authentication is handled via the generated token file.
 
 ## 4. Service Configuration (Systemd)
 

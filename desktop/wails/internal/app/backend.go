@@ -1,6 +1,11 @@
 package app
 
-// Service wrapper for backend functionality
+import (
+	"fmt"
+	"strings"
+
+	"github.com/mlechner911/mlcremote/desktop/wails/internal/remotesystem"
+)
 
 // CheckBackend checks if the dev-server binary exists on the remote host
 func (a *App) CheckBackend(profileJSON string) (bool, error) {
@@ -14,12 +19,28 @@ func (a *App) CheckRemoteVersion(profileJSON string) (string, error) {
 
 // DetectRemoteOS attempts to determine the remote operating system and architecture
 func (a *App) DetectRemoteOS(profileJSON string) (string, error) {
-	return a.Backend.DetectRemoteOS(profileJSON)
+	os, arch, err := a.Backend.DetectRemoteOS(profileJSON)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/%s", os, arch), nil
 }
 
 // DeployAgent ensures the correct binary and assets are on the remote host
 func (a *App) DeployAgent(profileJSON string, osArch string, token string) (string, error) {
-	return a.Backend.DeployAgent(profileJSON, osArch, token, false)
+	parts := strings.Split(osArch, "/")
+	if len(parts) != 2 {
+		return "failed", fmt.Errorf("invalid os/arch format: %s", osArch)
+	}
+	targetOS := remotesystem.RemoteOS(parts[0])
+	targetArch := remotesystem.RemoteArch(parts[1])
+
+	// Basic validation (optional but good)
+	if targetOS != remotesystem.OSLinux && targetOS != remotesystem.OSDarwin && targetOS != remotesystem.OSWindows {
+		return "failed", fmt.Errorf("unknown os: %s", targetOS)
+	}
+
+	return a.Backend.DeployAgent(profileJSON, targetOS, targetArch, token, false)
 }
 
 // IsServerRunning checks if the backend is already active on the remote host

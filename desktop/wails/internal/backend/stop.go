@@ -1,44 +1,66 @@
 package backend
 
 import (
-	"encoding/json"
 	"fmt"
-
-	"github.com/mlechner911/mlcremote/desktop/wails/internal/ssh"
+	"strings"
 )
 
+// note.. we have to do tzhis via ssh with our credentials, because thia is a remote process
+//
 // StopBackend kills the remote dev-server process using the stored PID
 func (m *Manager) StopBackend(profileJSON string) (string, error) {
-	var p ssh.TunnelProfile
-	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
-		return "", fmt.Errorf("invalid profile JSON: %w", err)
-	}
-
-	target := fmt.Sprintf("%s@%s", p.User, p.Host)
-	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
-	if p.IdentityFile != "" {
-		sshBaseArgs = append(sshBaseArgs, "-i", p.IdentityFile)
-	}
-	if len(p.ExtraArgs) > 0 {
-		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
-	}
-
-	// Kill command:
-	// Linux/Mac: kill $(cat .mlcremote/pid)
-	// Windows: PowerShell Stop-Process
-	// We chain them to support cross-platform without upfront OS detection.
-	// Note: We use .mlcremote/pid for Linux and .mlcremote\pid for Windows (though PS handles / usually)
-
-	cmd := "kill $(cat .mlcremote/pid) 2>/dev/null || " +
-		"powershell -Command \"if (Test-Path .mlcremote\\pid) { Stop-Process -Id (Get-Content .mlcremote\\pid) -Force -ErrorAction SilentlyContinue }\" 2>NUL || " +
-		"echo 'Failed to kill or process already dead'"
-
-	cmdArgs := append([]string{}, sshBaseArgs...)
-	cmdArgs = append(cmdArgs, target, cmd)
-
-	out, err := createSilentCmd("ssh", cmdArgs...).CombinedOutput()
+	// 1. Detect OS
+	targetOS, _, err := m.DetectRemoteOS(profileJSON)
 	if err != nil {
-		return string(out), err
+		return "", fmt.Errorf("failed to detect remote OS: %w", err)
 	}
-	return "stopped", nil
+
+	// 2. Prepare SSH
+	target, sshBaseArgs, err := m.prepareSSHArgs(profileJSON)
+	if err != nil {
+		return "", err
+	}
+
+	// 3. Get Remote System
+	remoteSys := getRemoteSystem(targetOS)
+
+	// Helper to run
+	runRemote := func(cmd string) (string, error) {
+		args := append([]string{}, sshBaseArgs...)
+		args = append(args, target, cmd)
+		out, err := createSilentCmd("ssh", args...).CombinedOutput()
+		return strings.TrimSpace(string(out)), err
+	}
+
+	// 4. Read PID
+	pidFile := remoteSys.JoinPath(RemoteBaseDir, PidFile)
+
+	// Check if PID exists
+	out, err := runRemote(remoteSys.ReadFile(pidFile))
+	if err != nil || strings.TrimSpace(out) == "" {
+		fmt.Println("StopBackend: PID file missing or empty, trying fallback kill...")
+		runRemote(remoteSys.FallbackKill(RemoteBinaryName))
+		runRemote(remoteSys.Remove(pidFile))
+		return "stopped", nil
+	}
+
+	pidStr := strings.TrimSpace(out)
+
+	// 5. Kill PID
+	fmt.Printf("StopBackend: Killing PID %s\n", pidStr)
+	runRemote(remoteSys.KillProcess(pidStr))
+
+	// 6. Verify and Cleanup
+	if _, err := runRemote(remoteSys.IsProcessRunning(pidStr)); err != nil {
+		// Process is gone (err means not running)
+		runRemote(remoteSys.Remove(pidFile))
+		runRemote(remoteSys.Remove(remoteSys.JoinPath(RemoteBaseDir, TokenFile)))
+		return "stopped", nil
+	}
+
+	// Process still running? Force kill or fallback
+	fmt.Println("StopBackend: Process still running after kill, attempting fallback...")
+	runRemote(remoteSys.FallbackKill(RemoteBinaryName))
+	runRemote(remoteSys.Remove(pidFile))
+	return "stopped (forced)", nil
 }

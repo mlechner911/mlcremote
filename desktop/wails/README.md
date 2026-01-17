@@ -26,7 +26,7 @@ The application implements a multi-stage connection process:
 
 ### 3. Backend Detection
 - Once connected, the app checks for the existence of the backend binary on the remote server.
-- **Check Command**: `test -f ~/bin/dev-server` (executed via SSH shell).
+- **Check Command**: `test -f ~/.mlcremote/bin/dev-server` (executed via SSH shell).
 - **Scenario A (Found)**: Proceed to **Step 5 (Tunnel)**.
 - **Scenario B (Not Found)**: Proceed to **Step 4 (Installation)**.
 

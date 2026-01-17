@@ -2,31 +2,20 @@ package backend
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/mlechner911/mlcremote/desktop/wails/internal/remotesystem"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/ssh"
 )
 
 // CheckBackend checks if the dev-server binary exists on the remote host
 func (m *Manager) CheckBackend(profileJSON string) (bool, error) {
-	var p ssh.TunnelProfile
-	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
-		return false, fmt.Errorf("invalid profile JSON: %w", err)
-	}
-	if p.Host == "" || p.User == "" {
-		return false, errors.New("missing user or host")
+	target, args, err := m.prepareSSHArgs(profileJSON)
+	if err != nil {
+		return false, err
 	}
 
-	args := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
-	if p.IdentityFile != "" {
-		args = append(args, "-i", p.IdentityFile)
-	}
-	if len(p.ExtraArgs) > 0 {
-		args = append(args, p.ExtraArgs...)
-	}
-	target := fmt.Sprintf("%s@%s", p.User, p.Host)
 	args = append(args, target, fmt.Sprintf("test -f ~/%s/%s", RemoteBinDir, RemoteBinaryName))
 
 	cmd := createSilentCmd("ssh", args...)
@@ -38,45 +27,32 @@ func (m *Manager) CheckBackend(profileJSON string) (bool, error) {
 
 // CheckRemoteVersion returns the version string of the remote backend or "unknown"
 func (m *Manager) CheckRemoteVersion(profileJSON string) (string, error) {
-	osArch, err := m.DetectRemoteOS(profileJSON)
+	os, _, err := m.DetectRemoteOS(profileJSON)
 	if err != nil {
 		return "unknown", err
 	}
-	parts := strings.Split(osArch, "/")
-	return m.CheckRemoteVersionWithOS(profileJSON, parts[0])
+	return m.CheckRemoteVersionWithOS(profileJSON, os)
 }
 
 // CheckRemoteVersionWithOS returns the version string of the remote backend using known OS
-func (m *Manager) CheckRemoteVersionWithOS(profileJSON string, osType string) (string, error) {
-	var p ssh.TunnelProfile
-	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
-		return "", fmt.Errorf("invalid profile JSON: %w", err)
-	}
-	if p.Host == "" || p.User == "" {
-		return "", errors.New("missing user or host")
-	}
-
-	target := fmt.Sprintf("%s@%s", p.User, p.Host)
-	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
-	if p.IdentityFile != "" {
-		sshBaseArgs = append(sshBaseArgs, "-i", p.IdentityFile)
-	}
-	if len(p.ExtraArgs) > 0 {
-		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
+func (m *Manager) CheckRemoteVersionWithOS(profileJSON string, osType remotesystem.RemoteOS) (string, error) {
+	target, sshBaseArgs, err := m.prepareSSHArgs(profileJSON)
+	if err != nil {
+		return "", err
 	}
 
 	sys := getRemoteSystem(osType)
 	binName := sys.GetBinaryName(RemoteBinaryName)
 
 	var remotePath string
-	if osType == "windows" {
+	if osType == remotesystem.OSWindows {
 		// Windows cmd.exe style path construction.
 		// We use %USERPROFILE% because typical SSH sessions on Windows spawn cmd.exe or unexpanded shells
 		// where '~' is not recognized. This ensures we target the correct absolute path.
-		remotePath = fmt.Sprintf("%%USERPROFILE%%\\.mlcremote\\bin\\%s", binName)
+		remotePath = fmt.Sprintf("%%USERPROFILE%%\\%s\\bin\\%s", RemoteBaseDir, binName)
 	} else {
 		// Unix style pathing (Standard)
-		remotePath = fmt.Sprintf("$HOME/.mlcremote/bin/%s", binName)
+		remotePath = fmt.Sprintf("$HOME/%s/bin/%s", RemoteBaseDir, binName)
 	}
 
 	cmdArgs := append([]string{}, sshBaseArgs...)
@@ -91,18 +67,9 @@ func (m *Manager) CheckRemoteVersionWithOS(profileJSON string, osType string) (s
 
 // IsServerRunning checks if the backend is already active on the remote host
 func (m *Manager) IsServerRunning(profileJSON string, osString string) (bool, error) {
-	var p ssh.TunnelProfile
-	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
-		return false, fmt.Errorf("invalid profile JSON: %w", err)
-	}
-
-	target := fmt.Sprintf("%s@%s", p.User, p.Host)
-	sshBaseArgs := []string{"-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no"}
-	if p.IdentityFile != "" {
-		sshBaseArgs = append(sshBaseArgs, "-i", p.IdentityFile)
-	}
-	if len(p.ExtraArgs) > 0 {
-		sshBaseArgs = append(sshBaseArgs, p.ExtraArgs...)
+	target, sshBaseArgs, err := m.prepareSSHArgs(profileJSON)
+	if err != nil {
+		return false, err
 	}
 
 	targetOS := "linux"
@@ -179,7 +146,7 @@ func (m *Manager) TailRemoteLogs(profileJSON string) (string, error) {
 
 	// Try common log locations/commands (Tail for Linux/Mac, PowerShell for Windows)
 	// We use a chained command to support multiple platforms
-	cmd := "tail -n 50 .mlcremote/current.log 2>/dev/null || powershell -Command \"Get-Content .mlcremote/current.log -Tail 50\" 2>NUL || type .mlcremote\\current.log 2>NUL"
+	cmd := "tail -n 50 ~/.mlcremote/current.log 2>/dev/null || powershell -Command \"Get-Content .mlcremote/current.log -Tail 50\" 2>NUL || type .mlcremote\\current.log 2>NUL"
 
 	cmdArgs := append([]string{}, sshBaseArgs...)
 	cmdArgs = append(cmdArgs, target, cmd)
