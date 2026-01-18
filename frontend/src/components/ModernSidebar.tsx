@@ -16,7 +16,6 @@ export interface ActivityBarProps {
     onRunTask: (task: TaskDef) => void
 
     onActivityChange: (activity: string) => void
-    showServerLogs?: boolean
 }
 
 export interface SidebarPanelProps {
@@ -37,7 +36,7 @@ interface ModernSidebarProps extends ActivityBarProps, SidebarPanelProps { }
 
 export function ActivityBar(props: ActivityBarProps) {
     const { t } = useTranslation()
-    const { isExpanded = true, onToggleSidebar, onActivityChange, onOpenTerminal, onOpenTrash, onToggleSettings } = props
+    const { isExpanded = true, onToggleSidebar, onActivityChange, onOpenTerminal, onOpenTrash, onOpenLogs, onToggleSettings } = props
     const [activeActivity, setActiveActivity] = React.useState('files')
 
     const handleActivityClick = (activity: string) => {
@@ -86,12 +85,11 @@ export function ActivityBar(props: ActivityBarProps) {
             <div className="activity-icon" onClick={() => onOpenTrash()} title={t('trash')}>
                 <Icon name="icon-trash" size={24} />
             </div>
-            {/* Logs Icon - Only visible if enabled in settings */}
-            {props.showServerLogs && (
-                <div className="activity-icon" onClick={() => props.onOpenLogs()} title={t('server_logs') || 'Server Logs'}>
-                    <Icon name="icon-file-code" size={24} />
-                </div>
-            )}
+            {/* Logs Icon - Always visible */}
+            <div className="activity-icon" onClick={() => onOpenLogs()} title={t('server_logs') || 'Server Logs'}>
+                <Icon name="icon-file-code" size={24} />
+            </div>
+
             {/* Spacer */}
             <div style={{ flex: 1 }}></div>
             <div className={`activity-icon ${activeActivity === 'settings' ? 'active' : ''}`} onClick={() => onToggleSettings()} title="Settings">

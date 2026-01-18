@@ -38,8 +38,7 @@ func main() {
 	openapi := flag.String("openapi", "", "path to OpenAPI YAML spec (optional)")
 	noAuth := flag.Bool("no-auth", false, "disable authentication (DANGEROUS)")
 	showVersion := flag.Bool("version", false, "print version and exit")
-	noAuth := flag.Bool("no-auth", false, "disable authentication (DANGEROUS)")
-	showVersion := flag.Bool("version", false, "print version and exit")
+
 	tokenFlag := flag.String("token", "", "auth token (if empty and no-auth is false, one will be generated)")
 	debugTerminal := flag.Bool("debug-terminal", false, "enable verbose terminal logging")
 	flag.Parse()
@@ -59,7 +58,9 @@ func main() {
 
 	fallback := false
 	if _, err := os.Stat(*root); os.IsNotExist(err) {
+		// this prevents the server from crashing if the root directory does not exist
 		log.Printf("Configured root %s does not exist, falling back to HOME", *root)
+		// Not sure if that always works - might be empty. if so .. what do we use?
 		*root = os.Getenv("HOME")
 		fallback = true
 	}
@@ -72,7 +73,7 @@ func main() {
 	// Dev server doesn't use config file password for now
 	// AllowDelete = true for dev server
 	trashDir := filepath.Join(os.Getenv("HOME"), ".trash")
-	trashDir := filepath.Join(os.Getenv("HOME"), ".trash")
+
 	s := server.New(*host, *root, *staticDir, *openapi, token, "", true, trashDir, *debugTerminal)
 
 	if fallback {

@@ -9,20 +9,50 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "http://swagger.io/terms/",
-        "contact": {
-            "name": "API Support",
-            "email": "support@mlcremote.dev"
-        },
-        "license": {
-            "name": "MIT",
-            "url": "https://opensource.org/licenses/MIT"
-        },
+        "contact": {},
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/archive/list": {
+            "get": {
+                "security": [
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Lists files and directories within an archive.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "file"
+                ],
+                "summary": "List archive contents",
+                "operationId": "listArchive",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Relative path to archive",
+                        "name": "path",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_handlers.ArchiveEntry"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/check": {
             "get": {
                 "security": [
@@ -42,6 +72,60 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized"
+                    }
+                }
+            }
+        },
+        "/api/copy": {
+            "post": {
+                "security": [
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Copies a file or directory to a new location.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "file"
+                ],
+                "summary": "Copy file/directory",
+                "operationId": "copyFile",
+                "parameters": [
+                    {
+                        "description": "Copy details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.CopyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/events": {
+            "get": {
+                "description": "Subscribe to filesystem changes",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Stream filesystem events",
+                "responses": {
+                    "200": {
+                        "description": "stream",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -99,7 +183,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.SaveRequest"
+                            "$ref": "#/definitions/internal_handlers.SaveRequest"
                         }
                     }
                 ],
@@ -213,7 +297,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.fileTypeResp"
+                            "$ref": "#/definitions/internal_handlers.fileTypeResp"
                         }
                     }
                 }
@@ -240,7 +324,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/server.loginRequest"
+                            "$ref": "#/definitions/internal_server.loginRequest"
                         }
                     }
                 ],
@@ -260,17 +344,106 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/logs": {
+            "get": {
+                "security": [
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Returns the last 50KB of the application log.",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Get system logs",
+                "operationId": "getLogs",
+                "responses": {
+                    "200": {
+                        "description": "Log content",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Log file not found"
+                    }
+                }
+            }
+        },
+        "/api/rename": {
+            "post": {
+                "security": [
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Renames or moves a file.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "file"
+                ],
+                "summary": "Rename file",
+                "operationId": "renameFile",
+                "parameters": [
+                    {
+                        "description": "Rename details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.RenameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/api/settings": {
             "get": {
-                "description": "Returns runtime-configurable settings.",
+                "description": "Returns runtime-configurable settings or updates them.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "system"
                 ],
-                "summary": "Get frontend settings",
-                "operationId": "getSettings",
+                "summary": "Get or Update frontend settings",
+                "operationId": "settingsHandler",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Returns runtime-configurable settings or updates them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Get or Update frontend settings",
+                "operationId": "settingsHandler",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -289,7 +462,7 @@ const docTemplate = `{
                         "TokenAuth": []
                     }
                 ],
-                "description": "Returns file size, mode, time, etc.",
+                "description": "Returns file size, mode, time, and flags.",
                 "produces": [
                     "application/json"
                 ],
@@ -311,8 +484,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/internal_handlers.FileStat"
                         }
                     }
                 }
@@ -406,7 +578,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/handlers.TrashEntry"
+                                "$ref": "#/definitions/internal_handlers.TrashEntry"
                             }
                         }
                     }
@@ -436,7 +608,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.RestoreRequest"
+                            "$ref": "#/definitions/internal_handlers.RestoreRequest"
                         }
                     }
                 ],
@@ -489,7 +661,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/handlers.dirEntry"
+                                "$ref": "#/definitions/internal_handlers.dirEntry"
                             }
                         }
                     }
@@ -573,7 +745,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.healthInfo"
+                            "$ref": "#/definitions/internal_handlers.healthInfo"
                         }
                     }
                 }
@@ -615,7 +787,87 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handlers.RestoreRequest": {
+        "internal_handlers.ArchiveEntry": {
+            "type": "object",
+            "properties": {
+                "isDir": {
+                    "type": "boolean"
+                },
+                "modTime": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handlers.CopyRequest": {
+            "type": "object",
+            "properties": {
+                "destPath": {
+                    "type": "string"
+                },
+                "sourcePath": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.FileStat": {
+            "type": "object",
+            "properties": {
+                "absPath": {
+                    "type": "string"
+                },
+                "isBlockDevice": {
+                    "type": "boolean"
+                },
+                "isCharDevice": {
+                    "type": "boolean"
+                },
+                "isDir": {
+                    "type": "boolean"
+                },
+                "isNamedPipe": {
+                    "type": "boolean"
+                },
+                "isReadOnly": {
+                    "type": "boolean"
+                },
+                "isRestricted": {
+                    "type": "boolean"
+                },
+                "isSocket": {
+                    "type": "boolean"
+                },
+                "mime": {
+                    "type": "string"
+                },
+                "modTime": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handlers.RenameRequest": {
+            "type": "object",
+            "properties": {
+                "newPath": {
+                    "type": "string"
+                },
+                "oldPath": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.RestoreRequest": {
             "type": "object",
             "properties": {
                 "trashPath": {
@@ -623,7 +875,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.SaveRequest": {
+        "internal_handlers.SaveRequest": {
             "type": "object",
             "properties": {
                 "content": {
@@ -634,7 +886,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.TrashEntry": {
+        "internal_handlers.TrashEntry": {
             "type": "object",
             "properties": {
                 "deletedAt": {
@@ -648,13 +900,34 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.dirEntry": {
+        "internal_handlers.dirEntry": {
             "type": "object",
             "properties": {
+                "isBroken": {
+                    "type": "boolean"
+                },
                 "isDir": {
                     "type": "boolean"
                 },
+                "isExternal": {
+                    "type": "boolean"
+                },
+                "isReadOnly": {
+                    "description": "!canWrite",
+                    "type": "boolean"
+                },
+                "isRestricted": {
+                    "description": "!canRead || (IsDir \u0026\u0026 !canExec)",
+                    "type": "boolean"
+                },
+                "isSymlink": {
+                    "type": "boolean"
+                },
                 "modTime": {
+                    "type": "string"
+                },
+                "mode": {
+                    "description": "Human readable mode string",
                     "type": "string"
                 },
                 "name": {
@@ -668,7 +941,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.fileTypeResp": {
+        "internal_handlers.fileTypeResp": {
             "type": "object",
             "properties": {
                 "ext": {
@@ -682,7 +955,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.healthInfo": {
+        "internal_handlers.healthInfo": {
             "type": "object",
             "properties": {
                 "auth_required": {
@@ -690,6 +963,9 @@ const docTemplate = `{
                 },
                 "cpu_percent": {
                     "type": "number"
+                },
+                "distro": {
+                    "type": "string"
                 },
                 "go_alloc_bytes": {
                     "type": "integer"
@@ -703,6 +979,9 @@ const docTemplate = `{
                 "host": {
                     "type": "string"
                 },
+                "os": {
+                    "type": "string"
+                },
                 "password_auth": {
                     "type": "boolean"
                 },
@@ -713,6 +992,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "server_time": {
+                    "type": "string"
+                },
+                "start_time": {
                     "type": "string"
                 },
                 "status": {
@@ -732,7 +1014,7 @@ const docTemplate = `{
                 }
             }
         },
-        "server.loginRequest": {
+        "internal_server.loginRequest": {
             "type": "object",
             "properties": {
                 "password": {
@@ -740,24 +1022,17 @@ const docTemplate = `{
                 }
             }
         }
-    },
-    "securityDefinitions": {
-        "TokenAuth": {
-            "type": "apiKey",
-            "name": "X-Auth-Token",
-            "in": "header"
-        }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.3.0",
+	Version:          "",
 	Host:             "",
 	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "MLCRemote API",
-	Description:      "Lightweight remote development server API.",
+	Title:            "",
+	Description:      "",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

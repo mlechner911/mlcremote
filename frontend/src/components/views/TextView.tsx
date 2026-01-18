@@ -1,6 +1,6 @@
 import React from 'react'
 import Prism from 'prismjs'
-import { langForExt, aliasForExt } from '../../grammar'
+import { langForExt, aliasForExt } from '../../utils/grammar'
 import { useTranslation } from 'react-i18next'
 // Prism language components and theme — keep these imports local to TextView
 // to avoid loading them for non-text previews.
@@ -38,7 +38,7 @@ import 'prismjs/components/prism-tsx'
 import '../../editor.css'
 
 import { ViewProps, FileHandler, DecideOpts } from '../../handlers/types'
-import { isProbablyText } from '../../filetypes'
+import { isProbablyText } from '../../utils/filetypes'
 
 function escapeHtml(unsafe: string) {
     return unsafe.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

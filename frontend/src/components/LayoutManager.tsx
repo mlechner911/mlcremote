@@ -12,7 +12,7 @@ import TrashView from './views/TrashView'
 import Editor from './Editor'
 import BinaryView from './views/BinaryView'
 import FileDetailsView from './views/FileDetailsView'
-import ServerLogsView from './views/ServerLogsView'
+const ServerLogsView = React.lazy(() => import('./views/ServerLogsView'))
 const TerminalTab = React.lazy(() => import('./views/TerminalTab'))
 
 export interface LayoutManagerProps {

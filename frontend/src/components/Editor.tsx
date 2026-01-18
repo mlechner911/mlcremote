@@ -3,7 +3,7 @@ import { readFile, saveFile, deleteFile, listTree, statPath, DirEntry } from '..
 import { Intent } from '../handlers/types'
 import { formatBytes } from '../utils/bytes'
 import { getIcon } from '../generated/icon-helpers'
-import { probeFileType, extFromPath } from '../filetypes'
+import { probeFileType, extFromPath } from '../utils/filetypes'
 import { effectiveExtFromFilename } from '../languageForFilename'
 import { authedFetch } from '../utils/auth'
 import { Icon } from '../generated/icons'

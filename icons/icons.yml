@@ -127,6 +127,12 @@ icons:
     mime: application/x-ui
     extensions: ["stop"]
 
+  - id: pause
+    name: Pause
+    file: raw/pause.svg
+    mime: application/x-ui
+    extensions: ["pause"]
+
   - id: search
     name: Search
     file: raw/search.svg

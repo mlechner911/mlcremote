@@ -231,6 +231,10 @@ func svgToSymbol(svg string, id string) string {
 			reDim := regexp.MustCompile(`\s*(width|height)="[^"]*"`)
 			open = reDim.ReplaceAllString(open, "")
 
+			// Strip xmlns attribute
+			reXmlns := regexp.MustCompile(`\s*xmlns="[^"]*"`)
+			open = reXmlns.ReplaceAllString(open, "")
+
 			// ensure symbol has role and aria-hidden
 			if !strings.Contains(open, "role=") {
 				open = strings.Replace(open, ">", " role=\"img\" aria-hidden=\"true\">", 1)

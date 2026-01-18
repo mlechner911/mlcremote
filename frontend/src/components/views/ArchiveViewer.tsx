@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Icon, iconForExtension } from '../../generated/icons'
 import { getIconForDir } from '../../generated/icon-helpers'
 import { ViewProps, FileHandler, DecideOpts } from '../../handlers/types'
-import { extFromPath } from '../../filetypes'
+import { extFromPath } from '../../utils/filetypes'
 
 // ... imports
 

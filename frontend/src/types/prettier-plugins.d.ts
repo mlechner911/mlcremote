@@ -1,3 +1,4 @@
+// curretöntly no longer used, but kept for reference
 declare module 'prettier/standalone' {
   const prettier: any
   export default prettier

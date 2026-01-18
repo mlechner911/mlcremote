@@ -1,5 +1,5 @@
 import React from 'react'
-import { statPath, type Health, saveSettings, makeUrl, DirEntry, getToken, uploadFile, renameFile, deleteFile } from './api'
+import { statPath, type Health, saveSettings, makeUrl, DirEntry, getToken, uploadFile, renameFile, deleteFile, subscribeToEvents } from './api'
 import { useAuth } from './context/AuthContext'
 import { useAppSettings } from './hooks/useAppSettings'
 import { useWorkspace } from './hooks/useWorkspace'
@@ -25,7 +25,7 @@ const OnboardingTour = React.lazy(() => import('./components/OnboardingTour'))
 import LayoutManager from './components/LayoutManager'
 
 
-import LogOverlay from './components/LogOverlay'
+
 import './modern.css'
 // import { formatBytes } from './utils/bytes'
 import { captureElementToPng } from './utils/capture'
@@ -90,14 +90,13 @@ function AppInner() {
     theme, setTheme,
     autoOpen, setAutoOpen,
     showHidden, setShowHidden,
-    showLogs, toggleLogs: setShowLogs,
-    showServerLogs, toggleServerLogs,
     hideMemoryUsage, toggleHideMemoryUsage,
     canChangeRoot,
     maxEditorSize, updateMaxEditorSize,
     uiMode, setUiMode
   } = useAppSettings()
 
+  /* HOOKS at top level to ensure no conditional hook calls */
   const {
     panes, setPanes,
     layout, setLayout,
@@ -107,8 +106,48 @@ function AppInner() {
     openFile,
     splitPane, closePane, handleLayoutResize,
     fileMetas, setFileMetas,
-
   } = useWorkspace()
+
+  // Throttled refresh trigger
+  const [refreshSignal, setRefreshSignal] = React.useState<{ path: string, ts: number } | undefined>(undefined)
+
+  const [activeTabResult, setActiveTabResult] = React.useState('files') // files, search, git, etc.
+
+  // Create a ref for activeTab so we can access it in effects/callbacks if needed without stale closures
+  // though strictly not needed for the simple switcher below.
+  const activeTabRef = React.useRef(activeTabResult)
+  React.useEffect(() => { activeTabRef.current = activeTabResult }, [activeTabResult])
+
+  // Subscribe to filesystem events
+  React.useEffect(() => {
+    // Basic throttle map to prevent UI overload
+    // path -> last timestamp
+    const throttleMap = new Map<string, number>()
+
+    const unsub = subscribeToEvents((e) => {
+      // Throttle frontend updates (limit to 1 per 500ms per path)
+      const now = Date.now()
+      const last = throttleMap.get(e.path) || 0
+      if (now - last < 500) return
+      throttleMap.set(e.path, now)
+
+      if (e.type === 'dir_change' || e.type === 'file_change') {
+        console.log('[App] Received fs event:', e)
+        const parts = e.path.split('/')
+        // refresh parent dir for files, or the dir itself
+        let targetPath = e.path
+        if (e.type === 'file_change') {
+          parts.pop() // remove filename
+          targetPath = parts.join('/') || '/'
+        }
+
+        // Update signal
+        setRefreshSignal({ path: targetPath, ts: Date.now() })
+      }
+    })
+    return unsub
+  }, [])
+
 
   /* Sidebar Toggle Logic */
   const [isSidebarExpanded, setIsSidebarExpanded] = React.useState(() => {
@@ -123,14 +162,13 @@ function AppInner() {
 
   const [logoVisible, setLogoVisible] = React.useState<boolean>(true)
   const [settingsOpen, setSettingsOpen] = React.useState<boolean>(false)
-  const [refreshSignal, setRefreshSignal] = React.useState<{ path: string, ts: number } | undefined>(undefined)
   const [aboutOpen, setAboutOpen] = React.useState<boolean>(false)
   const [contextMenu, setContextMenu] = React.useState<{ x: number, y: number, entry: DirEntry } | null>(null)
   const [shellCwds, setShellCwds] = React.useState<Record<string, string>>({})
   const [commandSignals, setCommandSignals] = React.useState<Record<string, { cmd: string, ts: number }>>({})
 
   // These were local state, now derived or managed by hook. 
-  // These were local state, now derived or managed by hook. 
+
   const [now, setNow] = React.useState<Date>(new Date())
 
   const { showDialog } = useDialog()
@@ -278,7 +316,6 @@ function AppInner() {
               openFile('trash', 'custom', 'Trash')
               setActiveTab('trash')
             }}
-            showServerLogs={showServerLogs}
             onOpenLogs={() => {
               openFile('server-logs', 'logs', 'Server Logs')
               setActiveTab('server-logs')
@@ -366,10 +403,6 @@ function AppInner() {
                   showHidden={showHidden}
                   onToggleAutoOpen={setAutoOpen}
                   onToggleShowHidden={setShowHidden}
-                  showLogs={showLogs}
-                  onToggleLogs={setShowLogs}
-                  showServerLogs={showServerLogs || false}
-                  onToggleServerLogs={toggleServerLogs}
                   hideMemoryUsage={hideMemoryUsage}
                   onToggleHideMemoryUsage={toggleHideMemoryUsage}
                   onClose={() => setSettingsOpen(false)}
@@ -598,7 +631,7 @@ function AppInner() {
         />
       </div>
 
-      <LogOverlay visible={showLogs} onClose={() => setShowLogs(false)} />
+
       <React.Suspense fallback={null}>
         <OnboardingTour />
       </React.Suspense>

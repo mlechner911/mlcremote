@@ -8,6 +8,14 @@ import (
 	"path/filepath"
 )
 
+// @Summary Get system logs
+// @Description Returns the last 50KB of the application log.
+// @ID getLogs
+// @Tags system
+// @Security TokenAuth
+// @Produce text/plain
+// @Success 200 {string} string "Log content"
+// @Failure 404 "Log file not found"
 // @Router /api/logs [get]
 func LogsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

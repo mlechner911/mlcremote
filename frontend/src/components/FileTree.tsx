@@ -13,66 +13,7 @@ type FileTreeProps = {
     reloadTrigger?: number
 }
 
-type TreeNodeProps = {
-    entry: DirEntry
-    depth: number
-    expanded: boolean
-    onToggle: (path: string) => void
-    onSelect: (path: string, isDir: boolean) => void
-    selectedPath?: string
-    showHidden?: boolean
-    childrenCache?: DirEntry[]
-}
 
-const TreeNode = ({ entry, depth, expanded, onToggle, onSelect, selectedPath, showHidden, childrenCache }: TreeNodeProps) => {
-    const isSelected = selectedPath === entry.path
-    const paddingLeft = depth * 16 + 8
-
-    const handleClick = (e: React.MouseEvent) => {
-        e.stopPropagation()
-        onSelect(entry.path, entry.isDir)
-        if (entry.isDir) {
-            onToggle(entry.path)
-        }
-    }
-
-    return (
-        <>
-            <div
-                className={`tree-node ${isSelected ? 'selected' : ''}`}
-                style={{ paddingLeft }}
-                onClick={handleClick}
-            >
-                <div className="tree-arrow">
-                    {entry.isDir && (
-                        <span className={`codicon codicon-chevron-${expanded ? 'down' : 'right'}`} style={{ fontSize: 12, opacity: 0.8 }}>
-                            {expanded ? '▼' : '▶'}
-                        </span>
-                    )}
-                </div>
-                <div className="tree-icon">
-                    <Icon name={entry.isDir ? getIcon('dir') : (iconForMimeOrFilename(undefined, entry.name) || iconForExtension(entry.name.split('.').pop() || '') || getIcon('view'))} />
-                </div>
-                <div className="tree-label">{entry.name}</div>
-            </div>
-            {expanded && childrenCache && (
-                <div className="tree-children">
-                    {childrenCache.map(child => (
-                        <FileTreeItem
-                            key={child.path}
-                            entry={child}
-                            depth={depth + 1}
-                            onToggle={onToggle}
-                            onSelect={onSelect}
-                            selectedPath={selectedPath}
-                            showHidden={showHidden}
-                        />
-                    ))}
-                </div>
-            )}
-        </>
-    )
-}
 
 // Wrapper to handle state storage for cache lookups from the main tree
 // But wait, the recursion needs access to the global cache state to render children.
@@ -112,12 +53,16 @@ const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, 
         setLoading(true)
         try {
             const { entries: list } = await listTree(entry.path, { showHidden })
+
+            // Filter out system folders
+            const filteredList = list.filter(e => e.name !== '$RECYCLE.BIN' && e.name !== 'System Volume Information')
+
             // Sort: Directories first, then files
-            list.sort((a, b) => {
+            filteredList.sort((a, b) => {
                 if (a.isDir === b.isDir) return a.name.localeCompare(b.name)
                 return a.isDir ? -1 : 1
             })
-            setChildren(list)
+            setChildren(filteredList)
         } catch (e) {
             console.error(e)
         }
@@ -140,7 +85,7 @@ const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, 
     return (
         <div className="tree-item-container">
             <div
-                className={`tree-node ${selectedPath === entry.path ? 'selected' : ''}`}
+                className={`tree-node ${isSelected ? 'selected' : ''}`}
                 style={{ paddingLeft: depth * 12 + 8 }}
                 onClick={(e) => {
                     e.stopPropagation()
@@ -197,6 +142,9 @@ export default function FileTree({ selectedPath, onSelect, onOpen, root = '/', s
         setLoading(true)
         listTree(root, { showHidden })
             .then(({ entries: list }) => {
+                // Filter out system folders
+                list = list.filter(e => e.name !== '$RECYCLE.BIN' && e.name !== 'System Volume Information')
+
                 list.sort((a, b) => {
                     if (a.isDir === b.isDir) return a.name.localeCompare(b.name)
                     return a.isDir ? -1 : 1

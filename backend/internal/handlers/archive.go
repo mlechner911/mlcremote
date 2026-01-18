@@ -23,6 +23,15 @@ type ArchiveEntry struct {
 }
 
 // ListArchiveHandler returns a handler that lists contents of an archive file
+// @Summary List archive contents
+// @Description Lists files and directories within an archive.
+// @ID listArchive
+// @Tags file
+// @Security TokenAuth
+// @Param path query string true "Relative path to archive"
+// @Produce json
+// @Success 200 {array} ArchiveEntry
+// @Router /api/archive/list [get]
 func ListArchiveHandler(root string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

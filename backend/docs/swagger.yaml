@@ -1,17 +1,69 @@
 definitions:
-  handlers.RestoreRequest:
+  internal_handlers.ArchiveEntry:
+    properties:
+      isDir:
+        type: boolean
+      modTime:
+        type: string
+      name:
+        type: string
+      size:
+        type: integer
+    type: object
+  internal_handlers.CopyRequest:
+    properties:
+      destPath:
+        type: string
+      sourcePath:
+        type: string
+    type: object
+  internal_handlers.FileStat:
+    properties:
+      absPath:
+        type: string
+      isBlockDevice:
+        type: boolean
+      isCharDevice:
+        type: boolean
+      isDir:
+        type: boolean
+      isNamedPipe:
+        type: boolean
+      isReadOnly:
+        type: boolean
+      isRestricted:
+        type: boolean
+      isSocket:
+        type: boolean
+      mime:
+        type: string
+      modTime:
+        type: string
+      mode:
+        type: string
+      size:
+        type: integer
+    type: object
+  internal_handlers.RenameRequest:
+    properties:
+      newPath:
+        type: string
+      oldPath:
+        type: string
+    type: object
+  internal_handlers.RestoreRequest:
     properties:
       trashPath:
         type: string
     type: object
-  handlers.SaveRequest:
+  internal_handlers.SaveRequest:
     properties:
       content:
         type: string
       path:
         type: string
     type: object
-  handlers.TrashEntry:
+  internal_handlers.TrashEntry:
     properties:
       deletedAt:
         type: string
@@ -20,11 +72,26 @@ definitions:
       trashPath:
         type: string
     type: object
-  handlers.dirEntry:
+  internal_handlers.dirEntry:
     properties:
+      isBroken:
+        type: boolean
       isDir:
         type: boolean
+      isExternal:
+        type: boolean
+      isReadOnly:
+        description: '!canWrite'
+        type: boolean
+      isRestricted:
+        description: '!canRead || (IsDir && !canExec)'
+        type: boolean
+      isSymlink:
+        type: boolean
       modTime:
+        type: string
+      mode:
+        description: Human readable mode string
         type: string
       name:
         type: string
@@ -33,7 +100,7 @@ definitions:
       size:
         type: integer
     type: object
-  handlers.fileTypeResp:
+  internal_handlers.fileTypeResp:
     properties:
       ext:
         type: string
@@ -42,12 +109,14 @@ definitions:
       mime:
         type: string
     type: object
-  handlers.healthInfo:
+  internal_handlers.healthInfo:
     properties:
       auth_required:
         type: boolean
       cpu_percent:
         type: number
+      distro:
+        type: string
       go_alloc_bytes:
         type: integer
       go_num_gc:
@@ -56,6 +125,8 @@ definitions:
         type: integer
       host:
         type: string
+      os:
+        type: string
       password_auth:
         type: boolean
       pid:
@@ -63,6 +134,8 @@ definitions:
       proc_rss_bytes:
         type: integer
       server_time:
+        type: string
+      start_time:
         type: string
       status:
         type: string
@@ -75,23 +148,38 @@ definitions:
       version:
         type: string
     type: object
-  server.loginRequest:
+  internal_server.loginRequest:
     properties:
       password:
         type: string
     type: object
 info:
-  contact:
-    email: support@mlcremote.dev
-    name: API Support
-  description: Lightweight remote development server API.
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
-  termsOfService: http://swagger.io/terms/
-  title: MLCRemote API
-  version: 0.3.0
+  contact: {}
 paths:
+  /api/archive/list:
+    get:
+      description: Lists files and directories within an archive.
+      operationId: listArchive
+      parameters:
+      - description: Relative path to archive
+        in: query
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_handlers.ArchiveEntry'
+            type: array
+      security:
+      - TokenAuth: []
+      summary: List archive contents
+      tags:
+      - file
   /api/auth/check:
     get:
       description: Verifies if the provided authentication token is valid.
@@ -106,6 +194,40 @@ paths:
       summary: Check auth token validity
       tags:
       - auth
+  /api/copy:
+    post:
+      consumes:
+      - application/json
+      description: Copies a file or directory to a new location.
+      operationId: copyFile
+      parameters:
+      - description: Copy details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.CopyRequest'
+      responses:
+        "204":
+          description: No Content
+      security:
+      - TokenAuth: []
+      summary: Copy file/directory
+      tags:
+      - file
+  /api/events:
+    get:
+      description: Subscribe to filesystem changes
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: stream
+          schema:
+            type: string
+      summary: Stream filesystem events
+      tags:
+      - events
   /api/file:
     delete:
       description: Moves a file to trash.
@@ -156,7 +278,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/handlers.SaveRequest'
+          $ref: '#/definitions/internal_handlers.SaveRequest'
       responses:
         "204":
           description: No Content
@@ -209,7 +331,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.fileTypeResp'
+            $ref: '#/definitions/internal_handlers.fileTypeResp'
       security:
       - TokenAuth: []
       summary: Detect file type
@@ -227,7 +349,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/server.loginRequest'
+          $ref: '#/definitions/internal_server.loginRequest'
       produces:
       - application/json
       responses:
@@ -242,10 +364,51 @@ paths:
       summary: Login
       tags:
       - auth
+  /api/logs:
+    get:
+      description: Returns the last 50KB of the application log.
+      operationId: getLogs
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Log content
+          schema:
+            type: string
+        "404":
+          description: Log file not found
+      security:
+      - TokenAuth: []
+      summary: Get system logs
+      tags:
+      - system
+  /api/rename:
+    post:
+      consumes:
+      - application/json
+      description: Renames or moves a file.
+      operationId: renameFile
+      parameters:
+      - description: Rename details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.RenameRequest'
+      responses:
+        "204":
+          description: No Content
+      security:
+      - TokenAuth: []
+      summary: Rename file
+      tags:
+      - file
   /api/settings:
     get:
-      description: Returns runtime-configurable settings.
-      operationId: getSettings
+      consumes:
+      - application/json
+      description: Returns runtime-configurable settings or updates them.
+      operationId: settingsHandler
       produces:
       - application/json
       responses:
@@ -254,12 +417,28 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: Get frontend settings
+      summary: Get or Update frontend settings
+      tags:
+      - system
+    post:
+      consumes:
+      - application/json
+      description: Returns runtime-configurable settings or updates them.
+      operationId: settingsHandler
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get or Update frontend settings
       tags:
       - system
   /api/stat:
     get:
-      description: Returns file size, mode, time, etc.
+      description: Returns file size, mode, time, and flags.
       operationId: getFileStat
       parameters:
       - description: File path
@@ -273,8 +452,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/internal_handlers.FileStat'
       security:
       - TokenAuth: []
       summary: Get file metadata
@@ -332,7 +510,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/handlers.TrashEntry'
+              $ref: '#/definitions/internal_handlers.TrashEntry'
             type: array
       security:
       - TokenAuth: []
@@ -351,7 +529,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/handlers.RestoreRequest'
+          $ref: '#/definitions/internal_handlers.RestoreRequest'
       responses:
         "204":
           description: No Content
@@ -384,7 +562,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/handlers.dirEntry'
+              $ref: '#/definitions/internal_handlers.dirEntry'
             type: array
       security:
       - TokenAuth: []
@@ -441,7 +619,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.healthInfo'
+            $ref: '#/definitions/internal_handlers.healthInfo'
       summary: Get system health
       tags:
       - system
@@ -466,9 +644,4 @@ paths:
       summary: Connect to terminal WebSocket
       tags:
       - terminal
-securityDefinitions:
-  TokenAuth:
-    in: header
-    name: X-Auth-Token
-    type: apiKey
 swagger: "2.0"
