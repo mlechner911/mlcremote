@@ -19,9 +19,12 @@ type Props = {
   uiMode: 'classic' | 'modern'
   onToggleUiMode: (m: 'classic' | 'modern') => void
   onLogout?: () => void
+  theme: 'dark' | 'light'
+  onToggleTheme: (t: 'dark' | 'light') => void
 }
 
-export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, onToggleShowHidden, hideMemoryUsage, onToggleHideMemoryUsage, onClose, onLanguageChange, maxEditorSize, onMaxFileSizeChange, uiMode, onToggleUiMode, onLogout }: Props) {
+export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, onToggleShowHidden, hideMemoryUsage, onToggleHideMemoryUsage, onClose, onLanguageChange, maxEditorSize, onMaxFileSizeChange, uiMode, onToggleUiMode, onLogout, theme, onToggleTheme }: Props) {
+
   const { t, i18n } = useTranslation()
   const [localHideMemoryUsage, setLocalHideMemoryUsage] = React.useState<boolean>(hideMemoryUsage)
 
@@ -98,11 +101,61 @@ export default function SettingsPopup({ autoOpen, showHidden, onToggleAutoOpen, 
 
 
 
+
         <div style={{ marginTop: 8 }}>
           <label style={{ fontSize: 13 }}>
             <input type="checkbox" checked={localHideMemoryUsage} onChange={e => { setLocalHideMemoryUsage(e.target.checked); onToggleHideMemoryUsage(e.target.checked) }} /> {t('hide_memory_usage', 'Hide memory usage gauge')}
           </label>
         </div>
+
+        <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: 8, letterSpacing: '0.05em' }}>
+            {t('theme', 'Appearance')}
+          </label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={() => onToggleTheme('light')}
+              title={t('light_mode', 'Light Mode')}
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '6px',
+                background: theme === 'light' ? 'var(--bg-select)' : 'var(--bg-panel)',
+                border: theme === 'light' ? '1px solid var(--accent)' : '1px solid var(--border)',
+                borderRadius: 6,
+                cursor: 'pointer',
+                color: theme === 'light' ? 'var(--accent)' : 'var(--text)',
+                opacity: theme === 'light' ? 1 : 0.7
+              }}
+            >
+              <Icon name="icon-sun" size={16} />
+              <span style={{ fontSize: 12, marginLeft: 6 }}>Light</span>
+            </button>
+            <button
+              onClick={() => onToggleTheme('dark')}
+              title={t('dark_mode', 'Dark Mode')}
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '6px',
+                background: theme === 'dark' ? 'var(--bg-select)' : 'var(--bg-panel)',
+                border: theme === 'dark' ? '1px solid var(--accent)' : '1px solid var(--border)',
+                borderRadius: 6,
+                cursor: 'pointer',
+                color: theme === 'dark' ? 'var(--accent)' : 'var(--text)',
+                opacity: theme === 'dark' ? 1 : 0.7
+              }}
+            >
+              <Icon name="icon-moon" size={16} />
+              <span style={{ fontSize: 12, marginLeft: 6 }}>Dark</span>
+            </button>
+          </div>
+        </div>
+
 
         <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
           <strong style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('editor_settings', 'Editor Settings')}</strong>

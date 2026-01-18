@@ -38,11 +38,12 @@ var (
 )
 
 // newTerminalSession starts a PTY running the given shell and registers it.
-func newTerminalSession(shell string, cwd string) (*terminalSession, error) {
+func newTerminalSession(shell string, cwd string, extraEnv []string) (*terminalSession, error) {
 	if shell == "" {
-		shell = detectDefaultShell()
+		// shell = detectDefaultShell() // implicitly handled by ResolveRequestedShell or StartShellPTY fallbacks?
+		// Actually StartShellPTY handles fallbacks.
 	}
-	tty, cmd, err := termutil.StartShellPTY(shell, cwd)
+	tty, cmd, err := termutil.StartShellPTY(shell, cwd, extraEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +199,8 @@ func ShutdownAllSessions() {
 // @Produce json
 // @Success 200 {object} map[string]string
 // @Router /api/terminal/new [post]
-func NewTerminalAPI(root string) http.HandlerFunc {
+// @Router /api/terminal/new [post]
+func NewTerminalAPI(root string, serverPort *int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("HANDLER: NewTerminalAPI called. Params: shell=%s chd=%s", r.URL.Query().Get("shell"), r.URL.Query().Get("cwd"))
 		reqShell := r.URL.Query().Get("shell")
@@ -224,7 +226,16 @@ func NewTerminalAPI(root string) http.HandlerFunc {
 				cwd = ""
 			}
 		}
-		s, err := newTerminalSession(shell, cwd)
+
+		token := r.Header.Get("X-Auth-Token")
+		if token == "" {
+			token = r.URL.Query().Get("token")
+		}
+
+		// Use shared helper ensuring we get the correct server port (not the tunnel port from Host header)
+		env := buildSessionEnv(r, token, serverPort)
+
+		s, err := newTerminalSession(shell, cwd, env)
 		if err != nil {
 			log.Printf("[ERROR] failed to start session (shell=%s cwd=%s): %v", shell, cwd, err)
 			http.Error(w, "failed to start session: "+err.Error(), http.StatusInternalServerError)

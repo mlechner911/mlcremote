@@ -1,3 +1,4 @@
+// api access with our access token injected after "login"
 import { info, warn } from '../utils/logger'
 import {
     getToken, setToken, authedFetch, makeUrl,
@@ -29,7 +30,7 @@ export { authedFetch }
 /**
  * Health payload returned by the server's `/health` endpoint.
  */
-export type Health = {
+export type LegacyHealth = {
     status: string;
     version: string;
     host?: string;
@@ -70,7 +71,7 @@ export type DirEntry = {
 /**
  * Fetch the server health payload.
  */
-export async function getHealth(): Promise<Health> {
+export async function getHealth(): Promise<LegacyHealth> {
     info('GET /health')
     const r = await authedFetch('/health')
     info(`/health => ${r.status}`)
@@ -348,8 +349,9 @@ export async function saveSettings(s: Partial<Settings>): Promise<Settings> {
 }
 
 export type AppEvent = {
-    type: 'file_change' | 'dir_change'
+    type: 'file_change' | 'dir_change' | 'cwd_update' | 'remote_command'
     path: string
+    payload?: any
 }
 
 export function subscribeToEvents(onEvent: (e: AppEvent) => void): () => void {

@@ -21,6 +21,8 @@ export type DialogOptions = {
     defaultValue?: string
     /** Placeholder text for input field */
     placeholder?: string
+    /** Visual variant of the dialog */
+    variant?: 'info' | 'error' | 'warning' | 'success'
 }
 
 type DialogContextType = {

@@ -11,7 +11,12 @@ export default function ShellView({ path }: ViewProps) {
   // is passed in via props in the parent when creating a shell tab. For now,
   // attempt to derive shell name and use root cwd fallback.
   const shell = 'bash'
-  const cwd = '/' // TerminalTab will resolve proper cwd via statPath if possible
+  let cwd = '/'
+  if (path && path.includes('?')) {
+    const usp = new URLSearchParams(path.split('?')[1])
+    const c = usp.get('cwd')
+    if (c) cwd = c
+  }
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Suspense fallback={<div className="muted">Loading terminal...</div>}>

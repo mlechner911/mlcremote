@@ -1,6 +1,7 @@
 /* Handcrafted minimal styles */
 :root {
     --bg: #0f1115;
+    --bg-secondary: #12141a;
     --panel: #171a21;
     --text: #e6edf3;
     --muted: #9aa5b1;
@@ -27,6 +28,7 @@
 /* Light theme overrides */
 .theme-light {
     --bg: #f8fafc;
+    --bg-secondary: #f1f5f9;
     --panel: #ffffff;
     --text: #0b1220;
     --muted: #6b7280;

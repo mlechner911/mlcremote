@@ -56,7 +56,7 @@ type ReadWriteCloser interface {
 
 // StartShellPTY attempts to start a PTY running the requested shell with fallbacks.
 // It returns the PTY file (as a ReadWriteCloser), the exec.Cmd, or an error.
-func StartShellPTY(shell, cwd string) (io.ReadWriteCloser, *exec.Cmd, error) {
+func StartShellPTY(shell, cwd string, extraEnv []string) (io.ReadWriteCloser, *exec.Cmd, error) {
 	log.Printf("StartShellPTY: Requested shell='%s', cwd='%s'", shell, cwd)
 	candidates := [][]string{}
 	// Windows prefers powershell/cmd
@@ -114,6 +114,16 @@ func StartShellPTY(shell, cwd string) (io.ReadWriteCloser, *exec.Cmd, error) {
 
 		cmd := exec.Command(exe, args...)
 		cmd.Env = append(os.Environ(), "TERM=xterm-256color")
+		if len(extraEnv) > 0 {
+			log.Printf("StartShellPTY: Appending extraEnv: %v", extraEnv) // Added debug log
+			cmd.Env = append(cmd.Env, extraEnv...)
+		}
+		// Log specific vars to verify presence in final env
+		for _, e := range cmd.Env {
+			if strings.Contains(e, "MLCREMOTE_API_URL") || strings.Contains(e, "MLCREMOTE_TOKEN") {
+				log.Printf("StartShellPTY: Env contains: %s", e)
+			}
+		}
 		if cwd != "" {
 			cmd.Dir = cwd
 		}

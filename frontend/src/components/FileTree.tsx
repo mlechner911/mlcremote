@@ -49,6 +49,20 @@ const FileTreeItem = ({ entry, depth, onToggle, onSelect, onOpen, selectedPath, 
         }
     }, [refreshSignal])
 
+    // Auto-expand if selected path is a descendant
+    React.useEffect(() => {
+        if (selectedPath && entry.isDir) {
+            // Handle root specially or ensure path format consistency
+            const myPath = entry.path === '/' ? '' : entry.path
+            const checkPath = selectedPath
+            if (checkPath.startsWith(myPath + '/') && !expanded) {
+                setExpanded(true)
+                if (!children) loadChildren()
+            }
+        }
+    }, [selectedPath, entry.path, expanded, children])
+
+
     const loadChildren = async () => {
         setLoading(true)
         try {

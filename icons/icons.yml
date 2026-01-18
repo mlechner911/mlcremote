@@ -109,6 +109,18 @@ icons:
     mime: application/x-ui
     extensions: ["warn"]
 
+  - id: check
+    name: Check
+    file: raw/check.svg
+    mime: application/x-ui
+    extensions: ["check"]
+
+  - id: error
+    name: Error
+    file: raw/error.svg
+    mime: application/x-ui
+    extensions: ["error"]
+
   - id: terminal
     name: Terminal
     file: raw/terminal.svg

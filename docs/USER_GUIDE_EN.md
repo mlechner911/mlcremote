@@ -196,6 +196,14 @@ Alternatively, you can edit `tasks.json` manually if preferred. Here are some ex
 
 ---
 
+## Extended Usage
+
+For advanced scripting and automation, you can control the MLCRemote frontend directly from the server using the `dev-server cmd` utility. This allows you to open files, change directories, or display notifications from your maintenance scripts.
+
+See the [Remote Commands Reference](REMOTE_COMMANDS.md) for full documentation and examples, including how to notify yourself when a database backup completes.
+
+---
+
 ## Troubleshooting
 
 ### "Connection Refused"

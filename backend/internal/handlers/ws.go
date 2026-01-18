@@ -6,6 +6,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -29,7 +30,8 @@ import (
 // @Success 101
 // @Router /ws/terminal [get]
 // @Router /ws/terminal [get]
-func WsTerminalHandler(root string, debug bool) http.HandlerFunc {
+// @Router /ws/terminal [get]
+func WsTerminalHandler(root string, debug bool, serverPort *int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if debug {
 			log.Printf("HANDLER: WsTerminalHandler called. Session=%s", r.URL.Query().Get("session"))
@@ -78,8 +80,16 @@ func WsTerminalHandler(root string, debug bool) http.HandlerFunc {
 					cwd = ""
 				}
 			}
+			token := r.Header.Get("X-Auth-Token")
+			if token == "" {
+				token = r.URL.Query().Get("token")
+			}
+			env := buildSessionEnv(r, token, serverPort)
+
+			log.Printf("WsTerminalHandler: creating session with env: %v", env)
+
 			// create a tracked terminal session so ShutdownAllSessions can close it
-			s, err := newTerminalSession(shell, cwd)
+			s, err := newTerminalSession(shell, cwd, env)
 			if err != nil {
 				log.Printf("failed to start shell for ephemeral ws: %v", err)
 				_ = conn.WriteMessage(websocket.TextMessage, []byte("failed to start shell: "+err.Error()))
@@ -186,4 +196,36 @@ func WsTerminalHandler(root string, debug bool) http.HandlerFunc {
 			}
 		}
 	}
+}
+
+// buildSessionEnv constructs the environment variables for a terminal session,
+// including the auth token and the API URL.
+// buildSessionEnv constructs the environment variables for a terminal session,
+// including the auth token and the API URL.
+func buildSessionEnv(r *http.Request, token string, serverPort *int) []string {
+	var env []string
+	if token != "" {
+		env = append(env, "MLCREMOTE_TOKEN="+token)
+	}
+
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+
+	var apiURL string
+	if serverPort != nil && *serverPort > 0 {
+		apiURL = fmt.Sprintf("%s://%s:%d", scheme, "127.0.0.1", *serverPort)
+	} else {
+		// Fallback if port is not available
+		host := r.Host
+		if host == "" {
+			host = "127.0.0.1:8443" // unexpected fallback
+		}
+		apiURL = fmt.Sprintf("%s://%s", scheme, host)
+	}
+
+	env = append(env, "MLCREMOTE_API_URL="+apiURL)
+	env = append(env, "MLCREMOTE_TEST=1") // Dummy var for debugging
+	return env
 }

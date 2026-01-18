@@ -35,6 +35,24 @@ components:
         auth_required:
           type: boolean
           description: True if an auth token is required for protected endpoints.
+        host:
+          type: string
+        os:
+          type: string
+        distro:
+          type: string
+        start_time:
+          type: string
+        timezone:
+          type: string
+        sys_mem_total_bytes:
+          type: integer
+        go_alloc_bytes:
+          type: integer
+        go_sys_bytes:
+          type: integer
+        server_time:
+          type: string
     LoginRequest:
       type: object
       properties:
@@ -59,6 +77,24 @@ components:
           type: boolean
         defaultShell:
           type: string
+        theme:
+          type: string
+          enum: [dark, light]
+        autoOpen:
+          type: boolean
+        showHiddenFiles:
+          type: boolean
+        hideMemoryUsage:
+          type: boolean
+        maxEditorSize:
+          type: integer
+        uiMode:
+          type: string
+          enum: [classic, modern]
+        language:
+          type: string
+        onboardingCompleted:
+          type: boolean
     DirEntry:
       type: object
       properties:

@@ -1,5 +1,6 @@
 import React from 'react'
-import { statPath, type Health, saveSettings, makeUrl, DirEntry, getToken, uploadFile, renameFile, deleteFile, subscribeToEvents } from './api'
+import { statPath, saveSettings, makeUrl, DirEntry, getToken, uploadFile, renameFile, deleteFile, subscribeToEvents } from './api'
+import { HealthInfo, Settings } from './api/generated.schemas'
 import { useAuth } from './context/AuthContext'
 import { useAppSettings } from './hooks/useAppSettings'
 import { useWorkspace } from './hooks/useWorkspace'
@@ -39,7 +40,7 @@ import { defaultStore, boolSerializer, strSerializer } from './utils/storage'
 // import MessageBox from './components/MessageBox'
 import StatusBar from './components/StatusBar'
 import { getHandler } from './handlers/registry'
-import { getHealth, getSettings, listTree, Settings, TaskDef } from './api'
+import { listTree, TaskDef } from './api'
 import { Tab, ViewType } from './types/layout'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 // import type { LayoutNode, PaneId, PaneState } from './types/layout'
@@ -67,7 +68,7 @@ function AppInner() {
   // reloadSignal is used to force-refresh the file explorer.
   // We can update it when health updates (successful auth).
   const [reloadSignal, setReloadSignal] = React.useState<number>(0)
-  const prevHealthRef = React.useRef<Health | null>(null)
+  const prevHealthRef = React.useRef<HealthInfo | null>(null)
   React.useEffect(() => {
     // Only trigger reload when we transition from no-health to health (e.g. login/connect)
     if (!prevHealthRef.current && health) {
@@ -93,7 +94,8 @@ function AppInner() {
     hideMemoryUsage, toggleHideMemoryUsage,
     canChangeRoot,
     maxEditorSize, updateMaxEditorSize,
-    uiMode, setUiMode
+    uiMode, setUiMode,
+    updateSettings
   } = useAppSettings()
 
   /* HOOKS at top level to ensure no conditional hook calls */
@@ -104,6 +106,7 @@ function AppInner() {
     openTabs, setOpenTabs,
     activeTabId, setActiveTab,
     openFile,
+    renameTab,
     splitPane, closePane, handleLayoutResize,
     fileMetas, setFileMetas,
   } = useWorkspace()
@@ -132,6 +135,7 @@ function AppInner() {
       throttleMap.set(e.path, now)
 
       if (e.type === 'dir_change' || e.type === 'file_change') {
+        // ... existing logic ...
         console.log('[App] Received fs event:', e)
         const parts = e.path.split('/')
         // refresh parent dir for files, or the dir itself
@@ -143,10 +147,92 @@ function AppInner() {
 
         // Update signal
         setRefreshSignal({ path: targetPath, ts: Date.now() })
+      } else if (e.type === 'cwd_update') {
+        // Legacy handling
+        console.log('[App] Received cwd_update:', e.path)
+
+        // Smart sync: only change root if path is not visible in current tree
+        let isDescendant = false
+        if (explorerDir === '/' || explorerDir === '') {
+          isDescendant = true
+        } else {
+          if (e.path === explorerDir || e.path.startsWith(explorerDir + '/')) {
+            isDescendant = true
+          }
+        }
+
+        if (isDescendant) {
+          setSelectedPath(e.path)
+        } else {
+          setExplorerDir(e.path)
+        }
+
+        if (activeTabId && (activeTabId.startsWith('shell-') || activeTabId.startsWith('task-'))) {
+          const label = e.path === '/' ? '/' : e.path.split('/').pop() || e.path
+          renameTab(activeTabId, label)
+        }
+      } else if (e.type === 'remote_command') {
+        console.log('[App] Received remote_command:', e.path, e.payload)
+        const cmd = e.path // We mapped valid command name to Path in backend
+        const args = e.payload || {}
+
+        if (cmd === 'set_cwd') {
+          const path = args.path || (args._positional && args._positional[0])
+          if (path) {
+            // Check if path is within current explorerDir to preserve tree view
+            let isDescendant = false
+            if (explorerDir === '/' || explorerDir === '') {
+              isDescendant = true
+            } else {
+              // Ensure we don't partial match /FOO vs /FOOBAR
+              if (path === explorerDir || path.startsWith(explorerDir + '/')) {
+                isDescendant = true
+              }
+            }
+
+            if (isDescendant) {
+              setSelectedPath(path)
+            } else {
+              setExplorerDir(path)
+            }
+
+            if (activeTabId && (activeTabId.startsWith('shell-') || activeTabId.startsWith('task-'))) {
+              const label = path === '/' ? '/' : path.split('/').pop() || path
+              renameTab(activeTabId, label)
+            }
+          }
+        } else if (cmd === 'show_message') {
+          const level = args.level
+          const variant = (['info', 'error', 'warning', 'success'].includes(level) ? level : 'info') as 'info' | 'error' | 'warning' | 'success'
+
+          showDialog({
+            title: (level || 'Info').toUpperCase(),
+            message: args.message || (args._positional && args._positional.join(' ')) || 'No message content',
+            confirmLabel: 'OK',
+            variant: variant,
+            onConfirm: () => { }
+          })
+        } else if (cmd === 'open_file') {
+          const path = args.path || (args._positional && args._positional[0])
+          if (path) {
+            // mode: 'edit' | 'preview' | 'view'
+            const mode = args.mode || 'edit'
+            // Map mode to ViewType if needed, or just pass to openFile
+            let viewType: 'editor' | 'preview' | 'custom' = 'editor'
+            if (mode === 'preview') viewType = 'preview'
+
+            if (mode === 'view') {
+              // Special case for viewing without editing?
+              // For now standard openFile behavior handling 'custom' or 'binary' is implicit
+            }
+            openFile(path, viewType)
+          }
+        }
       }
     })
     return unsub
-  }, [])
+  }, [activeTabId, renameTab])
+
 
 
   /* Sidebar Toggle Logic */
@@ -409,11 +495,13 @@ function AppInner() {
                   onLanguageChange={(l) => {
                     if (l !== i18n.language) {
                       i18n.changeLanguage(l)
-                      saveSettings({ language: l }).catch(console.error)
+                      updateSettings({ language: l })
                     }
                   }}
                   maxEditorSize={maxEditorSize}
                   onMaxFileSizeChange={updateMaxEditorSize}
+                  theme={theme}
+                  onToggleTheme={setTheme}
                   uiMode={uiMode}
                   onToggleUiMode={setUiMode}
                   onLogout={useAuth().logout}
@@ -466,6 +554,16 @@ function AppInner() {
               }
             },
             ...(contextMenu.entry.isDir ? [
+              {
+                label: t('open_terminal_here', 'Open Terminal Here'),
+                icon: <Icon name={getIcon('terminal')} />,
+                action: () => {
+                  const path = contextMenu.entry.path
+                  const id = `shell-${Date.now()}?cwd=${encodeURIComponent(path)}`
+                  // Force type 'terminal' and explicitly use directory path as label
+                  openFile(id, 'terminal', path)
+                }
+              },
               {
                 label: t('upload_file', 'Upload File'),
                 icon: <Icon name="icon-upload" />,

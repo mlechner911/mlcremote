@@ -58,7 +58,15 @@ window.addEventListener('drop', (e) => e.preventDefault());
 	}
 })()
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const queryClient = new QueryClient()
+
 // Application entrypoint — go for it
-createRoot(document.getElementById('root')!).render(<AuthProvider>
-	<App />
-</AuthProvider>)
+createRoot(document.getElementById('root')!).render(
+	<QueryClientProvider client={queryClient}>
+		<AuthProvider>
+			<App />
+		</AuthProvider>
+	</QueryClientProvider>
+)

@@ -99,12 +99,15 @@ func (m *Manager) DeployAgent(profileJSON string, targetOS remotesystem.RemoteOS
 	md5Name := remoteSys.GetMD5UtilityName()
 
 	// 0. Pre-check: If session exists, is the binary up to date?
-	if !forceNew {
-		isUpToDate, _ := m.verifyRemoteBinary(runRemote, remoteSys, home, remoteBinDir, binName, targetOS, targetArch)
-		if !isUpToDate {
-			forceNew = true
-		}
-	}
+	// FORCE UPDATE for debugging
+	forceNew = true
+	/*
+		if !forceNew {
+			isUpToDate, _ := m.verifyRemoteBinary(runRemote, remoteSys, home, remoteBinDir, binName, targetOS, targetArch)
+			if !isUpToDate {
+				forceNew = true
+			}
+		}*/
 
 	// 1. Cleanup Stale / Zombie Processes
 	if !forceNew {
@@ -204,13 +207,21 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 	localSum := fmt.Sprintf("%x", md5.Sum(devServerContent))
 	home := remoteSys.GetHomeDir()
 
-	hashCmd, hashParser := remoteSys.FileHash(remoteSys.JoinPath(home, remoteBinDir, binName))
-	if out, err := runRemote(hashCmd); err == nil {
-		remoteSum := hashParser(out)
-		if strings.EqualFold(remoteSum, localSum) {
-			fmt.Println("Binary up to date, skipping upload.")
-			skipBinary = true
+	// Only check hash if we are not forcing a new deployment
+	if !forceNew {
+		hashCmd, hashParser := remoteSys.FileHash(remoteSys.JoinPath(home, remoteBinDir, binName))
+		if out, err := runRemote(hashCmd); err == nil {
+			remoteSum := hashParser(out)
+
+			fmt.Printf("[DEBUG] Binary verification: Local=%s, Remote=%s\n", localSum, remoteSum)
+
+			if strings.EqualFold(remoteSum, localSum) {
+				fmt.Println("Binary up to date, skipping upload.")
+				skipBinary = true
+			}
 		}
+	} else {
+		fmt.Println("ForceNew is set, skipping hash check and enforcing upload.")
 	}
 
 	if !skipBinary {
@@ -558,11 +569,13 @@ func (m *Manager) verifyRemoteBinary(runRemote func(string) (string, error), rem
 	}
 
 	remoteSum := hashParser(out)
+
+	fmt.Printf("[DEBUG] Binary verification: Local=%s, Remote=%s\n", localSum, remoteSum)
+
 	if !strings.EqualFold(remoteSum, localSum) {
 		fmt.Printf("Remote binary hash mismatch (Local: %s, Remote: %s). Forcing update.\n", localSum, remoteSum)
 		return false, nil
 	}
-
 	return true, nil
 }
 

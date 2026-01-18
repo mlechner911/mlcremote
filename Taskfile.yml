@@ -155,6 +155,7 @@ tasks:
     deps: [icons]
     cmds:
       - npm install
+      - npx orval
       - npm run build
 
   # ============================================================================

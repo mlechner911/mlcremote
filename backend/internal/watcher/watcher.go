@@ -21,8 +21,9 @@ const (
 
 // Event is the payload sent to clients
 type Event struct {
-	Type EventType `json:"type"`
-	Path string    `json:"path"`
+	Type    EventType   `json:"type"`
+	Path    string      `json:"path"`
+	Payload interface{} `json:"payload,omitempty"`
 }
 
 // Service handles filesystem watching and event broadcasting
@@ -155,7 +156,7 @@ func (s *Service) loop() {
 			log.Printf("[WATCHER] Broadcasting: %s %s", evtType, relPath)
 
 			// Let's Broadcast
-			s.broadcast(Event{
+			s.Broadcast(Event{
 				Type: evtType,
 				Path: relPath,
 			})
@@ -180,7 +181,7 @@ func (s *Service) loop() {
 			parentDir = filepath.ToSlash(parentDir)
 
 			// Emit dir change for parent (to refresh tree)
-			s.broadcast(Event{
+			s.Broadcast(Event{
 				Type: EventDirChange,
 				Path: parentDir,
 			})
@@ -194,7 +195,7 @@ func (s *Service) loop() {
 	}
 }
 
-func (s *Service) broadcast(e Event) {
+func (s *Service) Broadcast(e Event) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	log.Printf("[WATCHER] Sending event to %d clients: %v", len(s.clients), e)

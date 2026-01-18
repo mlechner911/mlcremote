@@ -1,12 +1,12 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Health } from '../api'
+import { HealthInfo } from '../api/generated.schemas'
 import { Icon } from '../generated/icons'
 import { formatBytes } from '../utils/bytes'
 
 interface AboutPopupProps {
     onClose: () => void
-    health: Health | null
+    health: HealthInfo | null
     lastHealthAt: number | null | undefined
 }
 

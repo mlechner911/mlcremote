@@ -1,80 +1,105 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { getSettings, saveSettings, type Settings } from '../api'
-import { defaultStore, strSerializer } from '../utils/storage'
+import { useGetApiSettings, getGetApiSettingsUrl } from '../api/generated'
+import { Settings } from '../api/generated.schemas'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { customInstance } from '../api/axios_custom'
 
 export function useAppSettings() {
     const { i18n } = useTranslation()
-    const [settings, setSettings] = React.useState<Settings | null>(null)
-    const [loadedSettings, setLoadedSettings] = React.useState(false)
+    const queryClient = useQueryClient()
 
-    // Individual settings state
-    const [theme, setTheme] = React.useState<'dark' | 'light'>('dark')
-    const [autoOpen, setAutoOpenState] = React.useState<boolean>(true)
-    const [showHidden, setShowHiddenState] = React.useState<boolean>(false)
-    const [hideMemoryUsage, setHideMemoryUsage] = React.useState<boolean>(false)
-    const [maxEditorSize, setMaxEditorSize] = React.useState<number>(0)
-    const [canChangeRoot, setCanChangeRoot] = React.useState<boolean>(false)
-    const [uiMode, setUiModeState] = React.useState<'classic' | 'modern'>('classic')
+    // React Query Hooks
+    // GET /api/settings
+    const { data: settingsResponse, isLoading, isError } = useGetApiSettings({
+        query: {
+            refetchOnWindowFocus: false,
+            staleTime: 1000 * 60 * 5, // 5 minutes
+        }
+    })
 
-    // Setters that also persist
-    const setAutoOpen = (v: boolean) => { setAutoOpenState(v); saveSettings({ autoOpen: v }).catch(console.error) }
-    const setShowHidden = (v: boolean) => { setShowHiddenState(v); saveSettings({ showHiddenFiles: v }).catch(console.error) }
-    const toggleHideMemoryUsage = (v: boolean) => { setHideMemoryUsage(v); saveSettings({ hideMemoryUsage: v }).catch(console.error) }
-    const updateMaxEditorSize = (sz: number) => {
-        setMaxEditorSize(sz)
-        saveSettings({ maxEditorSize: sz }).catch(console.error)
-        localStorage.setItem('mlc_max_editor_size', sz.toString()) // Keep local legacy support if needed
-    }
-    const setUiMode = (m: 'classic' | 'modern') => { setUiModeState(m); saveSettings({ uiMode: m }).catch(console.error) }
+    // POST /api/settings
+    // Manual mutation because Orval generation seems to skip this endpoint for some reason
+    const updateSettingsMutation = useMutation({
+        mutationFn: async (data: Partial<Settings>) => {
+            return customInstance<{ data: Settings, status: number }>({
+                url: getGetApiSettingsUrl(),
+                method: 'POST',
+                data // changed from body to data for axios
+            })
+        },
+        onSuccess: (res) => {
+            const newData = res.data
+            // Update cache
+            queryClient.setQueryData(['/api/settings'], (old: any) => {
+                if (!old) return { data: newData, status: 200 }
+                return { ...old, data: { ...old.data, ...newData } }
+            })
+        }
+    })
 
-    // Load settings on mount
+
+    const settings = settingsResponse?.data || null
+    const loadedSettings = !isLoading && !isError
+
+    const [theme, setThemeState] = React.useState<'dark' | 'light'>('dark')
+
     React.useEffect(() => {
-        getSettings()
-            .then(s => {
-                setSettings(s)
-                if (typeof s.allowDelete !== 'undefined') setCanChangeRoot(!!s.allowDelete)
+        if (settings) {
+            if (settings.theme) setThemeState(settings.theme as any)
+        }
+    }, [settings])
 
-                // Apply user prefs
-                if (s.theme) setTheme(s.theme as any)
-                if (typeof s.autoOpen !== 'undefined') setAutoOpenState(s.autoOpen)
-                if (typeof s.showHiddenFiles !== 'undefined') setShowHiddenState(s.showHiddenFiles)
-                if (s.hideMemoryUsage) setHideMemoryUsage(s.hideMemoryUsage)
-                if (s.maxEditorSize) {
-                    setMaxEditorSize(s.maxEditorSize)
-                    localStorage.setItem('mlc_max_editor_size', s.maxEditorSize.toString())
-                }
-                // Persist uiMode
-                if (s.uiMode) setUiModeState(s.uiMode as any)
+    // Helper wrapper for mutation
+    const saveSettings = (s: Partial<Settings>) => {
+        updateSettingsMutation.mutate(s)
+    }
 
-                // URL Param Syncing
-                const params = new URLSearchParams(window.location.search)
-                const urlTheme = params.get('theme')
-                if (urlTheme === 'light' || urlTheme === 'dark') {
-                    setTheme(urlTheme as any)
-                    if (urlTheme === 'light') document.documentElement.classList.add('theme-light')
-                    else document.documentElement.classList.remove('theme-light')
-                } else {
-                    // Apply loaded theme
-                    if (s.theme === 'light') document.documentElement.classList.add('theme-light')
-                    else document.documentElement.classList.remove('theme-light')
-                }
+    // Derived values with fallbacks
+    const autoOpen = settings?.autoOpen ?? true
+    const showHidden = settings?.showHiddenFiles ?? false
+    const hideMemoryUsage = settings?.hideMemoryUsage ?? false
 
-                const urlLang = params.get('lng') || params.get('lang')
-                if (urlLang && urlLang !== s.language) {
+    const setAutoOpen = (v: boolean) => saveSettings({ autoOpen: v })
+    const setShowHidden = (v: boolean) => saveSettings({ showHiddenFiles: v })
+    const toggleHideMemoryUsage = (v: boolean) => saveSettings({ hideMemoryUsage: v })
 
-                    saveSettings({ language: urlLang }).catch(console.error)
-                    if (i18n.language !== urlLang) i18n.changeLanguage(urlLang)
-                } else if (s.language && i18n.language !== s.language) {
-                    i18n.changeLanguage(s.language)
-                }
-                setLoadedSettings(true)
-            })
-            .catch(() => {
-                setSettings({ allowDelete: false, defaultShell: 'bash' })
-                setLoadedSettings(true)
-            })
-    }, [])
+    const updateMaxEditorSize = (sz: number) => {
+        saveSettings({ maxEditorSize: sz })
+        localStorage.setItem('mlc_max_editor_size', sz.toString())
+    }
+
+    const setUiMode = (m: 'classic' | 'modern') => saveSettings({ uiMode: m })
+    const setTheme = (t: 'dark' | 'light') => {
+        setThemeState(t)
+        saveSettings({ theme: t })
+    }
+
+    // URL Param Syncing Logic (Ported from old hook)
+    React.useEffect(() => {
+        if (!settings) return
+
+        const params = new URLSearchParams(window.location.search)
+        const urlTheme = params.get('theme')
+        if (urlTheme === 'light' || urlTheme === 'dark') {
+            setThemeState(urlTheme as any)
+            if (urlTheme === 'light') document.documentElement.classList.add('theme-light')
+            else document.documentElement.classList.remove('theme-light')
+        } else {
+            // Apply loaded theme
+            if (settings.theme === 'light') document.documentElement.classList.add('theme-light')
+            else document.documentElement.classList.remove('theme-light')
+        }
+
+        const urlLang = params.get('lng') || params.get('lang')
+        if (urlLang && urlLang !== settings.language) {
+            saveSettings({ language: urlLang })
+            if (i18n.language !== urlLang) i18n.changeLanguage(urlLang)
+        } else if (settings.language && i18n.language !== settings.language) {
+            i18n.changeLanguage(settings.language)
+        }
+    }, [settings, i18n])
+
 
     // Theme effect
     React.useEffect(() => {
@@ -82,30 +107,20 @@ export function useAppSettings() {
         else document.documentElement.classList.remove('theme-light')
     }, [theme])
 
-    // External theme control (via window message) should probably stay in App.tsx or use a separate hook, 
-    // but for now we can expose setTheme to be called from there if needed, 
-    // or better yet, move the message listener here?
-    // The message listener modifies DOM classList and calls defaultStore.
-    // Let's keep the message listener in App.tsx for now to avoid complexity, 
-    // but expose setTheme so App.tsx can update the state.
-
-    // Generic updater
-    const updateSettings = (updates: Partial<Settings>) => {
-        setSettings(prev => prev ? { ...prev, ...updates } : updates as Settings)
-        saveSettings(updates).catch(console.error)
-    }
 
     return {
-        settings,
+        settings: settings || undefined,
         loadedSettings,
         theme, setTheme,
         autoOpen, setAutoOpen,
         showHidden, setShowHidden,
         hideMemoryUsage, toggleHideMemoryUsage,
-        maxEditorSize, updateMaxEditorSize,
-        canChangeRoot,
-        uiMode, setUiMode,
-        updateSettings, // Export generic updater
+        maxEditorSize: settings?.maxEditorSize || 0,
+        updateMaxEditorSize,
+        canChangeRoot: !!settings?.allowDelete,
+        uiMode: settings?.uiMode || 'classic',
+        setUiMode,
+        updateSettings: saveSettings,
         i18n
     }
 }

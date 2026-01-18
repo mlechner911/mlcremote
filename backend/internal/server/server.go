@@ -51,6 +51,7 @@ type Server struct {
 	// clients
 	listener net.Listener
 	Watcher  *watcher.Service
+	Port     int
 }
 
 // New creates a Server with the provided root, static directory, auth token, and password.
@@ -199,7 +200,7 @@ func (s *Server) Routes() {
 	s.Mux.HandleFunc("/api/login", s.loginHandler)
 	s.Mux.HandleFunc("/api/auth/check", handlers.CheckAuthHandler)
 	s.Mux.HandleFunc("/api/version", handlers.VersionHandler)
-	s.Mux.Handle("/ws/terminal", handlers.WsTerminalHandler(s.Root, s.DebugTerminal))
+	s.Mux.Handle("/ws/terminal", handlers.WsTerminalHandler(s.Root, s.DebugTerminal, &s.Port))
 	s.Mux.Handle("/api/tree", handlers.TreeHandler(s.Root))
 	s.Mux.Handle("/api/filetype", handlers.FileTypeHandler(s.Root))
 	// serve file sections for large-file viewing
@@ -212,8 +213,11 @@ func (s *Server) Routes() {
 	s.Mux.HandleFunc("/api/trash/recent", handlers.RecentTrashHandler())
 	s.Mux.HandleFunc("/api/trash/restore", handlers.RestoreTrashHandler(s.Root))
 	s.Mux.HandleFunc("/api/trash", handlers.EmptyTrashHandler(s.TrashDir, s.AllowDelete))
-	s.Mux.Handle("/api/logs", handlers.LogsHandler()) // Register LogsHandler
-	s.Mux.HandleFunc("/api/terminal/new", handlers.NewTerminalAPI(s.Root))
+	// Register LogsHandler
+	s.Mux.Handle("/api/logs", handlers.LogsHandler())
+	s.Mux.HandleFunc("/api/terminal/new", handlers.NewTerminalAPI(s.Root, &s.Port))
+	s.Mux.HandleFunc("/api/terminal/cwd", handlers.UpdateCwdHandler(s.Watcher, s.Root))
+	s.Mux.HandleFunc("/api/command", handlers.SendCommandHandler(s.Watcher, s.Root))
 	s.Mux.Handle("/api/file", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -271,6 +275,7 @@ func (s *Server) Start(port int) (int, error) {
 	addr = fmt.Sprintf("%s:%d", s.Host, actualPort)
 	log.Printf("[INFO] server listening on http://%s", addr)
 	s.listener = ln
+	s.Port = actualPort
 
 	// Wrap mux with auth middleware
 	handler := s.authMiddleware(s.Mux)

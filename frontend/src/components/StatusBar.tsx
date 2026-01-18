@@ -1,11 +1,11 @@
 import React from 'react'
-import { Health } from '../api'
+import { HealthInfo } from '../api/generated.schemas'
 import { formatBytes } from '../utils/bytes'
 import { Icon } from '../generated/icons'
 import { useTranslation } from 'react-i18next'
 
 type Props = {
-    health: Health | null
+    health: HealthInfo | null
     isOnline: boolean
     hideMemoryUsage: boolean
     lastHealthAt: number | null | undefined

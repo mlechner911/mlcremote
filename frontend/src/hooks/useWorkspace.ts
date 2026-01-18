@@ -254,6 +254,41 @@ export function useWorkspace(maxTabs = 8) {
         }
     }, [])
 
+    const renameTab = (id: string, newLabel: string, newType?: ViewType) => {
+        setPanes(prev => {
+            const p = prev[activePaneId] // Search in all panes? Or just active? Tabs have unique IDs for now.
+            // Better to find the pane containing the tab.
+            let targetPaneId = activePaneId
+            let found = p?.tabs.find(t => t.id === id)
+
+            if (!found) {
+                // search other panes
+                for (const [pid, pane] of Object.entries(prev)) {
+                    if (pane.tabs.find(t => t.id === id)) {
+                        targetPaneId = pid
+                        found = pane.tabs.find(t => t.id === id)
+                        break
+                    }
+                }
+            }
+
+            if (!found) return prev
+
+            const targetPane = prev[targetPaneId]
+            const newTabs = targetPane.tabs.map(t =>
+                t.id === id ? { ...t, label: newLabel, type: newType || t.type } : t
+            )
+
+            return {
+                ...prev,
+                [targetPaneId]: {
+                    ...targetPane,
+                    tabs: newTabs
+                }
+            }
+        })
+    }
+
     return {
         panes, setPanes,
         layout, setLayout,
@@ -261,6 +296,7 @@ export function useWorkspace(maxTabs = 8) {
         openTabs, setOpenTabs, // Renamed from openFiles
         activeTabId, setActiveTab, // Renamed from activeFile, setActiveFile
         openFile,
+        renameTab,
         splitPane, closePane, handleLayoutResize,
         fileMetas, setFileMetas
     }
