@@ -38,7 +38,10 @@ func main() {
 	openapi := flag.String("openapi", "", "path to OpenAPI YAML spec (optional)")
 	noAuth := flag.Bool("no-auth", false, "disable authentication (DANGEROUS)")
 	showVersion := flag.Bool("version", false, "print version and exit")
+	noAuth := flag.Bool("no-auth", false, "disable authentication (DANGEROUS)")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	tokenFlag := flag.String("token", "", "auth token (if empty and no-auth is false, one will be generated)")
+	debugTerminal := flag.Bool("debug-terminal", false, "enable verbose terminal logging")
 	flag.Parse()
 
 	version := "1.2.3"
@@ -69,7 +72,8 @@ func main() {
 	// Dev server doesn't use config file password for now
 	// AllowDelete = true for dev server
 	trashDir := filepath.Join(os.Getenv("HOME"), ".trash")
-	s := server.New(*host, *root, *staticDir, *openapi, token, "", true, trashDir)
+	trashDir := filepath.Join(os.Getenv("HOME"), ".trash")
+	s := server.New(*host, *root, *staticDir, *openapi, token, "", true, trashDir, *debugTerminal)
 
 	if fallback {
 		s.RootFallback = true

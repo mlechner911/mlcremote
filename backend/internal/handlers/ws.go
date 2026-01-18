@@ -28,9 +28,12 @@ import (
 // @Param token query string false "Auth token"
 // @Success 101
 // @Router /ws/terminal [get]
-func WsTerminalHandler(root string) http.HandlerFunc {
+// @Router /ws/terminal [get]
+func WsTerminalHandler(root string, debug bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("HANDLER: WsTerminalHandler called. Session=%s", r.URL.Query().Get("session"))
+		if debug {
+			log.Printf("HANDLER: WsTerminalHandler called. Session=%s", r.URL.Query().Get("session"))
+		}
 		up := websocket.Upgrader{
 			ReadBufferSize:  8192,
 			WriteBufferSize: 8192,
@@ -119,7 +122,7 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 				}
 				if mt == websocket.TextMessage || mt == websocket.BinaryMessage {
 					// Debug log for input troubleshooting
-					if len(data) > 0 {
+					if len(data) > 0 && debug {
 						log.Printf("WsTerminalHandler [ephemeral]: received %d bytes from WS: %q", len(data), string(data))
 					}
 					s.write(data)
@@ -176,7 +179,7 @@ func WsTerminalHandler(root string) http.HandlerFunc {
 			}
 			if mt == websocket.TextMessage || mt == websocket.BinaryMessage {
 				// Debug log for input troubleshooting
-				if len(data) > 0 {
+				if len(data) > 0 && debug {
 					log.Printf("WsTerminalHandler: received %d bytes from WS: %q", len(data), string(data))
 				}
 				s.write(data)
