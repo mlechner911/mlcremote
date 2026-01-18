@@ -44,7 +44,7 @@ func main() {
 	debugTerminal := flag.Bool("debug-terminal", false, "enable verbose terminal logging")
 	flag.Parse()
 
-	version := "1.2.3"
+	version := "1.3.5"
 	if *showVersion {
 		fmt.Println(version)
 		os.Exit(0)
