@@ -14,6 +14,7 @@ import Editor from './Editor'
 import BinaryView from './views/BinaryView'
 import FileDetailsView from './views/FileDetailsView'
 import ServerLogsView from './views/ServerLogsView'
+import DirectoryView from './views/DirectoryView'
 const TerminalTab = React.lazy(() => import('./views/TerminalTab'))
 
 export interface LayoutManagerProps {
@@ -44,6 +45,7 @@ export interface LayoutManagerProps {
     setFileMetas: React.Dispatch<React.SetStateAction<Record<string, any>>>
     binaryPath: string | null
     onTabSelect?: (path: string) => void
+    onDirectoryContextMenu?: (e: React.MouseEvent, entry: { path: string, isDir: boolean }) => void
 }
 
 export default function LayoutManager(props: LayoutManagerProps) {
@@ -294,6 +296,10 @@ export default function LayoutManager(props: LayoutManagerProps) {
                                                         </div>
                                                     </div>
                                                 )
+                                            case 'directory':
+                                                // Singleton directory tab - use path from metadata
+                                                const dirPath = tab.metadata?.dirPath || selectedPath
+                                                return <DirectoryView path={dirPath} onContextMenu={props.onDirectoryContextMenu} />
                                             case 'logs':
                                                 console.log('Rendering ServerLogsView from LayoutManager')
                                                 return <ServerLogsView />

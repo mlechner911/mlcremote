@@ -405,7 +405,16 @@ function AppInner() {
             }}
             onOpenTerminal={() => {
               const shellName = `shell-${Date.now()}`
-              setShellCwds(s => ({ ...s, [shellName]: selectedPath || '/' }))
+              // If selectedPath is a file, use its directory; otherwise use the path as-is
+              let terminalPath = selectedPath || '/'
+              const meta = fileMetas[selectedPath]
+              if (meta && !meta.isDir) {
+                // Extract parent directory from file path
+                const parts = selectedPath.split('/')
+                parts.pop() // Remove filename
+                terminalPath = parts.join('/') || '/'
+              }
+              setShellCwds(s => ({ ...s, [shellName]: terminalPath }))
               openFile(shellName, 'terminal', 'Terminal')
             }}
             onOpenTrash={() => {
@@ -435,7 +444,8 @@ function AppInner() {
                     /* Reusing existing selection logic */
                     setSelectedPath(p)
                     if (isDir) {
-                      openFile(SPECIAL_TAB_IDS.METADATA)
+                      // Use singleton directory tab - all directories share one tab
+                      openFile(SPECIAL_TAB_IDS.DIRECTORY, 'directory', p.split('/').pop() || 'Directory', undefined, { icon: 'folder', metadata: { dirPath: p } })
                       return
                     }
                     (async () => {

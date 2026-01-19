@@ -1,7 +1,8 @@
 
 export type PaneId = string
 
-export type ViewType = 'editor' | 'preview' | 'terminal' | 'binary' | 'diff' | 'custom' | 'logs';
+export type ViewType = 'editor' | 'preview' | 'terminal' | 'binary' | 'diff'
+    | 'custom' | 'logs' | 'directory';
 export type Intent = 'view' | 'edit';
 
 export interface Tab {

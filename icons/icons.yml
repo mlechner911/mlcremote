@@ -73,6 +73,12 @@ icons:
     mime: application/json
     extensions: ["json"]
 
+  - id: html
+    name: HTML
+    file: raw/html.svg
+    mime: text/html
+    extensions: ["html", "htm"]
+
   - id: download
     name: Download
     file: raw/download.svg

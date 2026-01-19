@@ -77,6 +77,8 @@ export function useWorkspace(maxTabs = 8) {
             return createSpecialTab(path, 'custom', label || 'Trash', 'trash', extra)
         } else if (path === SPECIAL_TAB_IDS.SERVER_LOGS) {
             return createSpecialTab(path, 'logs', label || 'Server Logs', 'server', extra)
+        } else if (path === SPECIAL_TAB_IDS.DIRECTORY) {
+            return createSpecialTab(path, 'directory', label || 'Directory', 'folder', extra)
         }
 
         // For regular files, determine type if not provided
