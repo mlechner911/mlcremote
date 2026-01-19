@@ -27,7 +27,40 @@ func LogsHandler() http.HandlerFunc {
 			return
 		}
 
-		logPath := filepath.Join(home, ".mlcremote", "current.log")
+		// Search for latest session-*.log file
+		logDir := filepath.Join(home, ".mlcremote")
+		entries, err := os.ReadDir(logDir)
+		var logPath string
+
+		if err == nil {
+			var newestFile string
+			var newestTime int64
+
+			for _, entry := range entries {
+				if entry.IsDir() {
+					continue
+				}
+				name := entry.Name()
+				// Match session-*.log
+				if len(name) > 12 && name[0:8] == "session-" && name[len(name)-4:] == ".log" {
+					info, err := entry.Info()
+					if err == nil {
+						if info.ModTime().Unix() > newestTime {
+							newestTime = info.ModTime().Unix()
+							newestFile = name
+						}
+					}
+				}
+			}
+			if newestFile != "" {
+				logPath = filepath.Join(logDir, newestFile)
+			}
+		}
+
+		// Fallback to current.log if no session log found
+		if logPath == "" {
+			logPath = filepath.Join(logDir, "current.log")
+		}
 
 		f, err := os.Open(logPath)
 		if err != nil {

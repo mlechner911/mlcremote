@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { Health } from '../api' // Keep types from legacy api or generated schemas? generated schemas are better but Health is in index.ts manually defined. 
+
 // Actually generated schemas has HealthInfo. Let's check generated.schemas.ts if needed, but for now stick to manual type or usage.
 // generated.ts uses HealthInfo. 
 import { useGetHealth, useGetApiAuthCheck, usePostApiLogin } from '../api/generated'
@@ -116,19 +116,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (authCheckQuery.isError) {
             // authCheck failed. 
-            // Original logic: localStorage.removeItem('mlcremote_token'); check health.password_auth etc.
-            // We can use the cached health data or current health data.
+            // Only clear token if we specifically got a 401 Unauthorized response.
+            // Other errors (network, 500, etc) should not log the user out.
+            const err = authCheckQuery.error as any
+            if (err?.response?.status === 401) {
+                localStorage.removeItem('mlcremote_token')
 
-            // Check if it's actually 401? The hook doesn't give status easily unless we type the error.
-            // Assuming any error on authCheck means invalid token.
-            localStorage.removeItem('mlcremote_token')
-
-            if (health) {
-                if (health.password_auth) setShowLogin(true)
-                else if (health.auth_required) setShowTokenInput(true)
+                if (health) {
+                    if (health.password_auth) setShowLogin(true)
+                    else if (health.auth_required) setShowTokenInput(true)
+                }
+            } else {
+                console.warn("Auth check failed with non-401 error", err)
             }
         }
-    }, [authCheckQuery.isError, health])
+    }, [authCheckQuery.isError, authCheckQuery.error, health])
 
     // Auth chooser logic
     useEffect(() => {

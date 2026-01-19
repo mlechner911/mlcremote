@@ -22,6 +22,11 @@ export default function ServerLogsView(_props: Props) {
     const bottomRef = useRef<HTMLDivElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
 
+    useEffect(() => {
+        console.log('ServerLogsView mounted')
+        return () => console.log('ServerLogsView unmounted')
+    }, [])
+
     const fetchLogs = async () => {
         try {
             setLoading(true)
@@ -59,7 +64,8 @@ export default function ServerLogsView(_props: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-editor)' }}>
             {/* Toolbar */}
             <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <strong>{t('server_logs') || 'Server Logs'}</strong>
+                <Icon name="icon-server" size={16} />
+                <strong>Server Logs (Diagnosing - Bytes: {logs.length})</strong>
                 <div style={{ flex: 1 }} />
 
                 {loading && <span className="muted" style={{ fontSize: 12 }}>Fetching...</span>}

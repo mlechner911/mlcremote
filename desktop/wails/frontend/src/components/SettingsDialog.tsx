@@ -157,7 +157,7 @@ export default function SettingsDialog({ onClose, theme, onSetTheme }: { onClose
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
               }}
             >
-              <Icon name="icon-terminal" size={18} />
+              <Icon name="icon-theme-auto" size={18} />
               {t('system_theme')}
             </button>
             <button

@@ -11,22 +11,29 @@ AXIOS_INSTANCE.interceptors.request.use((config) => {
 
     const token = getToken();
     if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+        config.headers['X-Auth-Token'] = token;
     }
     return config;
 });
 
 // Custom instance function expected by Orval
-export const customInstance = <T>(config: AxiosRequestConfig, options?: AxiosRequestConfig): Promise<T> => {
+export const customInstance = <T>(url: string, options?: any): Promise<T> => {
     const source = Axios.CancelToken.source();
-    const promise = AXIOS_INSTANCE({
-        ...config,
+
+    // Map RequestInit body to Axios data
+    const config: AxiosRequestConfig = {
+        url,
         ...options,
         cancelToken: source.token,
-    });
+    };
+
+    if (options?.body) {
+        config.data = options.body;
+    }
+
+    const promise = AXIOS_INSTANCE(config);
 
     return promise as Promise<T>;
-    return promise;
 };
 
 export default customInstance;

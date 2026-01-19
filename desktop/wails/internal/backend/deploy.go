@@ -363,9 +363,9 @@ func (m *Manager) startBackend(runRemote func(string) (string, error), remoteSys
 	}
 
 	logFile := LogFileCurrent
-	if forceNew {
-		logFile = fmt.Sprintf("session-%d.log", time.Now().Unix())
-	}
+	// if forceNew {
+	// 	logFile = fmt.Sprintf("session-%d.log", time.Now().Unix())
+	// }
 
 	pidFile := remoteSys.JoinPath(home, RemoteBaseDir, PidFile)
 

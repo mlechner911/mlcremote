@@ -5,6 +5,7 @@ import type { LayoutNode, PaneState, Tab } from '../types/layout'
 import { Icon } from '../generated/icons'
 import { getIcon } from '../generated/icon-helpers'
 import { useDialog } from '../context/DialogContext'
+import { SPECIAL_TAB_IDS } from '../constants/specialTabs'
 
 // Components
 import TabBarComponent from './TabBar'
@@ -12,7 +13,7 @@ import TrashView from './views/TrashView'
 import Editor from './Editor'
 import BinaryView from './views/BinaryView'
 import FileDetailsView from './views/FileDetailsView'
-const ServerLogsView = React.lazy(() => import('./views/ServerLogsView'))
+import ServerLogsView from './views/ServerLogsView'
 const TerminalTab = React.lazy(() => import('./views/TerminalTab'))
 
 export interface LayoutManagerProps {
@@ -279,12 +280,22 @@ export default function LayoutManager(props: LayoutManagerProps) {
                                                     </React.Suspense>
                                                 )
                                             case 'custom':
-                                                if (tab.id === 'trash') return <TrashView />
-                                                if (tab.id === 'metadata') return <FileDetailsView path={selectedPath} />
-                                                // WAITING: In App.tsx it used <FileDetailsView path={selectedPath} />
-                                                // We need selectedPath prop!
-                                                return null
+                                                // Handle known special custom tabs
+                                                if (tab.id === SPECIAL_TAB_IDS.TRASH) return <TrashView />
+                                                if (tab.id === SPECIAL_TAB_IDS.METADATA) return <FileDetailsView path={selectedPath} />
+                                                // Unknown custom tab type - log warning and show error
+                                                console.warn(`[LayoutManager] Unknown custom tab type: ${tab.id}`, tab)
+                                                return (
+                                                    <div className="muted" style={{ padding: 20, textAlign: 'center' }}>
+                                                        <div style={{ fontSize: 48, opacity: 0.2, marginBottom: 10 }}>⚠️</div>
+                                                        <div>Unknown view type: {tab.id}</div>
+                                                        <div style={{ fontSize: 12, opacity: 0.6, marginTop: 8 }}>
+                                                            Check LayoutManager.tsx case 'custom'
+                                                        </div>
+                                                    </div>
+                                                )
                                             case 'logs':
+                                                console.log('Rendering ServerLogsView from LayoutManager')
                                                 return <ServerLogsView />
                                             case 'binary':
                                                 return (

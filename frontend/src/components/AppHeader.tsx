@@ -9,7 +9,6 @@ interface AppHeaderProps {
     logoVisible: boolean
     setLogoVisible: (v: boolean) => void
     onOpenTerminal: () => void
-    onToggleTheme: () => void
     onScreenshot: () => void
     onOpenTrash: () => void
     onSplitPane: (direction: 'horizontal' | 'vertical') => void
@@ -17,6 +16,8 @@ interface AppHeaderProps {
     canCloseActivePane: boolean
     isControlled: boolean
     theme: 'light' | 'dark'
+    themeMode: 'light' | 'dark' | 'auto'
+    onToggleTheme: (mode: 'light' | 'dark' | 'auto') => void
 
     // Settings props
     settingsOpen: boolean
@@ -50,7 +51,7 @@ export default function AppHeader(props: AppHeaderProps) {
         onOpenTrash,
         onSplitPane,
         onCloseActivePane, canCloseActivePane,
-        isControlled, theme,
+        isControlled, theme, themeMode,
         settingsOpen, setSettingsOpen,
         aboutOpen, setAboutOpen,
 
@@ -66,6 +67,13 @@ export default function AppHeader(props: AppHeaderProps) {
         i18n
     } = props
 
+    const handleThemeToggle = () => {
+        // Cycle: Auto -> Light -> Dark -> Auto
+        if (themeMode === 'auto') onToggleTheme('light')
+        else if (themeMode === 'light') onToggleTheme('dark')
+        else onToggleTheme('auto')
+    }
+
     return (
         <header className="app-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -76,8 +84,14 @@ export default function AppHeader(props: AppHeaderProps) {
                 <button className="link icon-btn" onClick={onOpenTerminal} title={t('terminal')} aria-label={t('terminal')}><Icon name={getIcon('terminal')} title={t('terminal')} size={16} /></button>
 
                 {!isControlled && (
-                    <button className="link icon-btn" aria-label="Toggle theme" onClick={onToggleTheme}>
-                        {theme === 'dark' ? <Icon name={getIcon('moon')} title={t('theme')} size={16} /> : <Icon name={getIcon('sun')} title={t('theme')} size={16} />}
+                    <button className="link icon-btn" aria-label="Toggle theme" onClick={handleThemeToggle}>
+                        {themeMode === 'auto' ? (
+                            <Icon name="icon-theme-auto" title="System Theme" size={16} />
+                        ) : themeMode === 'light' ? (
+                            <Icon name={getIcon('sun')} title="Light Mode" size={16} />
+                        ) : (
+                            <Icon name={getIcon('moon')} title="Dark Mode" size={16} />
+                        )}
                     </button>
                 )}
 

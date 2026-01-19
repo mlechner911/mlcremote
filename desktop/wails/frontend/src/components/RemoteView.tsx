@@ -150,6 +150,7 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
             if (e.data.type === 'paste-from-local') {
                 handlePasteToRemote(e.data.path)
             }
+
         }
         window.addEventListener('message', handleMessage)
 
@@ -284,15 +285,7 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
 
-                    <button
-                        onClick={toggleTheme}
-                        title={t('toggle_theme')}
-                        style={{ ...btnStyle, color: theme === 'dark' ? 'white' : '#333' }}
-                        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')}
-                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
-                    >
-                        <Icon name={theme === 'dark' ? 'icon-moon' : 'icon-sun'} size={18} />
-                    </button>
+
                     <button
                         onClick={handleScreenshot}
                         title={t('screenshot')}

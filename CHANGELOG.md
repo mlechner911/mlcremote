@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+- **Bug Fix**: Fixed Server Logs view not displaying in desktop app due to type mismatch.
+- **Code Quality**: Refactored special tab identifiers to use constants with `__special__` prefix, preventing conflicts with real file paths.
+- **UI/UX**: Added visual error indicators for unknown tab types instead of silent failures.
+
 ## [1.2.3] - 2026-01-15
 - **Configuration**: Enabled file deletion by default in server config.
 - **UI**: Added **Rename** and **Delete** actions to the File Explorer context menu (Delete now uses a styled confirmation dialog).

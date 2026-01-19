@@ -31,6 +31,7 @@ import './modern.css'
 // import { formatBytes } from './utils/bytes'
 import { captureElementToPng } from './utils/capture'
 import { defaultStore, boolSerializer, strSerializer } from './utils/storage'
+import { SPECIAL_TAB_IDS } from './constants/specialTabs'
 
 /**
  * Top-level application component. Manages UI state for the file explorer,
@@ -88,7 +89,7 @@ function AppInner() {
   /* Hook Integration */
   const {
     settings, loadedSettings,
-    theme, setTheme,
+    theme, setTheme, themeMode,
     autoOpen, setAutoOpen,
     showHidden, setShowHidden,
     hideMemoryUsage, toggleHideMemoryUsage,
@@ -270,6 +271,14 @@ function AppInner() {
     return !!p.get('controlled') || !!p.get('theme')
   }, [])
 
+  // Notify parent of theme changes: Disabled for simplification
+  // React.useEffect(() => {
+  //   if (isControlled) {
+  //     window.parent.postMessage({ type: 'theme-change', theme, mode: themeMode }, '*')
+  //   }
+  // }, [theme, themeMode, isControlled])
+
+
   // -- Effects --
 
   type oureventtypes = 'set-theme' | 'screenshot' | 'run-task' | 'app-ready' | 'set-tasks' | 'open-logs' | 'refresh-path'
@@ -323,8 +332,9 @@ function AppInner() {
         }
       }
       if (eventtype === 'open-logs') {
-        openFile('server-logs', 'logs', 'Server Logs')
-        setActiveTab('server-logs')
+        console.log("[MLCRemote] Received open-logs message")
+        openFile(SPECIAL_TAB_IDS.SERVER_LOGS)  // Type and label auto-determined by createTab
+        setActiveTab(SPECIAL_TAB_IDS.SERVER_LOGS)
       }
       if (eventtype === 'refresh-path') {
         const path = e.data.path || '/'
@@ -399,12 +409,12 @@ function AppInner() {
               openFile(shellName, 'terminal', 'Terminal')
             }}
             onOpenTrash={() => {
-              openFile('trash', 'custom', 'Trash')
-              setActiveTab('trash')
+              openFile(SPECIAL_TAB_IDS.TRASH, 'custom', 'Trash')
+              setActiveTab(SPECIAL_TAB_IDS.TRASH)
             }}
             onOpenLogs={() => {
-              openFile('server-logs', 'logs', 'Server Logs')
-              setActiveTab('server-logs')
+              openFile(SPECIAL_TAB_IDS.SERVER_LOGS, 'logs', 'Server Logs')
+              setActiveTab(SPECIAL_TAB_IDS.SERVER_LOGS)
             }}
             onToggleSettings={() => setSettingsOpen(s => !s)}
             onActivityChange={() => { }} // Required by strict interface but unused in App
@@ -425,7 +435,7 @@ function AppInner() {
                     /* Reusing existing selection logic */
                     setSelectedPath(p)
                     if (isDir) {
-                      openFile('metadata', 'custom', 'Details')
+                      openFile(SPECIAL_TAB_IDS.METADATA)
                       return
                     }
                     (async () => {
@@ -437,18 +447,18 @@ function AppInner() {
                           const existing = openTabs.find(t => t.id === p)
                           if (existing) {
                             setActiveTab(p)
-                          } else if (activeTabId !== 'metadata') {
+                          } else if (activeTabId !== SPECIAL_TAB_IDS.METADATA) {
                             // Fallback to details view if not auto-opening
-                            openFile('metadata', 'custom', 'Details')
+                            openFile(SPECIAL_TAB_IDS.METADATA)
                           }
                           checkHealthStatus()
                           return
                         }
 
                         if (h.name === 'Binary' || h.name === 'Unsupported') {
-                          openFile('binary', 'binary', 'Binary View')
+                          openFile(SPECIAL_TAB_IDS.BINARY)
                           setBinaryPath(p)
-                          setActiveTab('binary')
+                          setActiveTab(SPECIAL_TAB_IDS.BINARY)
                           return
                         }
 
@@ -485,6 +495,7 @@ function AppInner() {
 
               {settingsOpen && (
                 <SettingsPopup
+                  isControlled={isControlled}
                   autoOpen={autoOpen}
                   showHidden={showHidden}
                   onToggleAutoOpen={setAutoOpen}
@@ -500,7 +511,7 @@ function AppInner() {
                   }}
                   maxEditorSize={maxEditorSize}
                   onMaxFileSizeChange={updateMaxEditorSize}
-                  theme={theme}
+                  theme={themeMode}
                   onToggleTheme={setTheme}
                   uiMode={uiMode}
                   onToggleUiMode={setUiMode}
@@ -550,7 +561,7 @@ function AppInner() {
               icon: <Icon name={getIcon('info')} />,
               action: () => {
                 setSelectedPath(contextMenu.entry.path)
-                openFile('metadata', 'custom', 'Details')
+                openFile(SPECIAL_TAB_IDS.METADATA)
               }
             },
             ...(contextMenu.entry.isDir ? [
@@ -577,7 +588,7 @@ function AppInner() {
                       await uploadFile(contextMenu.entry.path, file)
                       const newPath = (contextMenu.entry.path === '/' ? '' : contextMenu.entry.path) + '/' + file.name
                       setSelectedPath(newPath)
-                      openFile('metadata', 'custom', 'Details')
+                      openFile(SPECIAL_TAB_IDS.METADATA)
                       setRefreshSignal({ path: contextMenu.entry.path, ts: Date.now() })
                     } catch (err) {
                       console.error(err)

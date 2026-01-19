@@ -1,6 +1,7 @@
 import React from 'react'
 import { statPath } from '../api'
 import type { LayoutNode, PaneId, PaneState, Tab, ViewType, Intent } from '../types/layout'
+import { SPECIAL_TAB_IDS, isSpecialTab } from '../constants/specialTabs'
 
 export function useWorkspace(maxTabs = 8) {
     // -- Layout State --
@@ -39,34 +40,57 @@ export function useWorkspace(maxTabs = 8) {
         })
     }
 
-    function createTab(path: string, type?: ViewType, label?: string, intent?: Intent, extra?: Partial<Tab>): Tab {
-        // Logic to determine type if not provided
+    /**
+     * Creates a tab for special application views (non-file tabs)
+     * Examples: Trash, Metadata panel, Server Logs, Binary viewer
+     */
+    function createSpecialTab(
+        id: string,
+        type: ViewType,
+        label: string,
+        icon?: string,
+        extra?: Partial<Tab>
+    ): Tab {
+        return {
+            id,
+            path: id, // For special tabs, path = id
+            label,
+            type,
+            icon,
+            ...extra
+        }
+    }
+
+    /**
+     * Creates a tab for a regular file or generates appropriate tab for special IDs
+     */
+    function createTab(path: string, type?: ViewType, label?: string,
+        intent?: Intent, extra?: Partial<Tab>): Tab {
+
+        // Handle special tab IDs first (these use constants from specialTabs.ts)
+        // The __special__ prefix ensures they never conflict with real file paths
+        if (path === SPECIAL_TAB_IDS.METADATA) {
+            return createSpecialTab(path, 'custom', label || 'Details', 'info', extra)
+        } else if (path === SPECIAL_TAB_IDS.BINARY) {
+            return createSpecialTab(path, 'binary', label || 'Binary View', 'file', extra)
+        } else if (path === SPECIAL_TAB_IDS.TRASH) {
+            return createSpecialTab(path, 'custom', label || 'Trash', 'trash', extra)
+        } else if (path === SPECIAL_TAB_IDS.SERVER_LOGS) {
+            return createSpecialTab(path, 'logs', label || 'Server Logs', 'server', extra)
+        }
+
+        // For regular files, determine type if not provided
         let actualType: ViewType = type || 'editor'
         let actualLabel = label || path.split('/').pop() || path
 
-        // Enforce specific types/labels for known special paths
-        if (path === 'metadata') {
-            actualType = 'custom'
-            actualLabel = 'Details'
-        } else if (path === 'binary') {
-            actualType = 'binary'
-            actualLabel = 'Binary View'
-        } else if (path === 'trash') {
-            actualType = 'custom'
-            actualLabel = 'Trash'
-        }
-
-        if (!type) {
-            if (path.startsWith('shell-')) {
-                actualType = 'terminal'
-                actualLabel = 'Terminal'
-            } else if (path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg')) {
-                // heuristic
-            }
+        // Handle terminal tabs (shell-* pattern)
+        if (!type && path.startsWith('shell-')) {
+            actualType = 'terminal'
+            actualLabel = label || 'Terminal'
         }
 
         return {
-            id: path, // For now, path is ID for most things. Terminals have unique paths anyway.
+            id: path,
             path,
             label: actualLabel,
             type: actualType,

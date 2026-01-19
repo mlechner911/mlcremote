@@ -121,6 +121,12 @@ icons:
     mime: application/x-ui
     extensions: ["error"]
 
+  - id: theme-auto
+    name: Theme Auto
+    file: raw/theme-auto.svg
+    mime: application/x-ui
+    extensions: ["theme-auto"]
+
   - id: terminal
     name: Terminal
     file: raw/terminal.svg

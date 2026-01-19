@@ -38,6 +38,7 @@ tasks:
     desc: Generate icons from raw assets
     cmds:
       - cmd: cd cmd/icon-gen && go run . --manifest ../../icons/icons.yml --raw ../../icons/raw --out ../../frontend/src/generated
+      - cmd: cd cmd/icon-gen && go run . --manifest ../../icons/icons.yml --raw ../../icons/raw --out ../../desktop/wails/frontend/src/generated
 
   dev:
     desc: Run Desktop App in Dev Mode (Wails Dev)
