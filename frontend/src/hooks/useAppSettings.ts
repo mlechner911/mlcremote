@@ -81,14 +81,12 @@ export function useAppSettings() {
 
         const params = new URLSearchParams(window.location.search)
         const urlTheme = params.get('theme')
+
+        // Priority: URL Param -> Settings -> Default 'dark'
         if (urlTheme === 'light' || urlTheme === 'dark') {
             setThemeState(urlTheme as any)
-            if (urlTheme === 'light') document.documentElement.classList.add('theme-light')
-            else document.documentElement.classList.remove('theme-light')
-        } else {
-            // Apply loaded theme
-            if (settings.theme === 'light') document.documentElement.classList.add('theme-light')
-            else document.documentElement.classList.remove('theme-light')
+        } else if (settings.theme) {
+            setThemeState(settings.theme as any)
         }
 
         const urlLang = params.get('lng') || params.get('lang')
@@ -101,7 +99,7 @@ export function useAppSettings() {
     }, [settings, i18n])
 
 
-    // Theme effect
+    // Theme effect - Single source of truth for DOM class
     React.useEffect(() => {
         if (theme === 'light') document.documentElement.classList.add('theme-light')
         else document.documentElement.classList.remove('theme-light')
