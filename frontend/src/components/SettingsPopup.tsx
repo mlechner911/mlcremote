@@ -42,197 +42,187 @@ export default function SettingsPopup({ isControlled, autoOpen, showHidden, onTo
   ]
 
   return (
-    <div style={{ position: 'absolute', right: 12, top: 40, zIndex: 5000 }}>
-      <div style={{ width: 320, background: 'var(--bg)', border: '1px solid var(--muted)', borderRadius: 6, boxShadow: '0 6px 20px rgba(0,0,0,0.12)', padding: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <strong>{t('settings')}</strong>
-          <button aria-label={t('close')} title={t('close')} onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><Icon name={getIcon('close')} size={16} /></button>
-        </div>
+    <>
+      {/* Modal Overlay */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 4999,
+          backdropFilter: 'blur(2px)'
+        }}
+        onClick={onClose}
+      />
 
-        <div style={{ marginTop: 12 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: 8, letterSpacing: '0.05em' }}>
-            {t('language')}
-          </label>
-          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            {languages.map(l => {
-              const isActive = i18n.language === l.code || (l.code === 'en' && !i18n.language)
-              // Mapping 'en' to 'gb' for flagcdn, others match usually
-              const flagCode = l.code === 'en' ? 'gb' : l.code
+      {/* Settings Modal */}
+      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 5000 }}>
+        <div style={{ width: 320, background: 'var(--bg)', border: '1px solid var(--muted)', borderRadius: 6, boxShadow: '0 6px 20px rgba(0,0,0,0.3)', padding: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <strong>{t('settings')}</strong>
+            <button aria-label={t('close')} title={t('close')} onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><Icon name={getIcon('close')} size={16} /></button>
+          </div>
 
-              return (
+          <div style={{ marginTop: 12 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: 8, letterSpacing: '0.05em' }}>
+              {t('language')}
+            </label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              {languages.map(l => {
+                const isActive = i18n.language === l.code || (l.code === 'en' && !i18n.language)
+                // Mapping 'en' to 'gb' for flagcdn, others match usually
+                const flagCode = l.code === 'en' ? 'gb' : l.code
+
+                return (
+                  <button
+                    key={l.code}
+                    onClick={() => changeLanguage(l.code)}
+                    title={l.name}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 6,
+                      background: isActive ? 'var(--bg-select)' : 'var(--bg-panel)',
+                      border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: isActive ? 1 : 0.7
+                    }}
+                    onMouseOver={(e) => { if (!isActive) e.currentTarget.style.opacity = '1' }}
+                    onMouseOut={(e) => { if (!isActive) e.currentTarget.style.opacity = '0.7' }}
+                  >
+                    <Icon name={`icon-flag-${flagCode}`} size={24} />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <label style={{ fontSize: 13 }}>
+              <input type="checkbox" checked={autoOpen} onChange={e => onToggleAutoOpen(e.target.checked)} />{' '}
+              {t('auto_open_files', 'Auto open files')}
+            </label>
+          </div>
+
+          <div style={{ marginTop: 8 }}>
+            <label style={{ fontSize: 13 }}>
+              <input type="checkbox" checked={showHidden} onChange={e => onToggleShowHidden(e.target.checked)} />{' '}
+              {t('show_hidden_files', 'Show hidden files')}
+            </label>
+          </div>
+
+
+
+
+          <div style={{ marginTop: 8 }}>
+            <label style={{ fontSize: 13 }}>
+              <input type="checkbox" checked={localHideMemoryUsage} onChange={e => { setLocalHideMemoryUsage(e.target.checked); onToggleHideMemoryUsage(e.target.checked) }} /> {t('hide_memory_usage', 'Hide memory usage gauge')}
+            </label>
+          </div>
+
+          {/* Theme Settings - Hide if controlled by parent */}
+          {!isControlled && (
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: 8, letterSpacing: '0.05em' }}>
+                {t('theme', 'Appearance')}
+              </label>
+              <div style={{ display: 'flex', gap: 6 }}>
                 <button
-                  key={l.code}
-                  onClick={() => changeLanguage(l.code)}
-                  title={l.name}
+                  onClick={() => onToggleTheme('light')}
+                  title={t('light_mode', 'Light Mode')}
                   style={{
+                    flex: 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: 6,
-                    background: isActive ? 'var(--bg-select)' : 'var(--bg-panel)',
-                    border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    padding: '6px',
+                    background: theme === 'light' ? 'var(--bg-select)' : 'var(--bg-panel)',
+                    border: theme === 'light' ? '1px solid var(--accent)' : '1px solid var(--border)',
                     borderRadius: 6,
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    opacity: isActive ? 1 : 0.7
+                    color: theme === 'light' ? 'var(--accent)' : 'var(--text)',
+                    opacity: theme === 'light' ? 1 : 0.7
                   }}
-                  onMouseOver={(e) => { if (!isActive) e.currentTarget.style.opacity = '1' }}
-                  onMouseOut={(e) => { if (!isActive) e.currentTarget.style.opacity = '0.7' }}
                 >
-                  <Icon name={`icon-flag-${flagCode}`} size={24} />
+                  <Icon name="icon-sun" size={16} />
+                  <span style={{ fontSize: 12, marginLeft: 6 }}>Light</span>
                 </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div style={{ marginTop: 12 }}>
-          <label style={{ fontSize: 13 }}>
-            <input type="checkbox" checked={autoOpen} onChange={e => onToggleAutoOpen(e.target.checked)} />{' '}
-            {t('auto_open_files', 'Auto open files')}
-          </label>
-        </div>
-
-        <div style={{ marginTop: 8 }}>
-          <label style={{ fontSize: 13 }}>
-            <input type="checkbox" checked={showHidden} onChange={e => onToggleShowHidden(e.target.checked)} />{' '}
-            {t('show_hidden_files', 'Show hidden files')}
-          </label>
-        </div>
-
-
-
-
-        <div style={{ marginTop: 8 }}>
-          <label style={{ fontSize: 13 }}>
-            <input type="checkbox" checked={localHideMemoryUsage} onChange={e => { setLocalHideMemoryUsage(e.target.checked); onToggleHideMemoryUsage(e.target.checked) }} /> {t('hide_memory_usage', 'Hide memory usage gauge')}
-          </label>
-        </div>
-
-        {/* Theme Settings - Hide if controlled by parent */}
-        {!isControlled && (
-          <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: 8, letterSpacing: '0.05em' }}>
-              {t('theme', 'Appearance')}
-            </label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button
-                onClick={() => onToggleTheme('light')}
-                title={t('light_mode', 'Light Mode')}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '6px',
-                  background: theme === 'light' ? 'var(--bg-select)' : 'var(--bg-panel)',
-                  border: theme === 'light' ? '1px solid var(--accent)' : '1px solid var(--border)',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  color: theme === 'light' ? 'var(--accent)' : 'var(--text)',
-                  opacity: theme === 'light' ? 1 : 0.7
-                }}
-              >
-                <Icon name="icon-sun" size={16} />
-                <span style={{ fontSize: 12, marginLeft: 6 }}>Light</span>
-              </button>
-              <button
-                onClick={() => onToggleTheme('dark')}
-                title={t('dark_mode', 'Dark Mode')}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '6px',
-                  background: theme === 'dark' ? 'var(--bg-select)' : 'var(--bg-panel)',
-                  border: theme === 'dark' ? '1px solid var(--accent)' : '1px solid var(--border)',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  color: theme === 'dark' ? 'var(--accent)' : 'var(--text)',
-                  opacity: theme === 'dark' ? 1 : 0.7
-                }}
-              >
-                <Icon name="icon-moon" size={16} />
-                <span style={{ fontSize: 12, marginLeft: 6 }}>Dark</span>
-              </button>
-              <button
-                onClick={() => onToggleTheme('auto')}
-                title={t('system_mode', 'System Mode')}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '6px',
-                  background: theme === 'auto' ? 'var(--bg-select)' : 'var(--bg-panel)',
-                  border: theme === 'auto' ? '1px solid var(--accent)' : '1px solid var(--border)',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  color: theme === 'auto' ? 'var(--accent)' : 'var(--text)',
-                  opacity: theme === 'auto' ? 1 : 0.7
-                }}
-              >
-                <Icon name="icon-theme-auto" size={16} />
-                <span style={{ fontSize: 12, marginLeft: 6 }}>Auto</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-
-        <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-          <strong style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('editor_settings', 'Editor Settings')}</strong>
-          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <label style={{ fontSize: 13 }} title={t('max_file_size_tooltip', 'Files larger than this (MB) will open in read-only mode')}>
-              {t('max_file_size', 'Max File Size (MB)')}
-            </label>
-            <input
-              type="number"
-              min="0.1"
-              step="0.5"
-              style={{ width: 60, background: 'var(--bg-panel)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '2px 4px' }}
-              value={((maxEditorSize || parseInt(localStorage.getItem('mlc_max_editor_size') || '1048576')) / 1024 / 1024).toFixed(1)}
-              onChange={(e) => {
-                const mb = parseFloat(e.target.value)
-                if (mb > 0) {
-                  const bytes = Math.floor(mb * 1024 * 1024)
-                  localStorage.setItem('mlc_max_editor_size', bytes.toString())
-                  onMaxFileSizeChange?.(bytes)
-                }
-              }}
-            />
-          </div>
-        </div>
-
-
-        <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 8, display: 'flex', gap: 8 }}>
-          <button className="btn" onClick={() => {
-            const app = document.querySelector('.app') as HTMLElement
-            if (app) captureElementToPng(app, 'screenshot.png')
-            onClose()
-          }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ marginRight: 6, display: 'flex' }}>
-              <Icon name="icon-camera" size={14} />
-            </div>
-            {t('screenshot', 'Screenshot')}
-          </button>
-
-          {onLogout && (
-            <button className="btn btn-danger" onClick={() => {
-              if (confirm(t('confirm_logout', 'Disconnect?'))) {
-                onLogout()
-                onClose()
-              }
-            }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ marginRight: 6, display: 'flex' }}>
-                <Icon name="icon-logout" size={14} />
+                <button
+                  onClick={() => onToggleTheme('dark')}
+                  title={t('dark_mode', 'Dark Mode')}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '6px',
+                    background: theme === 'dark' ? 'var(--bg-select)' : 'var(--bg-panel)',
+                    border: theme === 'dark' ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    color: theme === 'dark' ? 'var(--accent)' : 'var(--text)',
+                    opacity: theme === 'dark' ? 1 : 0.7
+                  }}
+                >
+                  <Icon name="icon-moon" size={16} />
+                  <span style={{ fontSize: 12, marginLeft: 6 }}>Dark</span>
+                </button>
+                <button
+                  onClick={() => onToggleTheme('auto')}
+                  title={t('system_mode', 'System Mode')}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '6px',
+                    background: theme === 'auto' ? 'var(--bg-select)' : 'var(--bg-panel)',
+                    border: theme === 'auto' ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    color: theme === 'auto' ? 'var(--accent)' : 'var(--text)',
+                    opacity: theme === 'auto' ? 1 : 0.7
+                  }}
+                >
+                  <Icon name="icon-theme-auto" size={16} />
+                  <span style={{ fontSize: 12, marginLeft: 6 }}>Auto</span>
+                </button>
               </div>
-              {t('disconnect', 'Disconnect')}
-            </button>
+            </div>
           )}
-        </div>
-      </div >
-    </div >
+
+
+          <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+            <strong style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('editor_settings', 'Editor Settings')}</strong>
+            <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={{ fontSize: 13 }} title={t('max_file_size_tooltip', 'Files larger than this (MB) will open in read-only mode')}>
+                {t('max_file_size', 'Max File Size (MB)')}
+              </label>
+              <input
+                type="number"
+                min="0.1"
+                step="0.5"
+                style={{ width: 60, background: 'var(--bg-panel)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '2px 4px' }}
+                value={((maxEditorSize || parseInt(localStorage.getItem('mlc_max_editor_size') || '1048576')) / 1024 / 1024).toFixed(1)}
+                onChange={(e) => {
+                  const mb = parseFloat(e.target.value)
+                  if (mb > 0) {
+                    const bytes = Math.floor(mb * 1024 * 1024)
+                    localStorage.setItem('mlc_max_editor_size', bytes.toString())
+                    onMaxFileSizeChange?.(bytes)
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div >
+      </div>
+    </>
   )
 }

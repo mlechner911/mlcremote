@@ -137,7 +137,9 @@ export const translations = {
         extended_settings: "Extended",
         quick_tasks_desc: "Define shortcuts for common commands run on this server.",
         delete: "Delete",
-        custom_color: "Custom Color"
+        custom_color: "Custom Color",
+        show_developer_controls: "Show Developer Controls",
+        show_developer_controls_desc: "Enable screenshot, server logs, and session key controls."
     },
     de: {
         app_title: "MLCRemote Desktop",
@@ -275,7 +277,9 @@ export const translations = {
         return_home: "Zurück zum Start",
         reconnect: "Verbinden",
         reconnecting: "Verbinde...",
-        reconnect_failed: "Verbindung fehlgeschlagen"
+        reconnect_failed: "Verbindung fehlgeschlagen",
+        show_developer_controls: "Entwicklersteuerung anzeigen",
+        show_developer_controls_desc: "Screenshot, Server-Logs und Sitzungs-Schlüssel-Steuerung aktivieren."
     },
     es: {
         app_title: "MLCRemote Desktop",
@@ -398,7 +402,9 @@ export const translations = {
         return_home: "Volver al Inicio",
         reconnect: "Reconectar",
         reconnecting: "Reconectando...",
-        reconnect_failed: "Fallo al reconectar"
+        reconnect_failed: "Fallo al reconectar",
+        show_developer_controls: "Mostrar Controles de Desarrollador",
+        show_developer_controls_desc: "Habilitar captura de pantalla, registros del servidor y controles de clave de sesión."
     },
     fr: {
         app_title: "MLCRemote Desktop",
@@ -520,7 +526,9 @@ export const translations = {
         return_home: "Retour à l'accueil",
         reconnect: "Reconnecter",
         reconnecting: "Connexion...",
-        reconnect_failed: "Échec de reconnexion"
+        reconnect_failed: "Échec de reconnexion",
+        show_developer_controls: "Afficher les Contrôles Développeur",
+        show_developer_controls_desc: "Activer la capture d'écran, les journaux du serveur et les contrôles de clé de session."
     }
 };
 

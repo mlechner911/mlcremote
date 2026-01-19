@@ -13,23 +13,24 @@ import (
 
 // ConnectionProfile represents a saved remote connection
 type ConnectionProfile struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	Color         string    `json:"color"`
-	User          string    `json:"user"`
-	Host          string    `json:"host"`
-	Port          int       `json:"port"`
-	LocalPort     int       `json:"localPort"`
-	IdentityFile  string    `json:"identityFile"`
-	IsWindows     bool      `json:"isWindows"`
-	LastUsed      int64     `json:"lastUsed"`
-	ExtraArgs     []string  `json:"extraArgs"`
-	RemoteOS      string    `json:"remoteOS"`      // e.g. Linux, Darwin, Windows
-	RemoteArch    string    `json:"remoteArch"`    // e.g. amd64, arm64
-	RemoteVersion string    `json:"remoteVersion"` // e.g. 1.0.0
-	Mode          string    `json:"mode"`          // "default" or "parallel"
-	RootPath      string    `json:"rootPath"`      // Optional root directory override
-	Tasks         []TaskDef `json:"tasks"`
+	ID                    string    `json:"id"`
+	Name                  string    `json:"name"`
+	Color                 string    `json:"color"`
+	User                  string    `json:"user"`
+	Host                  string    `json:"host"`
+	Port                  int       `json:"port"`
+	LocalPort             int       `json:"localPort"`
+	IdentityFile          string    `json:"identityFile"`
+	IsWindows             bool      `json:"isWindows"`
+	LastUsed              int64     `json:"lastUsed"`
+	ExtraArgs             []string  `json:"extraArgs"`
+	RemoteOS              string    `json:"remoteOS"`              // e.g. Linux, Darwin, Windows
+	RemoteArch            string    `json:"remoteArch"`            // e.g. amd64, arm64
+	RemoteVersion         string    `json:"remoteVersion"`         // e.g. 1.0.0
+	Mode                  string    `json:"mode"`                  // "default" or "parallel"
+	RootPath              string    `json:"rootPath"`              // Optional root directory override
+	ShowDeveloperControls bool      `json:"showDeveloperControls"` // Show developer UI (screenshot, logs, session copy)
+	Tasks                 []TaskDef `json:"tasks"`
 }
 
 type TaskDef struct {

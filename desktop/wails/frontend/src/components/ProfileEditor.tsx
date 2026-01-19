@@ -31,6 +31,7 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
     const [localPort, setLocalPort] = useState(profile?.localPort || 8443)
     const [defaultShell, setDefaultShell] = useState(profile?.defaultShell || '')
     const [rootPath, setRootPath] = useState(profile?.rootPath || '')
+    const [showDeveloperControls, setShowDeveloperControls] = useState(profile?.showDeveloperControls || false)
 
     // Auth Type Logic
     const [identityFile, setIdentityFile] = useState(profile?.identityFile || '')
@@ -56,6 +57,7 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             setIdentityFile(profile.identityFile || '')
             setDefaultShell(profile.defaultShell || '')
             setRootPath(profile.rootPath || '')
+            setShowDeveloperControls(profile.showDeveloperControls || false)
             setTasks(profile.tasks || [])
         } else {
             setName('')
@@ -133,7 +135,8 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             extraArgs: profile?.extraArgs || [],
             tasks: tasks,
             defaultShell: defaultShell,
-            rootPath: rootPath
+            rootPath: rootPath,
+            showDeveloperControls: showDeveloperControls
         })
     }
 
@@ -379,6 +382,21 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
                             />
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
                                 {t('default_shell_desc') || "Leave empty to auto-detect. On Windows, you can specify 'bash' or full path to Git Bash."}
+                            </div>
+                        </div>
+
+                        {/* Show Developer Controls */}
+                        <div style={{ marginTop: 16 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={showDeveloperControls}
+                                    onChange={e => setShowDeveloperControls(e.target.checked)}
+                                />
+                                <span>{t('show_developer_controls') || "Show Developer Controls"}</span>
+                            </label>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4, marginLeft: 24 }}>
+                                {t('show_developer_controls_desc') || "Enable screenshot, server logs, and session key controls."}
                             </div>
                         </div>
                     </>

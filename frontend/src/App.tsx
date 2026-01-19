@@ -552,6 +552,11 @@ function AppInner() {
                 setFileMetas={setFileMetas}
                 binaryPath={binaryPath}
                 onTabSelect={setSelectedPath}
+                onDirectoryContextMenu={(e, entry) => {
+                  // Reuse the same context menu logic as file explorer
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  setContextMenu({ x: e.clientX, y: e.clientY, entry })
+                }}
               />
 
 

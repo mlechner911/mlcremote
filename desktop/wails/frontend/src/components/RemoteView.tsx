@@ -23,9 +23,10 @@ interface RemoteViewProps {
     onSetTheme: (t: 'light' | 'dark') => void
     onDisconnect: () => void
     defaultShell?: string
+    showDeveloperControls?: boolean
 }
 
-export default function RemoteView({ url, profileName, profileId, profileColor, user, localPort, theme, tasks, initialTask, onRunTask, onSetTheme, onDisconnect, defaultShell }: RemoteViewProps) {
+export default function RemoteView({ url, profileName, profileId, profileColor, user, localPort, theme, tasks, initialTask, onRunTask, onSetTheme, onDisconnect, defaultShell, showDeveloperControls }: RemoteViewProps) {
     const { t, lang } = useI18n()
     // Append profileId to URL if present
     // DEBUG: Point to debug page (Disabled)
@@ -285,40 +286,44 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
 
+                    {/* Developer Controls - Hidden by default */}
+                    {showDeveloperControls && (
+                        <>
+                            <button
+                                onClick={handleScreenshot}
+                                title={t('screenshot')}
+                                style={{ ...btnStyle, color: theme === 'dark' ? 'white' : '#333' }}
+                                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')}
+                                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
+                            >
+                                <Icon name="icon-screenshot" size={18} />
+                            </button>
+                            <button
+                                onClick={handleShare}
+                                title={t('share_session')}
+                                style={{ ...btnStyle, color: theme === 'dark' ? 'white' : '#333' }}
+                                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')}
+                                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
+                            >
+                                <Icon name="icon-link" size={18} />
+                            </button>
 
-                    <button
-                        onClick={handleScreenshot}
-                        title={t('screenshot')}
-                        style={{ ...btnStyle, color: theme === 'dark' ? 'white' : '#333' }}
-                        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')}
-                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
-                    >
-                        <Icon name="icon-screenshot" size={18} />
-                    </button>
-                    <button
-                        onClick={handleShare}
-                        title={t('share_session')}
-                        style={{ ...btnStyle, color: theme === 'dark' ? 'white' : '#333' }}
-                        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')}
-                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
-                    >
-                        <Icon name="icon-link" size={18} />
-                    </button>
-
-                    <button
-                        onClick={() => {
-                            if (iframeRef.current && iframeRef.current.contentWindow) {
-                                iframeRef.current.contentWindow.postMessage({ type: 'open-logs' }, '*')
-                            }
-                        }}
-                        title={t('server_logs') || 'Server Logs'}
-                        style={{ ...btnStyle, color: theme === 'dark' ? 'white' : '#333' }}
-                        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')}
-                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
-                    >
-                        {/* Use a clear icon like 'list' or 'file-text' if available, otherwise 'info' */}
-                        <Icon name="icon-info" size={18} />
-                    </button>
+                            <button
+                                onClick={() => {
+                                    if (iframeRef.current && iframeRef.current.contentWindow) {
+                                        iframeRef.current.contentWindow.postMessage({ type: 'open-logs' }, '*')
+                                    }
+                                }}
+                                title={t('server_logs') || 'Server Logs'}
+                                style={{ ...btnStyle, color: theme === 'dark' ? 'white' : '#333' }}
+                                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')}
+                                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
+                            >
+                                {/* Use a clear icon like 'list' or 'file-text' if available, otherwise 'info' */}
+                                <Icon name="icon-list" size={18} />
+                            </button>
+                        </>
+                    )}
 
                     <button
                         onClick={handleDisconnectWrapper}
@@ -365,16 +370,18 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                     title="Remote Backend"
                 />
             </div>
-            {alertState && (
-                <AlertDialog
-                    open={alertState.open}
-                    title={alertState.title}
-                    message={alertState.message}
-                    type={alertState.type}
-                    progress={alertState.progress}
-                    onClose={() => setAlertState(null)}
-                />
-            )}
-        </div>
+            {
+                alertState && (
+                    <AlertDialog
+                        open={alertState.open}
+                        title={alertState.title}
+                        message={alertState.message}
+                        type={alertState.type}
+                        progress={alertState.progress}
+                        onClose={() => setAlertState(null)}
+                    />
+                )
+            }
+        </div >
     )
 }

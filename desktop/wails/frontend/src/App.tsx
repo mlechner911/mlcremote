@@ -298,6 +298,7 @@ function AppContent() {
           onSetTheme={setTheme}
           onDisconnect={handleDisconnect}
           defaultShell={currentProfile?.defaultShell}
+          showDeveloperControls={currentProfile?.showDeveloperControls}
         />
       )}
 
