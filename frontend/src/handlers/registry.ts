@@ -21,7 +21,6 @@ const handlers: FileHandler[] = [
     MarkdownHandler,
     TextHandler,
     BinaryHandler,
-    UnsupportedHandler
 ].sort((a, b) => b.priority - a.priority)
 
 export function getHandler(opts: DecideOpts): FileHandler {

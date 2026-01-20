@@ -72,7 +72,7 @@ export function SvgPreview({ path, onDimensions }: ViewProps) {
  */
 export const SvgHandler: FileHandler = {
     name: 'SVG',
-    priority: 75, // Higher than ImageHandler (70)
+    priority: 100, // Highest priority to ensure it captures SVGs in view mode
     matches: (opts: DecideOpts) => {
         // Only match if the intent is 'view' (Preview mode)
         // If intent is 'edit' (default), we want to fall through to TextHandler to show code.

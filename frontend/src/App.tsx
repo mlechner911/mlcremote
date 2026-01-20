@@ -460,13 +460,17 @@ function AppInner() {
                           return
                         }
 
+                        // Probe with 'view' intent for consistency
+                        const hWithIntent = getHandler({ path: p, meta: st, intent: 'view' })
+
                         // Detect binary/unsupported files and open with binary type (singleton)
-                        if (h.name === 'Binary' || h.name === 'Unsupported') {
-                          openFile(p, 'binary')
+                        // Also handle visual types (SVG, Image, etc) via preview
+                        if (!hWithIntent.isEditable || h.name === 'Binary' || h.name === 'Unsupported') {
+                          openFile(p, h.name === 'Binary' ? 'binary' : 'preview')
                           return
                         }
 
-                        openFile(p)
+                        openFile(p, 'editor')
                       } catch (e: any) {
                         showDialog({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
                         return
@@ -478,8 +482,13 @@ function AppInner() {
                     // Detect file type to ensure binary files open as singleton
                     try {
                       const st = await statPath(p)
-                      const h = getHandler({ path: p, meta: st })
-                      const viewType = h.name === 'Binary' ? 'binary' : 'editor'
+                      // Probe with 'view' intent to see if we have a specialized viewer
+                      const h = getHandler({ path: p, meta: st, intent: 'view' })
+
+                      // If the viewer says it's NOT editable (e.g. Image, Binary, PDF, Markdown preview),
+                      // or explicitly if it's one of our smart types, use the Unified Preview.
+                      // Otherwise (Text/Code), open the Editor.
+                      const viewType = !h.isEditable ? 'preview' : 'editor'
                       openFile(p, viewType)
                     } catch (e) {
                       // Fallback to default if stat fails
