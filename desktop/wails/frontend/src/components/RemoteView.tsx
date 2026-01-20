@@ -265,23 +265,23 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ width: 12, height: 12, borderRadius: 6, background: '#a855f7' }}></div>
-                    <span style={{ fontWeight: 600, fontSize: 14 }}>MLCRemote</span>
-                    <span style={{ opacity: 0.3 }}>|</span>
+                    <span className="hide-sm" style={{ fontWeight: 600, fontSize: 14 }}>MLCRemote</span>
+                    <span className="hide-sm" style={{ opacity: 0.3 }}>|</span>
                     <span style={{ opacity: 0.8, fontSize: 14 }}>
                         {t('user')}: {user || 'root'}
                     </span>
-                    <span style={{ opacity: 0.3 }}>|</span>
-                    <span style={{ opacity: 0.6, fontSize: 13 }}>
+                    <span className="hide-sm" style={{ opacity: 0.3 }}>|</span>
+                    <span className="hide-sm" style={{ opacity: 0.6, fontSize: 13 }}>
                         Port: {localPort}
                     </span>
                     {/* Active Remote Dir Indicator for Debug/Confirmation */}
                     {activeRemotePath && (
-                        <>
+                        <span className="hide-sm" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <span style={{ opacity: 0.3 }}>|</span>
                             <span style={{ opacity: 0.6, fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {activeRemotePath}
                             </span>
-                        </>
+                        </span>
                     )}
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>

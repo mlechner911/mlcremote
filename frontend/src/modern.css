@@ -215,3 +215,10 @@
     border: none !important;
     box-shadow: none !important;
 }
+
+/* Responsive Utilities */
+@media (max-width: 768px) {
+    .hide-sm {
+        display: none !important;
+    }
+}

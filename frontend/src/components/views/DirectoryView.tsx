@@ -8,7 +8,7 @@ import { extFromPath } from '../../utils/filetypes'
 
 interface DirectoryViewProps {
     path: string
-    onContextMenu?: (e: React.MouseEvent, entry: { path: string, isDir: boolean }) => void
+    onContextMenu?: (e: React.MouseEvent, entry: DirEntry) => void
 }
 
 type SortField = 'name' | 'size' | 'modTime' | 'mode'
@@ -31,12 +31,15 @@ export default function DirectoryView({ path, onContextMenu }: DirectoryViewProp
             setLoading(true)
             setError(null)
             const result = await listTree(path)
+            console.log('[DirectoryView] API returned:', result.entries?.length || 0, 'entries')
             setEntries(result.entries || [])
+            console.log('[DirectoryView] State updated with entries')
         } catch (e: any) {
             console.error('Failed to load directory:', e)
             setError(e.message || 'Failed to load directory')
         } finally {
             setLoading(false)
+            console.log('[DirectoryView] Loading complete, loading=false')
         }
     }
 
@@ -177,7 +180,7 @@ export default function DirectoryView({ path, onContextMenu }: DirectoryViewProp
                                 onContextMenu={(e) => {
                                     e.preventDefault()
                                     if (onContextMenu) {
-                                        onContextMenu(e, { path: entry.path, isDir: entry.isDir })
+                                        onContextMenu(e, entry)
                                     }
                                 }}
                             >

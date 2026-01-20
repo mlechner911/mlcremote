@@ -2,7 +2,7 @@
 export type PaneId = string
 
 export type ViewType = 'editor' | 'preview' | 'terminal' | 'binary' | 'diff'
-    | 'custom' | 'logs' | 'directory';
+    | 'custom' | 'logs' | 'directory' | 'metadata' | 'trash';
 export type Intent = 'view' | 'edit';
 
 export interface Tab {
@@ -15,6 +15,8 @@ export interface Tab {
     dirty?: boolean;     // Unsaved changes flag
     metadata?: any;      // Extra data (e.g. scroll position, cursor)
     intent?: Intent;
+    /** If true, only one instance of this view type can be open at a time */
+    singleton?: boolean;
 }
 
 export type PaneState = {

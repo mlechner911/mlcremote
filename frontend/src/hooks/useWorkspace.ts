@@ -1,7 +1,9 @@
 import React from 'react'
 import { statPath } from '../api'
-import type { LayoutNode, PaneId, PaneState, Tab, ViewType, Intent } from '../types/layout'
+import type { LayoutNode, PaneId, PaneState } from '../types/layout'
+import { Tab, ViewType, Intent } from '../types/layout'
 import { SPECIAL_TAB_IDS, isSpecialTab } from '../constants/specialTabs'
+import { VIEW_SINGLETON_DEFAULTS } from '../constants/viewConfig'
 
 export function useWorkspace(maxTabs = 8) {
     // -- Layout State --
@@ -57,6 +59,7 @@ export function useWorkspace(maxTabs = 8) {
             label,
             type,
             icon,
+            singleton: VIEW_SINGLETON_DEFAULTS[type] ?? false,
             ...extra
         }
     }
@@ -70,16 +73,16 @@ export function useWorkspace(maxTabs = 8) {
         // Handle special tab IDs first (these use constants from specialTabs.ts)
         // The __special__ prefix ensures they never conflict with real file paths
         if (path === SPECIAL_TAB_IDS.METADATA) {
-            return createSpecialTab(path, 'custom', label || 'Details', 'info', extra)
+            return createSpecialTab(path, 'metadata', label || 'Details', 'info', extra)
         } else if (path === SPECIAL_TAB_IDS.BINARY) {
             return createSpecialTab(path, 'binary', label || 'Binary View', 'file', extra)
         } else if (path === SPECIAL_TAB_IDS.TRASH) {
-            return createSpecialTab(path, 'custom', label || 'Trash', 'trash', extra)
+            return createSpecialTab(path, 'trash', label || 'Trash', 'trash', extra)
         } else if (path === SPECIAL_TAB_IDS.SERVER_LOGS) {
             return createSpecialTab(path, 'logs', label || 'Server Logs', 'server', extra)
-        } else if (path === SPECIAL_TAB_IDS.DIRECTORY) {
-            return createSpecialTab(path, 'directory', label || 'Directory', 'folder', extra)
         }
+        // Directory removed - now uses standalone singleton system
+
 
         // For regular files, determine type if not provided
         let actualType: ViewType = type || 'editor'
@@ -97,30 +100,57 @@ export function useWorkspace(maxTabs = 8) {
             label: actualLabel,
             type: actualType,
             icon: actualType === 'terminal' ? 'terminal' : undefined,
+            singleton: VIEW_SINGLETON_DEFAULTS[actualType] ?? false,
             intent,
             ...extra
         }
     }
 
     function openFile(path: string, type?: ViewType, label?: string, intent?: Intent, extra?: Partial<Tab>) {
-        setOpenTabs(currentTabs => {
-            if (currentTabs.find(t => t.id === path && t.intent === intent)) return currentTabs // Only duplicate if intent differs? Or strict path?
-            // Actually, if we open same file with different intent, we might want a new tab or update existing?
-            // For now, let's treat path as ID, so we update existing if found?
-            // But wait, if I want to "View" a file that is already open for "Edit", do I swap it?
-            // Or do I need a unique ID for view vs edit?
-            // User requirement: "come back with the view etc".
-            // Let's stick to unique ID = path for now, but update intent if passed.
-            // If we find existing tab, we update its intent?
-            // For now, minimal change: if found, we switch to it. Updating intent on existing tab is complex with current state structure.
-            // Let's assume user wants to switch context.
-            // If I specifically ask 'view', I want to see the view.
-            return [...currentTabs.filter(t => t.id !== path), createTab(path, type, label, intent, extra)]
-        })
-        setActiveTab(path)
+        const newTab = createTab(path, type, label, intent, extra)
 
-        // fetch and cache metadata only for real files
-        if (!path.startsWith('shell-') && path !== 'metadata' && path !== 'binary' && path !== 'trash' && path !== 'server-logs') {
+        // For singleton tabs, set ID upfront
+        if (newTab.singleton) {
+            newTab.id = `__singleton_${newTab.type}`
+        }
+
+        const finalTabId = newTab.id
+
+        setOpenTabs(currentTabs => {
+            // For singleton tabs, find existing tab of same type
+            if (newTab.singleton) {
+                const existingIndex = currentTabs.findIndex(t =>
+                    t.type === newTab.type && t.singleton
+                )
+
+                if (existingIndex >= 0) {
+                    // Update existing singleton tab with new metadata
+                    const tabs = [...currentTabs]
+                    // Keep the existing ID and merge new data
+                    tabs[existingIndex] = {
+                        ...newTab,
+                        id: tabs[existingIndex].id,  // Preserve existing ID
+                        path: newTab.path  // Update path for directory changes
+                    }
+                    return tabs
+                }
+
+                // Create new singleton tab (ID already set above)
+                return [...currentTabs, newTab]
+            }
+
+            // Non-singleton: check if tab already exists
+            const existingIndex = currentTabs.findIndex(t => t.id === path && t.intent === intent)
+            if (existingIndex >= 0) return currentTabs
+
+            // Create new non-singleton tab
+            return [...currentTabs, newTab]
+        })
+
+        setActiveTab(finalTabId)
+
+        // fetch and cache metadata only for real files (skip singleton/special tabs)
+        if (!newTab.singleton && !path.startsWith('shell-') && !isSpecialTab(path)) {
             statPath(path).then(m => {
                 setFileMetas(fm => ({ ...fm, [path]: m }))
             }).catch(() => {
@@ -130,7 +160,7 @@ export function useWorkspace(maxTabs = 8) {
     }
 
     const splitPane = (direction: 'horizontal' | 'vertical', targetTabId?: string) => {
-        const newPaneId = `pane-${Date.now()}`
+        const newPaneId = `pane - ${Date.now()} `
         const currentP = panes[activePaneId]
 
         let targetTab: Tab | undefined
@@ -223,7 +253,7 @@ export function useWorkspace(maxTabs = 8) {
         const pid = params.get('profileId')
         if (pid) {
             const state = { panes, layout, activePaneId }
-            localStorage.setItem(`workspace_state_${pid}`, JSON.stringify(state))
+            localStorage.setItem(`workspace_state_${pid} `, JSON.stringify(state))
         }
     }, [panes, layout, activePaneId])
 
@@ -233,7 +263,7 @@ export function useWorkspace(maxTabs = 8) {
         const pid = params.get('profileId')
         if (pid) {
             try {
-                const saved = localStorage.getItem(`workspace_state_${pid}`)
+                const saved = localStorage.getItem(`workspace_state_${pid} `)
                 if (saved) {
                     const state = JSON.parse(saved)
 

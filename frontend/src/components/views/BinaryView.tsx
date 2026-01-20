@@ -53,7 +53,7 @@ export default function BinaryView({ path }: ViewProps) {
                             <tr><td className="muted" style={{ padding: 6 }}>{t('size')}</td><td style={{ padding: 6 }}>{meta.size ? formatBytes(meta.size) : 'n/a'}</td></tr>
                             <tr><td className="muted" style={{ padding: 6 }}>{t('mode')}</td><td style={{ padding: 6 }}>{meta.mode || 'n/a'}</td></tr>
                             <tr><td className="muted" style={{ padding: 6 }}>{t('last_modified')}</td><td style={{ padding: 6 }}>{meta.modTime ? new Date(meta.modTime).toLocaleString() : 'n/a'}</td></tr>
-                            <tr><td className="muted" style={{ padding: 6 }}>{t('is_dir')}</td><td style={{ padding: 6 }}>{meta.isDir ? t('yes') : t('no')}</td></tr>
+                            <tr style={{ display: 'none' }}><td className="muted" style={{ padding: 6 }}>{t('is_dir')}</td><td style={{ padding: 6 }}>{meta.isDir ? t('yes') : t('no')}</td></tr>
                         </tbody>
                     </table>
                 ) : (

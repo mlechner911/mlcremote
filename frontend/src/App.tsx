@@ -15,12 +15,11 @@ import ContextMenu, { ContextMenuItem } from './components/ContextMenu'
 import { useTranslation } from 'react-i18next'
 import { Icon } from './generated/icons'
 import { getIconForShell, getIconForDir, getIcon } from './generated/icon-helpers'
-import TrashView from './components/views/TrashView'
+// import TrashView from './components/views/TrashView'
 // import Editor from './components/Editor'
 // import BinaryView from './components/views/BinaryView'
 // import FileDetailsView from './components/views/FileDetailsView'
 // import ServerLogsView from './components/views/ServerLogsView'
-const TerminalTab = React.lazy(() => import('./components/views/TerminalTab'))
 const OnboardingTour = React.lazy(() => import('./components/OnboardingTour'))
 // import TabBarComponent from './components/TabBar'
 import LayoutManager from './components/LayoutManager'
@@ -42,7 +41,7 @@ import { SPECIAL_TAB_IDS } from './constants/specialTabs'
 import StatusBar from './components/StatusBar'
 import { getHandler } from './handlers/registry'
 import { listTree, TaskDef } from './api'
-import { Tab, ViewType } from './types/layout'
+//import { Tab, ViewType } from './types/layout'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 // import type { LayoutNode, PaneId, PaneState } from './types/layout'
 import { DialogProvider, useDialog } from './context/DialogContext'
@@ -80,7 +79,6 @@ function AppInner() {
 
   const [selectedPath, setSelectedPath] = React.useState<string>('')
   const [explorerDir, setExplorerDir] = React.useState<string>('')
-  const handleExplorerDirChange = React.useCallback((d: string) => setExplorerDir(d), [])
   const [focusRequest, setFocusRequest] = React.useState<number>(0)
 
 
@@ -93,7 +91,7 @@ function AppInner() {
     autoOpen, setAutoOpen,
     showHidden, setShowHidden,
     hideMemoryUsage, toggleHideMemoryUsage,
-    canChangeRoot,
+    //  canChangeRoot,
     maxEditorSize, updateMaxEditorSize,
     uiMode, setUiMode,
     updateSettings
@@ -102,13 +100,13 @@ function AppInner() {
   /* HOOKS at top level to ensure no conditional hook calls */
   const {
     panes, setPanes,
-    layout, setLayout,
+    layout,
     activePaneId, setActivePaneId,
-    openTabs, setOpenTabs,
+    openTabs,
     activeTabId, setActiveTab,
     openFile,
     renameTab,
-    splitPane, closePane, handleLayoutResize,
+    splitPane, closePane,
     fileMetas, setFileMetas,
   } = useWorkspace()
 
@@ -357,9 +355,6 @@ function AppInner() {
 
 
   // Stable handler
-  const handleUnsavedChange = React.useCallback((path: string, hasUnsaved: boolean) => {
-    setUnsavedChanges(changes => ({ ...changes, [path]: hasUnsaved }))
-  }, [])
 
   // checkHealthStatus wrapper for compatibility
   const checkHealthStatus = React.useCallback(async () => {
@@ -371,7 +366,7 @@ function AppInner() {
     return () => window.clearInterval(id)
   }, [])
 
-  const [binaryPath, setBinaryPath] = React.useState<string | null>(null)
+
 
 
   if (!loadedSettings) return null // or loading spinner
@@ -444,8 +439,8 @@ function AppInner() {
                     /* Reusing existing selection logic */
                     setSelectedPath(p)
                     if (isDir) {
-                      // Use singleton directory tab - all directories share one tab
-                      openFile(SPECIAL_TAB_IDS.DIRECTORY, 'directory', p.split('/').pop() || 'Directory', undefined, { icon: 'folder', metadata: { dirPath: p } })
+                      // Open directory view - openFile will handle singleton behavior
+                      openFile(p, 'directory', p.split('/').pop() || 'Directory', undefined, { icon: 'folder', metadata: { dirPath: p } })
                       return
                     }
                     (async () => {
@@ -465,10 +460,9 @@ function AppInner() {
                           return
                         }
 
+                        // Detect binary/unsupported files and open with binary type (singleton)
                         if (h.name === 'Binary' || h.name === 'Unsupported') {
-                          openFile(SPECIAL_TAB_IDS.BINARY)
-                          setBinaryPath(p)
-                          setActiveTab(SPECIAL_TAB_IDS.BINARY)
+                          openFile(p, 'binary')
                           return
                         }
 
@@ -480,8 +474,17 @@ function AppInner() {
                     })()
                     checkHealthStatus()
                   }}
-                  onOpen={(p) => {
-                    openFile(p)
+                  onOpen={async (p) => {
+                    // Detect file type to ensure binary files open as singleton
+                    try {
+                      const st = await statPath(p)
+                      const h = getHandler({ path: p, meta: st })
+                      const viewType = h.name === 'Binary' ? 'binary' : 'editor'
+                      openFile(p, viewType)
+                    } catch (e) {
+                      // Fallback to default if stat fails
+                      openFile(p)
+                    }
                   }}
                   onContextMenu={handleContextMenu}
                   refreshSignal={refreshSignal}
@@ -550,11 +553,10 @@ function AppInner() {
                 openFile={openFile}
                 setActiveTab={setActiveTab}
                 setFileMetas={setFileMetas}
-                binaryPath={binaryPath}
+
                 onTabSelect={setSelectedPath}
                 onDirectoryContextMenu={(e, entry) => {
                   // Reuse the same context menu logic as file explorer
-                  const rect = e.currentTarget.getBoundingClientRect()
                   setContextMenu({ x: e.clientX, y: e.clientY, entry })
                 }}
               />

@@ -63,7 +63,7 @@ func SettingsHandler(allowDelete bool, settingsPath string) http.HandlerFunc {
 			"defaultShell":        detectDefaultShell(),
 			"theme":               userSettings.Theme,
 			"autoOpen":            userSettings.AutoOpen,
-			"showHidden":          userSettings.ShowHidden,
+			"showHiddenFiles":     userSettings.ShowHidden,
 			"showLogs":            userSettings.ShowLogs,
 			"showServerLogs":      userSettings.ShowServerLogs,
 			"hideMemoryUsage":     userSettings.HideMemoryUsage,

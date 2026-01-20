@@ -6,6 +6,7 @@ import { Icon } from '../generated/icons'
 import { getIcon } from '../generated/icon-helpers'
 import { useDialog } from '../context/DialogContext'
 import { SPECIAL_TAB_IDS } from '../constants/specialTabs'
+import { DirEntry } from '../api'
 
 // Components
 import TabBarComponent from './TabBar'
@@ -15,6 +16,7 @@ import BinaryView from './views/BinaryView'
 import FileDetailsView from './views/FileDetailsView'
 import ServerLogsView from './views/ServerLogsView'
 import DirectoryView from './views/DirectoryView'
+import UnifiedView from './views/UnifiedView'
 const TerminalTab = React.lazy(() => import('./views/TerminalTab'))
 
 export interface LayoutManagerProps {
@@ -43,9 +45,8 @@ export interface LayoutManagerProps {
     openFile: (path: string, type?: any, label?: string, intent?: any, extra?: any) => void
     setActiveTab: (id: string) => void
     setFileMetas: React.Dispatch<React.SetStateAction<Record<string, any>>>
-    binaryPath: string | null
     onTabSelect?: (path: string) => void
-    onDirectoryContextMenu?: (e: React.MouseEvent, entry: { path: string, isDir: boolean }) => void
+    onDirectoryContextMenu?: (e: React.MouseEvent, entry: DirEntry) => void
 }
 
 export default function LayoutManager(props: LayoutManagerProps) {
@@ -55,7 +56,7 @@ export default function LayoutManager(props: LayoutManagerProps) {
         setActivePaneId, setPanes, closePane, splitPane,
         shellCwds, commandSignals, reloadTriggers, unsavedChanges, setUnsavedChanges,
         setPaneContextMenu,
-        settings, openFile, setActiveTab, setFileMetas, binaryPath
+        settings, openFile, setActiveTab, setFileMetas
     } = props
 
     const { showDialog } = useDialog()
@@ -281,11 +282,11 @@ export default function LayoutManager(props: LayoutManagerProps) {
                                                         />
                                                     </React.Suspense>
                                                 )
+                                            case 'trash':
+                                                return <TrashView />
+
                                             case 'custom':
-                                                // Handle known special custom tabs
-                                                if (tab.id === SPECIAL_TAB_IDS.TRASH) return <TrashView />
-                                                if (tab.id === SPECIAL_TAB_IDS.METADATA) return <FileDetailsView path={selectedPath} />
-                                                // Unknown custom tab type - log warning and show error
+                                                // Handle generic custom tabs if any
                                                 console.warn(`[LayoutManager] Unknown custom tab type: ${tab.id}`, tab)
                                                 return (
                                                     <div className="muted" style={{ padding: 20, textAlign: 'center' }}>
@@ -297,16 +298,26 @@ export default function LayoutManager(props: LayoutManagerProps) {
                                                     </div>
                                                 )
                                             case 'directory':
-                                                // Singleton directory tab - use path from metadata
-                                                const dirPath = tab.metadata?.dirPath || selectedPath
+                                                // Singleton directory tab - path is in tab.path after refactoring  
+                                                const dirPath = tab.path || tab.metadata?.dirPath || selectedPath
+                                                // Don't use key - useEffect in DirectoryView handles path changes
                                                 return <DirectoryView path={dirPath} onContextMenu={props.onDirectoryContextMenu} />
                                             case 'logs':
                                                 console.log('Rendering ServerLogsView from LayoutManager')
                                                 return <ServerLogsView />
                                             case 'binary':
+                                            case 'metadata':
+                                            case 'preview':
+                                                const unifiedPath = tab.type === 'metadata' ? selectedPath : tab.path
+                                                // If autoOpen is enabled, default to preview. If disabled, default to metadata.
+                                                const defaultMode = props.settings?.autoOpen ? 'preview' : 'metadata'
                                                 return (
-                                                    <React.Suspense fallback={<div className="muted">Loading…</div>}>
-                                                        <BinaryView path={binaryPath || ''} />
+                                                    <React.Suspense fallback={<div className="muted">{t('loading')}</div>}>
+                                                        <UnifiedView
+                                                            path={unifiedPath}
+                                                            onOpen={openFile}
+                                                            defaultMode={defaultMode}
+                                                        />
                                                     </React.Suspense>
                                                 )
                                             case 'editor':

@@ -130,7 +130,7 @@ func (m *Manager) DeployAgent(profileJSON string, targetOS remotesystem.RemoteOS
 	}
 	defer os.RemoveAll(tmpDir)
 
-	scpArgs := append([]string{}, sshBaseArgs...)
+	scpArgs := m.toScpArgs(sshBaseArgs)
 	if err := m.uploadAssets(runRemote, remoteSys, target, scpArgs, tmpDir, remoteBinDir, remoteFrontendDir, binName, md5Name, targetOS, targetArch, token, forceNew); err != nil {
 		return "setup-failed", err
 	}
@@ -585,4 +585,16 @@ func (m *Manager) cleanupRemoteState(runRemote func(string) (string, error), rem
 	runRemote(remoteSys.Remove(remoteSys.JoinPath(RemoteBaseDir, LogFileStartupErr)))
 	runRemote(remoteSys.Remove(remoteSys.JoinPath(RemoteBaseDir, LogFileStderr)))
 	runRemote(remoteSys.Remove(remoteSys.JoinPath(RemoteBaseDir, LogFileCurrent)))
+}
+
+func (m *Manager) toScpArgs(sshArgs []string) []string {
+	var out []string
+	for i := 0; i < len(sshArgs); i++ {
+		if sshArgs[i] == "-p" {
+			out = append(out, "-P")
+		} else {
+			out = append(out, sshArgs[i])
+		}
+	}
+	return out
 }

@@ -3,10 +3,10 @@ services:
   app:
     build: .
     ports:
-      - "8443:8443"
+      - "8444:8443"
     volumes:
       - ./backend/testdata:/data
-  
+
   remote-host:
     build:
       context: .

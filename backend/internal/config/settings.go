@@ -11,7 +11,7 @@ import (
 type UserSettings struct {
 	Theme               string `json:"theme"`
 	AutoOpen            bool   `json:"autoOpen"`
-	ShowHidden          bool   `json:"showHidden"`
+	ShowHidden          bool   `json:"showHiddenFiles"`
 	ShowLogs            bool   `json:"showLogs"`
 	ShowServerLogs      bool   `json:"showServerLogs"`
 	HideMemoryUsage     bool   `json:"hideMemoryUsage"`

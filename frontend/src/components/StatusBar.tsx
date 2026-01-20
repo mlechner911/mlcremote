@@ -65,14 +65,14 @@ export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealt
 
                 {/* Online Status */}
                 <span className={isOnline ? 'ok' : 'err'} title={isOnline ? t('status_connected') : t('disconnected')}>
-                    <Icon name="icon-circle-filled" size={10} /> {isOnline ? t('online', 'Online') : t('offline', 'Offline')}
+                    <Icon name="icon-circle-filled" size={10} /> <span className="hide-sm">{isOnline ? t('online', 'Online') : t('offline', 'Offline')}</span>
                 </span>
                 {health && (
                     <>
-                        <span className="sep" />
-                        <span title={`PID: ${health.pid}`}>Host: {health.host || 'localhost'}</span>
+                        <span className="sep hide-sm" />
+                        <span className="hide-sm" title={`PID: ${health.pid}`}>Host: {health.host || 'localhost'}</span>
                         {health.os && (
-                            <>
+                            <span className="hide-sm" style={{ display: 'flex', alignItems: 'center' }}>
                                 <span className="sep" />
                                 {(() => {
                                     const os = (health.os || '').toLowerCase()
@@ -88,11 +88,13 @@ export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealt
                                         </span>
                                     )
                                 })()}
-                            </>
+                            </span>
                         )}
 
-                        <span className="sep" />
-                        <span title={t('connected_since', 'Connected since')}>{t('connected_since', 'Connected since')}: {health.start_time} {health.timezone}</span>
+                        <span className="hide-sm" style={{ display: 'flex', alignItems: 'center' }}>
+                            <span className="sep" />
+                            <span title={t('connected_since', 'Connected since')}>{t('connected_since', 'Connected since')}: {health.start_time} {health.timezone}</span>
+                        </span>
                     </>
                 )}
             </div>

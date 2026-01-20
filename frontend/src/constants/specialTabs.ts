@@ -14,7 +14,7 @@ export const SPECIAL_TAB_IDS = {
     METADATA: `${SPECIAL_TAB_PREFIX}metadata`,
     BINARY: `${SPECIAL_TAB_PREFIX}binary`,
     SERVER_LOGS: `${SPECIAL_TAB_PREFIX}server-logs`,
-    DIRECTORY: `${SPECIAL_TAB_PREFIX}directory`,
+    // DIRECTORY removed - now uses singleton flag system
 } as const
 
 // Helper to check if a tab ID is a special tab
@@ -29,7 +29,6 @@ export function getSpecialTabType(id: string): keyof typeof SPECIAL_TAB_IDS | nu
         case SPECIAL_TAB_IDS.METADATA: return 'METADATA'
         case SPECIAL_TAB_IDS.BINARY: return 'BINARY'
         case SPECIAL_TAB_IDS.SERVER_LOGS: return 'SERVER_LOGS'
-        case SPECIAL_TAB_IDS.DIRECTORY: return 'DIRECTORY'
         default: return null
     }
 }

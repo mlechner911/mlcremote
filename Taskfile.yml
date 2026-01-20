@@ -40,6 +40,12 @@ tasks:
       - cmd: cd cmd/icon-gen && go run . --manifest ../../icons/icons.yml --raw ../../icons/raw --out ../../frontend/src/generated
       - cmd: cd cmd/icon-gen && go run . --manifest ../../icons/icons.yml --raw ../../icons/raw --out ../../desktop/wails/frontend/src/generated
 
+  testdata:
+    desc: Generate extended test data (docs, archives, images)
+    dir: '{{.BACKEND_DIR}}'
+    cmds:
+      - cmd: go run ./cmd/gen-testdata -out testdata
+
   dev:
     desc: Run Desktop App in Dev Mode (Wails Dev)
     deps: [payload:all]
@@ -219,6 +225,13 @@ tasks:
     desc: Run backend in Docker (Dev Mode)
     cmds:
       - docker-compose up --build
+
+  docker:test:
+    desc: Run Docker environment with generated test data (verify extended file support)
+    deps: [testdata]
+    cmds:
+      - docker-compose up -d --build
+      - docker-compose logs -f
 
   # ============================================================================
   # RELEASE

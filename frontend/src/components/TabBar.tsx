@@ -19,6 +19,7 @@ type Props = {
 export default function TabBar({ tabs, activeId, onActivate, onClose, onCloseOthers, onCloseLeft, onSplitRight, onSplitDown }: Props) {
   const { t } = useTranslation()
   const [openIdx, setOpenIdx] = React.useState<number | null>(null)
+  const [hoverIdx, setHoverIdx] = React.useState<number | null>(null)
   const containerRef = React.useRef<HTMLDivElement | null>(null)
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
   const [showLeft, setShowLeft] = React.useState(false)
@@ -80,12 +81,17 @@ export default function TabBar({ tabs, activeId, onActivate, onClose, onCloseOth
       {showLeft && <button className="tab-scroll tab-scroll-left" aria-label={t('scroll_left')} onClick={() => scrollBy(-200)}>◀</button>}
       <div className="tab-scroll-area" ref={scrollRef} onScroll={updateScrollButtons}>
         {tabs.map((tab, idx) => (
-          <div key={tab.id} className="tab-item" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px' }}>
+          <div key={tab.id}
+            className="tab-item"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px' }}
+            onMouseEnter={() => setHoverIdx(idx)}
+            onMouseLeave={() => setHoverIdx(null)}
+          >
             <button
               className={tab.id === activeId ? 'btn' : 'link'}
               onClick={() => onActivate(tab.id)}
               onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setOpenIdx(idx); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 6 }}>
               <span className="tab-icon">
                 {(() => {
                   // Debug logging
@@ -118,6 +124,35 @@ export default function TabBar({ tabs, activeId, onActivate, onClose, onCloseOth
                 const display = tab.label.length > 20 ? tab.label.slice(0, 20) + '…' : tab.label
                 return <span title={tab.path} className={cls} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 120 }}>{isDirty ? `*${display}` : display}</span>
               })()}
+
+              {/* Close Button (X) - Shows on active or hover */}
+              {(tab.id === activeId || hoverIdx === idx) && (
+                <span
+                  role="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onClose(tab.id)
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()} // prevent drag issues if relevant
+                  style={{
+                    marginLeft: 4,
+                    opacity: 0.6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 16,
+                    height: 16,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    transition: 'all 0.1s'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.backgroundColor = 'var(--bg-hover-strong)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.backgroundColor = 'transparent' }}
+                  title={t('close')}
+                >
+                  <Icon name={getIcon('close')} size={10} />
+                </span>
+              )}
             </button>
             {/* removed small menu button; right-click the tab to open menu */}
           </div>

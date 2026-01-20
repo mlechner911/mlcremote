@@ -120,5 +120,12 @@
     "path": "Pfad",
     "type": "Typ",
     "directory": "Verzeichnis",
-    "binary_download_msg": "(Binäre oder nicht unterstützte Datei)"
+    "binary_download_msg": "(Binäre oder nicht unterstützte Datei)",
+    "preview_mode": "Vorschau",
+    "loading_preview": "Lade Vorschau...",
+    "failed_read_content": "Inhalt konnte nicht gelesen werden",
+    "show_preview": "Vorschau anzeigen",
+    "open_in_editor": "Im Editor öffnen",
+    "file_too_large_preview": "Datei zu groß für Vorschau",
+    "open_anyway": "Trotzdem öffnen"
 }

@@ -124,5 +124,12 @@
     "path": "Path",
     "type": "Type",
     "directory": "Directory",
-    "binary_download_msg": "(Binary or unsupported file type)"
+    "binary_download_msg": "(Binary or unsupported file type)",
+    "preview_mode": "Preview",
+    "loading_preview": "Loading preview...",
+    "failed_read_content": "Failed to read content",
+    "show_preview": "Show Preview",
+    "open_in_editor": "Open in Editor",
+    "file_too_large_preview": "File too large for preview",
+    "open_anyway": "Open anyway"
 }

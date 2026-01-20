@@ -1,9 +1,13 @@
 # Changelog
 
-## [Unreleased]
-- **Bug Fix**: Fixed Server Logs view not displaying in desktop app due to type mismatch.
-- **Code Quality**: Refactored special tab identifiers to use constants with `__special__` prefix, preventing conflicts with real file paths.
-- **UI/UX**: Added visual error indicators for unknown tab types instead of silent failures.
+## [1.4.0] - 2026-01-20
+**Unified View & Details Update**
+- **Unified Smart Preview**: Consolidated Metadata/Binary views into a single intelligent view with previews for Images, Markdown, and Archives.
+- **Tab Management**: Added **Close (X)** button to tabs (VS Code style). Implemented Singleton tabs for unified navigation (Details, Directory, Logs).
+- **Refinement**: Added file type icons to Metadata properties.
+- **Layout**: Improved responsiveness for smaller screens (Header/Footer).
+- **Fixes**: Fixed "Show Hidden Files" setting mismatch and Server Logs visibility.
+- **Internal**: Refactored special tab identifiers and improved error handling.
 
 ## [1.2.3] - 2026-01-15
 - **Configuration**: Enabled file deletion by default in server config.
