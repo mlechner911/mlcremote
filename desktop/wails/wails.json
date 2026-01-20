@@ -6,7 +6,7 @@
     "email": "lechner.altenstadt@web.de"
   },
   "license": "MIT",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "frontend:dir": "frontend",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
@@ -18,7 +18,7 @@
   "info": {
     "companyName": "Michael Lechner",
     "productName": "MLCRemote",
-    "productVersion": "1.4.0",
+    "productVersion": "1.4.1",
     "copyright": "Copyright (c) 2025 Michael Lechner",
     "comments": "Lightweight Remote Environment"
   },
