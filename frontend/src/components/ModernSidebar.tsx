@@ -4,6 +4,7 @@ import FileTree from './FileTree'
 import { DirEntry, TaskDef, uploadFile } from '../api' // imported for type usage
 import { Icon } from '../generated/icons'
 import { getIcon } from '../generated/icon-helpers'
+import ContextMenu from './ContextMenu'
 
 export interface ActivityBarProps {
     isExpanded: boolean
@@ -27,6 +28,7 @@ export interface SidebarPanelProps {
     onContextMenu: (entry: DirEntry, x: number, y: number) => void
     refreshSignal: { path: string, ts: number } | undefined
     onRefresh: () => void
+    onChangeRoot?: (path: string) => void
 }
 
 // Legacy combined type (kept for compatibility if needed, though strictly we should split usage)
@@ -101,9 +103,11 @@ export function ActivityBar(props: ActivityBarProps) {
 
 export function SidebarPanel(props: SidebarPanelProps) {
     const { t } = useTranslation()
-    const { showHidden, selectedPath, onSelect, root = '/', onRefresh, onOpen, onContextMenu, refreshSignal } = props
+    const { showHidden, selectedPath, onSelect, root = '/', onRefresh, onOpen, onContextMenu, refreshSignal, onChangeRoot } = props
     const [isDragOver, setIsDragOver] = React.useState(false)
     const [uploading, setUploading] = React.useState(false)
+    // Header Context Menu
+    const [headerMenu, setHeaderMenu] = React.useState<{ x: number, y: number } | null>(null)
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault()
@@ -152,7 +156,14 @@ export function SidebarPanel(props: SidebarPanelProps) {
             {uploading && (
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--accent)', zIndex: 11, animation: 'pulse 1s infinite' }}></div>
             )}
-            <div className="panel-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: 35, fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className="panel-title"
+                onContextMenu={(e) => {
+                    if (onChangeRoot) {
+                        e.preventDefault()
+                        setHeaderMenu({ x: e.clientX, y: e.clientY })
+                    }
+                }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: 35, fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: onChangeRoot ? 'context-menu' : 'default' }}>
                 <span>EXPLORER</span>
                 <div style={{ display: 'flex', gap: 4 }}>
                     {onRefresh && (
@@ -162,6 +173,22 @@ export function SidebarPanel(props: SidebarPanelProps) {
                     )}
                 </div>
             </div>
+            {headerMenu && (
+                <ContextMenu
+                    x={headerMenu.x}
+                    y={headerMenu.y}
+                    onClose={() => setHeaderMenu(null)}
+                    items={[
+                        {
+                            label: t('change_root', 'Change Root'),
+                            icon: <Icon name={getIcon('folder')} />,
+                            action: () => {
+                                if (onChangeRoot) onChangeRoot(root)
+                            }
+                        }
+                    ]}
+                />
+            )}
             <div className="file-tree-container" style={{ flex: 1, overflow: 'auto' }}>
                 <FileTree
                     root={root}

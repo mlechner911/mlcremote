@@ -498,6 +498,30 @@ function AppInner() {
                   onContextMenu={handleContextMenu}
                   refreshSignal={refreshSignal}
                   onRefresh={() => setRefreshSignal({ path: '/', ts: Date.now() })}
+                  onChangeRoot={(currentRoot) => {
+                    showDialog({
+                      title: t('change_root', 'Change Root'),
+                      message: t('enter_new_root_path', 'Enter absolute path for new root directory:'),
+                      inputType: 'text',
+                      defaultValue: currentRoot,
+                      confirmLabel: t('change', 'Change'),
+                      onConfirm: async (newPath) => {
+                        if (!newPath) return
+                        try {
+                          const st = await statPath(newPath)
+                          if (!st || !st.isDir) {
+                            throw new Error(t('not_a_directory', 'Path is not a directory'))
+                          }
+                          setExplorerDir(newPath)
+                          setSelectedPath(newPath)
+                          // Also update settings to persist if needed, or just session state?
+                          // For session: setExplorerDir is enough.
+                        } catch (e: any) {
+                          showDialog({ title: t('error'), message: e.message || t('invalid_path'), variant: 'error' })
+                        }
+                      }
+                    })
+                  }}
                 />
               </aside>
             </Panel>
