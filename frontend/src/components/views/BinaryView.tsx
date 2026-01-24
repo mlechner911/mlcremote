@@ -40,7 +40,7 @@ export default function BinaryView({ path }: ViewProps) {
                     <div className="muted" style={{ fontSize: 12 }}>{path}</div>
                 </div>
                 <div>
-                    <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}`)} download={path.split(/[/\\]/).pop()}>{t('download')}</a>
+                    <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}&download=true`)} download={path.split(/[/\\]/).pop()}>{t('download')}</a>
                 </div>
             </div>
             <div style={{ marginTop: 12 }}>
@@ -49,11 +49,11 @@ export default function BinaryView({ path }: ViewProps) {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <tbody>
                             <tr><td style={{ width: 160, padding: 6 }} className="muted">{t('full_path')}</td><td style={{ padding: 6 }}>{meta.path || path}</td></tr>
-                            <tr><td className="muted" style={{ padding: 6 }}>{t('mime')}</td><td style={{ padding: 6 }}>{meta.mime || 'unknown'}</td></tr>
-                            <tr><td className="muted" style={{ padding: 6 }}>{t('size')}</td><td style={{ padding: 6 }}>{meta.size ? formatBytes(meta.size) : 'n/a'}</td></tr>
+                            <tr><td className="muted" style={{ padding: 6 }}>{t('type')}</td><td style={{ padding: 6 }}>{meta.isDir ? t('directory', 'Directory') : (meta.mime || 'unknown')}</td></tr>
+                            <tr><td className="muted" style={{ padding: 6 }}>{t('size')}</td><td style={{ padding: 6 }}>{meta.isDir ? '-' : (meta.size ? formatBytes(meta.size) : 'n/a')}</td></tr>
                             <tr><td className="muted" style={{ padding: 6 }}>{t('mode')}</td><td style={{ padding: 6 }}>{meta.mode || 'n/a'}</td></tr>
                             <tr><td className="muted" style={{ padding: 6 }}>{t('last_modified')}</td><td style={{ padding: 6 }}>{meta.modTime ? new Date(meta.modTime).toLocaleString() : 'n/a'}</td></tr>
-                            <tr style={{ display: 'none' }}><td className="muted" style={{ padding: 6 }}>{t('is_dir')}</td><td style={{ padding: 6 }}>{meta.isDir ? t('yes') : t('no')}</td></tr>
+
                         </tbody>
                     </table>
                 ) : (

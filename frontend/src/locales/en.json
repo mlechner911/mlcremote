@@ -131,5 +131,6 @@
     "show_preview": "Show Preview",
     "open_in_editor": "Open in Editor",
     "file_too_large_preview": "File too large for preview",
-    "open_anyway": "Open anyway"
+    "open_anyway": "Open anyway",
+    "failed_fetch_metadata": "Failed to load properties"
 }
