@@ -156,10 +156,9 @@ export default function UnifiedView({ path, onOpen, defaultMode = 'preview' }: U
                     </button>
                 )}
 
-                {/* Download Button */}
                 <a
                     className="btn btn-sm"
-                    href={`/api/file?path=${encodeURIComponent(path)}`}
+                    href={`/api/file?path=${encodeURIComponent(path)}&download=true`}
                     download={path.split(/[/\\]/).pop()}
                     title={t('download')}
                     style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}

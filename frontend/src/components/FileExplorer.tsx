@@ -411,8 +411,6 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
                 document.body.appendChild(link)
                 link.click()
                 document.body.removeChild(link)
-                link.click()
-                document.body.removeChild(link)
               },
               separator: true
             },

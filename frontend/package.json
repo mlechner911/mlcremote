@@ -24,7 +24,7 @@
     "audit": "^0.0.6",
     "axios": "^1.13.2",
     "driver.js": "^1.4.0",
-    "fix": "^0.0.6",
+    "fix": "^0.0.3",
     "html2canvas": "^1.4.1",
     "i18next": "^25.7.3",
     "i18next-browser-languagedetector": "^8.2.0",
@@ -46,6 +46,6 @@
     "@vitejs/plugin-react": "^4.2.1",
     "orval": "^8.0.1",
     "typescript": "^5.3.3",
-    "vite": "^5.1.4"
+    "vite": "^7.3.1"
   }
 }
