@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.2] - 2026-01-24
+- **Refactoring**: Split `files.go` into modular components (`files_read`, `files_write`, `trash`) for better maintainability.
+- **Documentation**: Added comprehensive GoDoc comments to `App` struct and file handlers.
+- **Cleanup**: Deprecated `KillRemoteSession` in favor of `StopRemoteServer`.
+
 ## [1.4.0] - 2026-01-20
 **Unified View & Details Update**
 - **Unified Smart Preview**: Consolidated Metadata/Binary views into a single intelligent view with previews for Images, Markdown, and Archives.

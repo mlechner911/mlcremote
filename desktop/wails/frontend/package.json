@@ -1,6 +1,6 @@
 {
-  "name": "mlcremote-desktop-prototype",
-  "version": "1.4.1",
+  "name": "mlcremote-desktop",
+  "version": "1.4.2",
   "private": true,
   "scripts": {
     "dev": "vite",

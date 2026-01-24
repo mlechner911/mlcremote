@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/creack/pty v1.1.21
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gorilla/websocket v1.5.1
 	github.com/h2non/filetype v1.1.0
 	github.com/shirou/gopsutil/v3 v3.24.5
@@ -13,7 +14,6 @@ require (
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
