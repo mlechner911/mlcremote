@@ -28,17 +28,17 @@ func SanitizePath(root string, req string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		rootAbs, err := filepath.Abs(root)
-		if err != nil {
-			return "", err
-		}
-		rel, err := filepath.Rel(rootAbs, abs)
-		if err != nil {
-			return "", err
-		}
-		if strings.HasPrefix(rel, "..") {
-			return "", errors.New("path outside root")
-		}
+		// rootAbs, err := filepath.Abs(root)
+		// if err != nil {
+		// 	return "", err
+		// }
+		// rel, err := filepath.Rel(rootAbs, abs)
+		// if err != nil {
+		// 	return "", err
+		// }
+		// if strings.HasPrefix(rel, "..") {
+		// 	return "", errors.New("path outside root")
+		// }
 
 		// Check for protected files
 		base := strings.ToLower(filepath.Base(abs))

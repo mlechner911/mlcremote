@@ -514,6 +514,7 @@ function AppInner() {
                           }
                           setExplorerDir(newPath)
                           setSelectedPath(newPath)
+                          setRefreshSignal({ path: newPath, ts: Date.now() })
                           // Also update settings to persist if needed, or just session state?
                           // For session: setExplorerDir is enough.
                         } catch (e: any) {
