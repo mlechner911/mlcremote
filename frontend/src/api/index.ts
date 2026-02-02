@@ -48,6 +48,7 @@ export type LegacyHealth = {
     server_time?: string;
     timezone?: string;
     start_time?: string;
+    home_dir?: string;
 }
 
 /**

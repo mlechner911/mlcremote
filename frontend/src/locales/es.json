@@ -117,5 +117,9 @@
     "path": "Ruta",
     "type": "Tipo",
     "directory": "Directorio",
-    "binary_download_msg": "(Archivo binario o no compatible)"
+    "binary_download_msg": "(Archivo binario o no compatible)",
+    "open_terminal_here": "Abrir terminal aquí",
+    "upload_file": "Subir archivo",
+    "copy_to_local": "Copiar al portapapeles local",
+    "paste_from_local": "Pegar del portapapeles local"
 }

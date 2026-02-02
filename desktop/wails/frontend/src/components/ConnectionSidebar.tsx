@@ -5,14 +5,10 @@ import { ConnectionProfile } from '../types'
 
 interface ConnectionSidebarProps {
     profiles: ConnectionProfile[]
+    stats?: Record<string, import('../types').Stats>
     selectedId: string | null
     onSelect: (id: string) => void
-    onEdit: (isNew: boolean) => void // true for new, false/implicit for editing logic handled by parent usually?
-    // Actually in LaunchScreen:
-    // New: setSelectedId(null); setEditing(true)
-    // Edit: (Handled in Detail view)
-    // Sidebar just selects.
-
+    onEdit: (isNew: boolean) => void
     onNewConnection: () => void
     onOpenSettings: () => void
     onShowAbout: () => void
@@ -24,7 +20,7 @@ interface ConnectionSidebarProps {
 }
 
 export default function ConnectionSidebar({
-    profiles, selectedId, onSelect, onNewConnection, onOpenSettings, onShowAbout, onDelete, onLock,
+    profiles, stats, selectedId, onSelect, onNewConnection, onOpenSettings, onShowAbout, onDelete, onLock,
     hasPassword, isPremium, loading
 }: ConnectionSidebarProps) {
     const { t } = useI18n()
@@ -56,50 +52,96 @@ export default function ConnectionSidebar({
                 </div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 8, minHeight: 0 }}>
-                {profiles.map(p => (
-                    <div key={p.id}
-                        onClick={() => onSelect(p.id!)}
-                        style={{
-                            padding: '10px 12px', marginBottom: 4, borderRadius: 6,
-                            background: selectedId === p.id ? 'var(--bg-select)' : 'transparent',
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10
-                        }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color || '#666' }} />
-                        <div style={{ flex: 1, overflow: 'hidden' }}>
-                            <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                            <div className="muted" style={{ fontSize: 11 }}>
-                                {p.user}@{p.host}
-                                {p.remoteOS && (
-                                    <span style={{ marginLeft: 6, opacity: 0.8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                        {(() => {
-                                            const os = p.remoteOS.toLowerCase()
-                                            let icon = ''
-                                            if (os.includes('windows')) icon = 'icon-os-windows'
-                                            else if (os.includes('darwin') || os.includes('macos') || os.includes('apple')) icon = 'icon-os-apple'
-                                            else if (os.includes('ubuntu') || os.includes('linux')) icon = 'icon-os-ubuntu' // Fallback to ubuntu for general linux for now? Or maybe a generic terminal icon if not found
+                {profiles.map(p => {
+                    const stat = stats?.[p.id!]
+                    const isHealthy = stat && stat.cpu < 90 && stat.memory < 90 && stat.disk < 90 // simple threshold
+                    // Check freshness? timestamp is unix seconds
+                    const isFresh = stat && (Date.now() / 1000 - stat.timestamp) < (p.monitoring?.interval || 10) * 60 + 300 // interval + buffer
 
-                                            if (icon) return <Icon name={icon} size={12} />
-                                            return null
+                    return (
+                        <div key={p.id}
+                            onClick={() => onSelect(p.id!)}
+                            style={{
+                                padding: '10px 12px', marginBottom: 4, borderRadius: 6,
+                                background: selectedId === p.id ? 'var(--bg-select)' : 'transparent',
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10
+                            }}>
+                            <div style={{ position: 'relative' }}>
+                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color || '#666' }} />
+                                {p.monitoring?.enabled && (
+                                    <div style={{
+                                        position: 'absolute', bottom: -4, right: -4,
+                                        background: 'var(--bg-panel)',
+                                        borderRadius: '50%',
+                                        padding: 1
+                                    }}>
+                                        {(() => {
+                                            if (!isFresh) {
+                                                return <Icon name="icon-warning" size={12} className="muted" title="Stale Data (Server may be down)" />
+                                            }
+                                            if (isHealthy) {
+                                                return <div style={{ color: '#10b981' }} title="All Systems Healthy"><Icon name="icon-check" size={12} /></div>
+                                            }
+                                            // Determine max usage
+                                            const max = Math.max(stat?.cpu || 0, stat?.memory || 0, stat?.disk || 0)
+                                            let label = ''
+                                            let color = '#f59e0b' // orange
+                                            if (max > 90) color = '#ef4444' // red
+
+                                            if ((stat?.cpu || 0) === max) label = 'CPU'
+                                            else if ((stat?.memory || 0) === max) label = 'RAM'
+                                            else label = 'DSK'
+
+                                            return (
+                                                <div style={{
+                                                    fontSize: 9, fontWeight: 'bold', color: '#fff',
+                                                    background: color, padding: '0 3px', borderRadius: 3,
+                                                    height: 12, display: 'flex', alignItems: 'center',
+                                                    border: '1px solid var(--bg-panel)'
+                                                }} title={`High ${label}: ${max.toFixed(0)}%`}>
+                                                    {label}
+                                                </div>
+                                            )
                                         })()}
-                                        {p.remoteOS} {p.remoteVersion && `v${p.remoteVersion}`}
-                                    </span>
+                                    </div>
                                 )}
                             </div>
+                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                                <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                                <div className="muted" style={{ fontSize: 11 }}>
+                                    {p.user}@{p.host}
+                                    {p.remoteOS && (
+                                        <span style={{ marginLeft: 6, opacity: 0.8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                            {(() => {
+                                                const os = p.remoteOS.toLowerCase()
+                                                let icon = ''
+                                                if (os.includes('windows')) icon = 'icon-os-windows'
+                                                else if (os.includes('darwin') || os.includes('macos') || os.includes('apple')) icon = 'icon-os-apple'
+                                                else if (os.includes('ubuntu') || os.includes('linux')) icon = 'icon-os-ubuntu' // Fallback to ubuntu for general linux for now? Or maybe a generic terminal icon if not found
+
+                                                if (icon) return <Icon name={icon} size={12} />
+                                                return null
+                                            })()}
+                                            {p.remoteOS} {p.remoteVersion && `v${p.remoteVersion}`}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="muted" style={{ fontSize: 10, minWidth: 60, textAlign: 'right' }}>
+                                {p.lastUsed > 0 ? (() => {
+                                    const diff = Math.floor(Date.now() / 1000) - p.lastUsed
+                                    if (diff < 60) return t('just_now')
+                                    if (diff < 3600) return t('minutes_ago', { val: Math.floor(diff / 60) })
+                                    if (diff < 86400) return t('hours_ago', { val: Math.floor(diff / 3600) })
+                                    return t('days_ago', { val: Math.floor(diff / 86400) })
+                                })() : ''}
+                            </div>
+                            <button className="icon-btn link muted-icon" onClick={(e) => onDelete(p.id!, e)}>
+                                <Icon name="icon-trash" size={14} />
+                            </button>
                         </div>
-                        <div className="muted" style={{ fontSize: 10, minWidth: 60, textAlign: 'right' }}>
-                            {p.lastUsed > 0 ? (() => {
-                                const diff = Math.floor(Date.now() / 1000) - p.lastUsed
-                                if (diff < 60) return t('just_now')
-                                if (diff < 3600) return t('minutes_ago', { val: Math.floor(diff / 60) })
-                                if (diff < 86400) return t('hours_ago', { val: Math.floor(diff / 3600) })
-                                return t('days_ago', { val: Math.floor(diff / 86400) })
-                            })() : ''}
-                        </div>
-                        <button className="icon-btn link muted-icon" onClick={(e) => onDelete(p.id!, e)}>
-                            <Icon name="icon-trash" size={14} />
-                        </button>
-                    </div>
-                ))}
+                    )
+                })}
                 {profiles.length === 0 && (
                     <div className="muted" style={{ textAlign: 'center', padding: 20 }}>{t('no_saved_connections')}</div>
                 )}
@@ -111,6 +153,6 @@ export default function ConnectionSidebar({
                     </button>
                 )}
             </div>
-        </div>
+        </div >
     )
 }

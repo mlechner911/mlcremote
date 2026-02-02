@@ -139,7 +139,12 @@ export const translations = {
         delete: "Delete",
         custom_color: "Custom Color",
         show_developer_controls: "Show Developer Controls",
-        show_developer_controls_desc: "Enable screenshot, server logs, and session key controls."
+        show_developer_controls_desc: "Enable screenshot, server logs, and session key controls.",
+        // Monitoring
+        monitoring: "Server Monitoring",
+        enable_monitoring: "Enable Health Monitoring",
+        check_interval: "Check Interval (minutes)",
+        min_interval_10: "(Minimum 10 minutes)"
     },
     de: {
         app_title: "MLCRemote Desktop",
@@ -279,7 +284,12 @@ export const translations = {
         reconnecting: "Verbinde...",
         reconnect_failed: "Verbindung fehlgeschlagen",
         show_developer_controls: "Entwicklersteuerung anzeigen",
-        show_developer_controls_desc: "Screenshot, Server-Logs und Sitzungs-Schlüssel-Steuerung aktivieren."
+        show_developer_controls_desc: "Screenshot, Server-Logs und Sitzungs-Schlüssel-Steuerung aktivieren.",
+        // Monitoring
+        monitoring: "Server-Überwachung",
+        enable_monitoring: "Gesundheitsüberwachung aktivieren",
+        check_interval: "Prüfintervall (Minuten)",
+        min_interval_10: "(Mindestens 10 Minuten)"
     },
     es: {
         app_title: "MLCRemote Desktop",

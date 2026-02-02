@@ -138,13 +138,7 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
 
                 ClipboardCopy(e.data.paths, token)
                     .then(() => {
-                        let msg = "Copied to local clipboard!"
-                        if (count > 0 && size !== undefined) {
-                            const sizeStr = (size > 1024 * 1024) ? (size / (1024 * 1024)).toFixed(1) + ' MB' : (size / 1024).toFixed(1) + ' KB'
-                            const fileLabel = count === 1 ? (names[0] || 'file') : `${count} files`
-                            msg = `Copied ${fileLabel} (${sizeStr}) to local clipboard.`
-                        }
-                        showAlert("Smart Clipboard", msg, 'info')
+                        // Success handling moved to 'clipboard-progress' 'done' event
                     })
                     .catch((err: any) => showAlert("Clipboard Error", "Copy failed: " + err, 'error'))
             }
@@ -178,6 +172,13 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                 showAlert("Smart Clipboard", `Downloading ${data.currentFile}...`, 'progress', percent)
             } else if (data.status === 'unzipping') {
                 showAlert("Smart Clipboard", `Unzipping ${data.currentFile}...`, 'progress', 100)
+            } else if (data.status === 'done') {
+                const count = data.totalFiles
+                const size = data.totalSize
+                const sizeStr = (size > 1024 * 1024) ? (size / (1024 * 1024)).toFixed(1) + ' MB' : (size / 1024).toFixed(1) + ' KB'
+                const fileLabel = count === 1 ? 'file' : `${count} files`
+                const msg = `Copied ${fileLabel} (${sizeStr}) to local clipboard.`
+                showAlert("Smart Clipboard", msg, 'info')
             }
         }
         EventsOn("clipboard-progress", logProgress)

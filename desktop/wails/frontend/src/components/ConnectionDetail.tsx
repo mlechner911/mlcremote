@@ -2,6 +2,7 @@ import React from 'react'
 import { Icon } from '../generated/icons'
 import { useI18n } from '../utils/i18n'
 import { ConnectionProfile } from '../types'
+import StatsView from './StatsView'
 
 interface ConnectionDetailProps {
     profile: ConnectionProfile
@@ -13,10 +14,11 @@ interface ConnectionDetailProps {
     onTest: () => void
     isTesting: boolean
     testStatus: string | null
+    stats?: import('../types').Stats
 }
 
 export default function ConnectionDetail({
-    profile, status, isManaged, loading, onConnect, onEdit, onTest, isTesting, testStatus
+    profile, status, isManaged, loading, onConnect, onEdit, onTest, isTesting, testStatus, stats
 }: ConnectionDetailProps) {
     const { t } = useI18n()
 
@@ -63,7 +65,17 @@ export default function ConnectionDetail({
                 </div>
             )}
 
-            <div style={{ display: 'flex', gap: 16 }}>
+            {profile.monitoring?.enabled && stats && (
+                <div style={{ marginTop: 24, width: '100%', maxWidth: 600 }}>
+                    <div className="muted" style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{t('monitoring')}</div>
+                    <StatsView stats={stats} />
+                    <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>
+                        {t('check_interval')}: {profile.monitoring.interval}m
+                    </div>
+                </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 16, marginTop: 32 }}>
                 <button className="btn primary" style={{ padding: '12px 32px', fontSize: 16, boxShadow: '0 4px 12px rgba(0,123,255,0.3)', display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => onConnect()} disabled={loading}>
                     {(() => {
                         const os = (profile.remoteOS || '').toLowerCase()

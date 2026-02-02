@@ -4,6 +4,7 @@ import { ConnectionProfile } from '../types'
 import { useI18n } from '../utils/i18n'
 import { ProbeConnection, DeploySSHKey, VerifyPassword, GetManagedIdentityPath, PickIdentityFile } from '../wailsjs/go/app/App'
 import PasswordDialog from './PasswordDialog'
+import AlertDialog, { DialogType } from './AlertDialog'
 import { useConnectionTester } from '../hooks/useConnectionTester'
 import ColorPicker, { DEFAULT_COLORS } from './ColorPicker'
 import { TaskDef } from '../types'
@@ -32,6 +33,8 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
     const [defaultShell, setDefaultShell] = useState(profile?.defaultShell || '')
     const [rootPath, setRootPath] = useState(profile?.rootPath || '')
     const [showDeveloperControls, setShowDeveloperControls] = useState(profile?.showDeveloperControls || false)
+    const [monitoringEnabled, setMonitoringEnabled] = useState(profile?.monitoring?.enabled || false)
+    const [monitoringInterval, setMonitoringInterval] = useState(profile?.monitoring?.interval || 10)
 
     // Auth Type Logic
     const [identityFile, setIdentityFile] = useState(profile?.identityFile || '')
@@ -58,6 +61,8 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             setDefaultShell(profile.defaultShell || '')
             setRootPath(profile.rootPath || '')
             setShowDeveloperControls(profile.showDeveloperControls || false)
+            setMonitoringEnabled(profile.monitoring?.enabled || false)
+            setMonitoringInterval(profile.monitoring?.interval || 10)
             setTasks(profile.tasks || [])
         } else {
             setName('')
@@ -69,6 +74,8 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             setIdentityFile('')
             setDefaultShell('')
             setRootPath('')
+            setMonitoringEnabled(false)
+            setMonitoringInterval(10)
             setTasks([])
         }
     }, [profile])
@@ -115,6 +122,14 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
     const [passwordAction, setPasswordAction] = useState<'deploy' | 'test'>('test')
 
     // Use the new hook
+    const [alertState, setAlertState] = useState<{
+        open: boolean, title: string, message: string, type: DialogType, onConfirm?: () => void, cancelText?: string, confirmText?: string
+    }>({ open: false, title: '', message: '', type: 'info' })
+
+    const showAlert = (title: string, message: string, type: DialogType = 'error') => {
+        setAlertState({ open: true, title, message, type })
+    }
+
     const { testStatus, setTestStatus, isTesting, testConnection } = useConnectionTester()
     const [passwordReason, setPasswordReason] = useState<'auth-failed' | 'no-key'>('no-key')
 
@@ -136,7 +151,11 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             tasks: tasks,
             defaultShell: defaultShell,
             rootPath: rootPath,
-            showDeveloperControls: showDeveloperControls
+            showDeveloperControls: showDeveloperControls,
+            monitoring: {
+                enabled: monitoringEnabled,
+                interval: monitoringInterval < 10 ? 10 : monitoringInterval
+            }
         })
     }
 
@@ -206,14 +225,14 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
                     }, 100)
                 } else if (passwordReason === 'no-key') {
                     // No local key found, show instructions on how to generate one
-                    alert(t('ssh_key_missing_info'))
+                    showAlert('Info', t('ssh_key_missing_info'), 'info')
                 }
             } else {
-                alert(t('status_failed') + ": " + res)
+                showAlert('Error', t('status_failed') + ": " + res)
                 // Keep dialog open? 
             }
         } catch (e: any) {
-            alert(t('status_failed') + ": " + (e.message || e))
+            showAlert('Error', t('status_failed') + ": " + (e.message || e))
         }
     }
 
@@ -355,6 +374,7 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
                     </>
                 )}
 
+
                 {activeTab === 'extended' && (
                     <>
                         {/* Root Path (Optional) */}
@@ -398,6 +418,38 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4, marginLeft: 24 }}>
                                 {t('show_developer_controls_desc') || "Enable screenshot, server logs, and session key controls."}
                             </div>
+                        </div>
+
+                        {/* Monitoring */}
+                        <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                            <h3 style={{ margin: 0, fontSize: '1rem', marginBottom: 12 }}>{t('monitoring') || "Server Monitoring"}</h3>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={monitoringEnabled}
+                                    onChange={e => setMonitoringEnabled(e.target.checked)}
+                                />
+                                <span>{t('enable_monitoring') || "Enable Health Monitoring"}</span>
+                            </label>
+
+                            {monitoringEnabled && (
+                                <div style={{ marginTop: 12, marginLeft: 24 }}>
+                                    <label className="label">{t('check_interval') || "Check Interval (minutes)"}</label>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <input
+                                            className="input"
+                                            type="number"
+                                            min={10}
+                                            value={monitoringInterval}
+                                            onChange={e => setMonitoringInterval(Number(e.target.value))}
+                                            style={{ width: 80 }}
+                                        />
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                            {t('min_interval_10') || "(Minimum 10 minutes)"}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </>
                 )}
@@ -470,26 +522,40 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
                 </div>
             </form>
 
-            {showTaskEditor && (
-                <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: '100%', maxWidth: 400, background: 'var(--bg-root)', padding: 0, borderRadius: 8, boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
-                        <TaskEditor
-                            task={editingTask || undefined}
-                            onSave={handleTaskSave}
-                            onCancel={() => { setShowTaskEditor(false); setEditingTask(null) }}
-                        />
+            {
+                showTaskEditor && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: '100%', maxWidth: 400, background: 'var(--bg-root)', padding: 0, borderRadius: 8, boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
+                            <TaskEditor
+                                task={editingTask || undefined}
+                                onSave={handleTaskSave}
+                                onCancel={() => { setShowTaskEditor(false); setEditingTask(null) }}
+                            />
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-            {showPasswordDialog && (
-                <PasswordDialog
-                    title={passwordAction === 'deploy' ? t('deploy_key_msg') : t('password')}
-                    description={t('enter_remote_password')}
-                    onConfirm={handlePasswordConfirm}
-                    onCancel={() => setShowPasswordDialog(false)}
-                />
-            )}
-        </div>
+            {
+                showPasswordDialog && (
+                    <PasswordDialog
+                        title={passwordAction === 'deploy' ? t('deploy_key_msg') : t('password')}
+                        description={t('enter_remote_password')}
+                        onConfirm={handlePasswordConfirm}
+                        onCancel={() => setShowPasswordDialog(false)}
+                    />
+                )
+            }
+            <AlertDialog
+                open={alertState.open}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                confirmText={alertState.confirmText}
+                cancelText={alertState.cancelText}
+                onClose={() => setAlertState(s => ({ ...s, open: false }))}
+                onConfirm={alertState.onConfirm}
+            />
+        </div >
     )
 }

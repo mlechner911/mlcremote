@@ -17,18 +17,15 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     fontconfig \
     x11-xserver-utils \
+    xvfb \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Wails
 RUN go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
 WORKDIR /app
-COPY . .
-
 # Build command (assumes mounted volume for output if needed, but we'll cp out)
-# We expect the source code to be mounted at /app or copied in.
-# This dockerfile copies it in for the image build, but for dev we might want mounts.
-# For now, following the plan: copy source, run build.
+# We expect the source code to be mounted at /app via -v
 
-# Removing package-lock.json and node_modules from frontend to force resolution of platform-specific optional dependencies
-CMD ["sh", "-c", "cd desktop/wails/frontend && rm -rf node_modules package-lock.json && npm install && cd .. && (wails build -tags webkit2_41 || wails build -tags webkit2 || wails build) && cp build/bin/MLCRemote /out/"]
+# Run npm install (incremental) and then build
+CMD ["sh", "-c", "cd desktop/wails/frontend && npm install && cd .. && xvfb-run -a sh -c '(wails build -tags webkit2_41 || wails build -tags webkit2 || wails build)' && cp build/bin/MLCRemote /out/"]

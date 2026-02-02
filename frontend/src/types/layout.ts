@@ -3,7 +3,7 @@ export type PaneId = string
 
 export type ViewType = 'editor' | 'preview' | 'terminal' | 'binary' | 'diff'
     | 'custom' | 'logs' | 'directory' | 'metadata' | 'trash';
-export type Intent = 'view' | 'edit';
+export type Intent = 'view' | 'edit' | 'metadata' | 'preview';
 
 export interface Tab {
     id: string;          // Unique ID (usually path, but unique for terminals)

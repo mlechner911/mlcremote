@@ -132,5 +132,9 @@
     "open_in_editor": "Open in Editor",
     "file_too_large_preview": "File too large for preview",
     "open_anyway": "Open anyway",
-    "failed_fetch_metadata": "Failed to load properties"
+    "failed_fetch_metadata": "Failed to load properties",
+    "open_terminal_here": "Open Terminal Here",
+    "upload_file": "Upload File",
+    "copy_to_local": "Copy to Local Clipboard",
+    "paste_from_local": "Paste from Local Clipboard"
 }

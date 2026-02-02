@@ -310,7 +310,10 @@ export default function LayoutManager(props: LayoutManagerProps) {
                                             case 'preview':
                                                 const unifiedPath = tab.type === 'metadata' ? selectedPath : tab.path
                                                 // If autoOpen is enabled, default to preview. If disabled, default to metadata.
-                                                const defaultMode = props.settings?.autoOpen ? 'preview' : 'metadata'
+                                                // If intent is explicit (metadata/preview), respect it.
+                                                const defaultMode = (tab.intent === 'metadata' || tab.intent === 'preview')
+                                                    ? tab.intent
+                                                    : (props.settings?.autoOpen ? 'preview' : 'metadata')
                                                 return (
                                                     <React.Suspense fallback={<div className="muted">{t('loading')}</div>}>
                                                         <UnifiedView

@@ -21,7 +21,26 @@ import (
 // DetectRemoteOS attempts to determine the remote operating system and architecture.
 // It connects via SSH and runs probing commands (uname, ver) to identify the platform.
 // Returns the detected OS and Architecture enums, or an error if detection fails.
+// DetectRemoteOS attempts to determine the remote operating system and architecture.
+// It connects via SSH and runs probing commands (uname, ver) to identify the platform.
+// Returns the detected OS and Architecture enums, or an error if detection fails.
 func (m *Manager) DetectRemoteOS(profileJSON string) (remotesystem.RemoteOS, remotesystem.RemoteArch, error) {
+	// Parse profile to generate cache key
+	var p ssh.TunnelProfile
+	if err := json.Unmarshal([]byte(profileJSON), &p); err != nil {
+		return remotesystem.OSUnknown, remotesystem.UnknownArch, fmt.Errorf("invalid profile: %w", err)
+	}
+	// Use User and Host for cache key. Port is not currently in TunnelProfile.
+	cacheKey := fmt.Sprintf("%s@%s", p.User, p.Host)
+
+	m.cacheMu.RLock()
+	if cached, ok := m.osCache[cacheKey]; ok {
+		m.cacheMu.RUnlock()
+		fmt.Printf("[DEBUG] DetectRemoteOS: Using cached OS for %s: %s %s\n", cacheKey, cached.OS, cached.Arch)
+		return cached.OS, cached.Arch, nil
+	}
+	m.cacheMu.RUnlock()
+
 	target, sshBaseArgs, err := m.prepareSSHArgs(profileJSON)
 	if err != nil {
 		return remotesystem.OSUnknown, remotesystem.UnknownArch, err
@@ -49,6 +68,9 @@ func (m *Manager) DetectRemoteOS(profileJSON string) (remotesystem.RemoteOS, rem
 	}
 
 	if os, arch := remotesystem.ParseOS(output); os != remotesystem.OSUnknown {
+		m.cacheMu.Lock()
+		m.osCache[cacheKey] = cachedOS{OS: os, Arch: arch}
+		m.cacheMu.Unlock()
 		return os, arch, nil
 	}
 
@@ -58,6 +80,9 @@ func (m *Manager) DetectRemoteOS(profileJSON string) (remotesystem.RemoteOS, rem
 	if validOut, err := createSilentCmd("ssh", winArgs...).Output(); err == nil {
 		fmt.Printf("[DEBUG] DetectRemoteOS: Fallback output: %q\n", string(validOut))
 		os, arch := remotesystem.ParseOS(string(validOut))
+		m.cacheMu.Lock()
+		m.osCache[cacheKey] = cachedOS{OS: os, Arch: arch}
+		m.cacheMu.Unlock()
 		return os, arch, nil
 	} else {
 		fmt.Printf("[DEBUG] DetectRemoteOS: Fallback failed: %v\n", err)

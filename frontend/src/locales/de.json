@@ -127,5 +127,9 @@
     "show_preview": "Vorschau anzeigen",
     "open_in_editor": "Im Editor öffnen",
     "file_too_large_preview": "Datei zu groß für Vorschau",
-    "open_anyway": "Trotzdem öffnen"
+    "open_anyway": "Trotzdem öffnen",
+    "open_terminal_here": "Terminal hier öffnen",
+    "upload_file": "Datei hochladen",
+    "copy_to_local": "In lokale Zwischenablage kopieren",
+    "paste_from_local": "Aus lokaler Zwischenablage einfügen"
 }

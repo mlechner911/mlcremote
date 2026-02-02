@@ -374,10 +374,38 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
 
     const isManaged = selectedProfile && normalizePath(selectedProfile.identityFile || '') === normalizePath(managedPath || '') && managedPath !== ''
 
+    const [stats, setStats] = useState<Record<string, import('../types').Stats>>({})
+
+    useEffect(() => {
+        if (profiles.length === 0) return
+
+        const fetchStats = async () => {
+            const updates: Record<string, any> = {}
+            for (const p of profiles) {
+                if (p.monitoring?.enabled && p.id) {
+                    try {
+                        // @ts-ignore
+                        const s = await window['go']['app']['App']['GetServerStats'](p.id)
+                        if (s) updates[p.id] = s
+                    } catch (e) { /* ignore */ }
+                }
+            }
+            if (Object.keys(updates).length > 0) {
+                setStats(prev => ({ ...prev, ...updates }))
+            }
+        }
+
+        fetchStats()
+        // Poll every 10 seconds to update UI if backend has new data
+        const interval = setInterval(fetchStats, 10000)
+        return () => clearInterval(interval)
+    }, [profiles])
+
     return (
         <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-root)', color: 'var(--text-primary)', cursor: loading ? 'wait' : 'default' }}>
             <ConnectionSidebar
                 profiles={profiles}
+                stats={stats}
                 selectedId={selectedId}
                 onSelect={(id) => { setSelectedId(id); setEditing(false) }}
                 onNewConnection={() => { setSelectedId(null); setEditing(true) }}
@@ -422,6 +450,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
 
                             isTesting={isTesting}
                             testStatus={testStatus}
+                            stats={selectedProfile.id ? stats[selectedProfile.id] : undefined}
                         />
                     ) : (
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="muted">

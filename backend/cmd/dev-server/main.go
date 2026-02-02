@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"lightdev/internal/server"
+	"lightdev/internal/stats"
 )
 
 func generateToken() string {
@@ -188,6 +189,39 @@ func main() {
 
 			if resp.StatusCode != 200 {
 				fmt.Fprintf(os.Stderr, "Server returned status: %s\n", resp.Status)
+				os.Exit(1)
+			}
+			os.Exit(0)
+		} else if os.Args[1] == "stats" {
+			// usage: dev-server stats [root-dir]
+			// if root-dir not provided, use HOME
+			root := ""
+			if len(os.Args) > 2 {
+				root = os.Args[2]
+			}
+			if root == "" {
+				root = os.Getenv("HOME")
+			}
+
+			// Initialize collector (no need for full server)
+			storageDir := filepath.Join(root, ".mlcremote")
+
+			// Ensure storage dir exists (redundant with collector but good practice)
+			_ = os.MkdirAll(storageDir, 0755)
+
+			col := stats.NewCollector(storageDir)
+
+			// Collect, Save, and Print
+			s, err := col.CollectAndSave()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error collecting stats: %v\n", err)
+				os.Exit(1)
+			}
+
+			// Output JSON to stdout
+			encoder := json.NewEncoder(os.Stdout)
+			if err := encoder.Encode(s); err != nil {
+				fmt.Fprintf(os.Stderr, "Error encoding stats: %v\n", err)
 				os.Exit(1)
 			}
 			os.Exit(0)

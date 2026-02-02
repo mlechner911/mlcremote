@@ -1,6 +1,6 @@
 import React from 'react'
 
-export type Intent = 'view' | 'edit'
+export type Intent = 'view' | 'edit' | 'metadata' | 'preview'
 
 export interface DecideOpts {
     path?: string | null

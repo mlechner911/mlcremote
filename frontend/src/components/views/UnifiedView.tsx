@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { triggerDownload } from '../../utils/download'
 import { statPath, readFile } from '../../api'
 import { formatBytes } from '../../utils/bytes'
 import { useTranslation } from 'react-i18next'
@@ -156,10 +157,11 @@ export default function UnifiedView({ path, onOpen, defaultMode = 'preview' }: U
                     </button>
                 )}
 
+                {/* Download Button */}
                 <a
                     className="btn btn-sm"
-                    href={`/api/file?path=${encodeURIComponent(path)}&download=true`}
-                    download={path.split(/[/\\]/).pop()}
+                    href="#"
+                    onClick={(e) => { e.preventDefault(); triggerDownload(path) }}
                     title={t('download')}
                     style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}
                 >

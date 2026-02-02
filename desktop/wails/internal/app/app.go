@@ -16,6 +16,7 @@ import (
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/backend"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/clipboard"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/config"
+	"github.com/mlechner911/mlcremote/desktop/wails/internal/monitoring"
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/ssh"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -25,9 +26,10 @@ type App struct {
 	ctx context.Context
 
 	// Services
-	Config  *config.Manager
-	SSH     *ssh.Manager
-	Backend *backend.Manager
+	Config     *config.Manager
+	SSH        *ssh.Manager
+	Backend    *backend.Manager
+	Monitoring *monitoring.Service
 }
 
 // SSHDeployRequest contains credentials for SSH operations
@@ -41,17 +43,20 @@ type SSHDeployRequest struct {
 
 // NewApp creates a new App application struct
 func NewApp(payload fs.FS) *App {
-	return &App{
+	a := &App{
 		Config:  config.NewManager(),
 		SSH:     ssh.NewManager(),
 		Backend: backend.NewManager(payload),
 	}
+	a.Monitoring = monitoring.NewService(a.pollStats)
+	return a
 }
 
 // Startup is called at application startup
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	_, _ = a.Config.DeduplicateProfiles()
+	a.Monitoring.Start()
 }
 
 // Shutdown is called at application termination
@@ -80,6 +85,9 @@ func (a *App) BeforeClose(ctx context.Context) (prevent bool) {
 func (a *App) cleanup() {
 	fmt.Println("Gracefully stopping tunnel...")
 	_, _ = a.SSH.StopTunnel()
+	if a.Monitoring != nil {
+		a.Monitoring.Stop()
+	}
 }
 
 // DeduplicateProfiles removes entries with identical User, Host, Port
@@ -323,15 +331,38 @@ func (a *App) ClipboardCopy(remotePaths []string, token string) error {
 
 			// Unzip
 			extractDir := filepath.Join(tempDir, baseName)
-			if err := unzip(localPath, extractDir); err != nil {
+			_, _, err := unzip(localPath, extractDir)
+			if err != nil {
 				return fmt.Errorf("failed to unzip: %w", err)
 			}
 			localPaths = append(localPaths, extractDir)
 			// Remove zip file to keep clean?
 			_ = os.Remove(localPath)
+
+			// Accumulate stats (approximate, since we don't track original size strictly for all files yet)
+			// Actually unzip returns the count/size of extracted content
+			// We should use a tracker struct or variables in the loop scope if we want accurate totals.
+			// But we don't have them yet. Let's trust the event emission at the end.
+			// Wait, I need to accumulate `totalFiles` and `totalSize`.
 		} else {
 			localPaths = append(localPaths, localPath)
+			// Single file count/size?
+			// stat, _ := os.Stat(localPath)
+			// size += stat.Size()
 		}
+	}
+
+	// Recalculate total stats from localPaths to be accurate
+	var totalFiles int
+	var totalSize int64
+	for _, p := range localPaths {
+		filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
+			if err == nil && !info.IsDir() {
+				totalFiles++
+				totalSize += info.Size()
+			}
+			return nil
+		})
 	}
 
 	// Write to Clipboard
@@ -339,18 +370,27 @@ func (a *App) ClipboardCopy(remotePaths []string, token string) error {
 		return fmt.Errorf("failed to write to clipboard: %w", err)
 	}
 
+	// Emit done with stats
+	runtime.EventsEmit(a.ctx, "clipboard-progress", map[string]interface{}{
+		"status":     "done",
+		"totalFiles": totalFiles,
+		"totalSize":  totalSize,
+	})
+
 	return nil
 }
 
-func unzip(src, dest string) error {
+func unzip(src, dest string) (int, int64, error) {
+	var count int
+	var size int64
 	r, err := zip.OpenReader(src)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 	defer r.Close()
 
 	if err := os.MkdirAll(dest, 0755); err != nil {
-		return err
+		return 0, 0, err
 	}
 
 	for _, f := range r.File {
@@ -358,7 +398,7 @@ func unzip(src, dest string) error {
 
 		// Check for ZipSlip
 		if !filepath.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
-			return fmt.Errorf("illegal file path: %s", fpath)
+			return 0, 0, fmt.Errorf("illegal file path: %s", fpath)
 		}
 
 		if f.FileInfo().IsDir() {
@@ -367,29 +407,33 @@ func unzip(src, dest string) error {
 		}
 
 		if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
-			return err
+			return 0, 0, err
 		}
 
 		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 		if err != nil {
-			return err
+			return 0, 0, err
 		}
 
 		rc, err := f.Open()
 		if err != nil {
 			outFile.Close()
-			return err
+			return 0, 0, err
 		}
 
-		_, err = io.Copy(outFile, rc)
+		// Copy
+		n, err := io.Copy(outFile, rc)
 		outFile.Close()
 		rc.Close()
 
 		if err != nil {
-			return err
+			return 0, 0, err
 		}
+
+		count++
+		size += n
 	}
-	return nil
+	return count, size, nil
 }
 
 // ClipboardPaste returns the list of file paths currently on the OS clipboard.

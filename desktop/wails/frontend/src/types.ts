@@ -57,4 +57,16 @@ export interface ConnectionProfile extends BaseProfile {
      * - "parallel": Always starts a new backend instance
      */
     mode?: string
+    monitoring?: {
+        enabled: boolean
+        interval: number
+    }
+}
+
+export interface Stats {
+    timestamp: number
+    cpu: number
+    memory: number
+    disk: number
+    uptime: number
 }

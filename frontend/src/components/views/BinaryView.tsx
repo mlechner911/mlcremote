@@ -1,5 +1,6 @@
 import React from 'react'
 import { statPath, makeUrl } from '../../api'
+import { triggerDownload } from '../../utils/download'
 import { formatBytes } from '../../utils/bytes'
 import { useTranslation } from 'react-i18next'
 import { ViewProps, FileHandler, DecideOpts } from '../../handlers/types'
@@ -40,7 +41,7 @@ export default function BinaryView({ path }: ViewProps) {
                     <div className="muted" style={{ fontSize: 12 }}>{path}</div>
                 </div>
                 <div>
-                    <a className="link" href={makeUrl(`/api/file?path=${encodeURIComponent(path)}&download=true`)} download={path.split(/[/\\]/).pop()}>{t('download')}</a>
+                    <a className="link" href="#" onClick={(e) => { e.preventDefault(); triggerDownload(path) }}>{t('download')}</a>
                 </div>
             </div>
             <div style={{ marginTop: 12 }}>

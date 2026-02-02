@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.4.5] - 2026-02-02
+**Server Monitoring**
+- **Real-time Stats**: View CPU, RAM, and Disk usage for connected servers.
+- **Visual Health Checks**: Sidebar status icons (Green Check for healthy, Color-coded Badges for critical usage).
+- **One-Shot Collection**: Robust stats gathering via SSH command, preserving data even if the main server process stops.
+- **Persistence**: Usage history is saved to `stats.jsonl` for historical trends.
+
+## [1.4.4] - 2026-01-24
+- **Bug Fixes**: Fixed "Properties" context menu action to correctly open Metadata view instead of Preview.
+- **Maintenance**: Removed unused NPM dependencies (`fix`, `pipe`, `audit`) from frontend.
+
+## [1.4.3] - 2026-01-24
+- **Bug Fixes**: Resolved issue where file properties (metadata) failed to load for valid files due to path ambiguity.
+- **Improvements**: File Explorer now defaults to the user's home directory on startup.
+- **Build**: Implemented automated installer build before push to ensure binary freshness.
+
 ## [1.4.2] - 2026-01-24
 - **Refactoring**: Split `files.go` into modular components (`files_read`, `files_write`, `trash`) for better maintainability.
 - **Documentation**: Added comprehensive GoDoc comments to `App` struct and file handlers.

@@ -73,7 +73,7 @@ export function useWorkspace(maxTabs = 8) {
         // Handle special tab IDs first (these use constants from specialTabs.ts)
         // The __special__ prefix ensures they never conflict with real file paths
         if (path === SPECIAL_TAB_IDS.METADATA) {
-            return createSpecialTab(path, 'metadata', label || 'Details', 'info', extra)
+            return createSpecialTab(path, 'metadata', label || 'Details', 'info', { ...extra, intent })
         } else if (path === SPECIAL_TAB_IDS.BINARY) {
             return createSpecialTab(path, 'binary', label || 'Binary View', 'file', extra)
         } else if (path === SPECIAL_TAB_IDS.TRASH) {

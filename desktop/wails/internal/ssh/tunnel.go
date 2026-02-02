@@ -44,11 +44,13 @@ func NewManager() *Manager {
 }
 
 // StartTunnel spawns an ssh -L localPort:remoteHost:remotePort user@host
+// StartTunnel spawns an ssh -L localPort:remoteHost:remotePort user@host
 func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (string, error) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	// No defer Unlock() here, we manage it manually to allow monitoring during sleep
 
 	if m.cmd != nil && m.cmd.Process != nil {
+		m.mu.Unlock()
 		return "already-running", nil
 	}
 
@@ -57,6 +59,7 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 
 	// Basic validation
 	if profile.User == "" || profile.Host == "" {
+		m.mu.Unlock()
 		return "", errors.New("missing user or host")
 	}
 	if profile.LocalPort == 0 {
@@ -71,13 +74,27 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 
 	// Verify DNS
 	if _, err := net.LookupHost(profile.Host); err != nil {
+		m.mu.Unlock()
 		return "unknown-host", nil
 	}
 
 	// Kill existing on 8443?
 	// Note: killPort was Windows specific in original, assume we keep it?
 	_ = m.KillPort(profile.LocalPort)
+	// We iterate KillPort? Or assume one kill is enough?
+	// Sometimes it takes time.
+
+	m.mu.Unlock()
+	// Release lock during sleep/setup to be nice?
+	// No, checking KillPort might need wait. But KillPort logic is internal.
 	time.Sleep(200 * time.Millisecond)
+	m.mu.Lock()
+
+	// Double check
+	if m.cmd != nil {
+		m.mu.Unlock()
+		return "already-running", nil
+	}
 
 	// Construct args
 	// ssh -L 8443:localhost:8443 -N user@host -i identityFile
@@ -114,6 +131,7 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 
 	if err := cmd.Start(); err != nil {
 		m.tunnelState = "error"
+		m.mu.Unlock()
 		return "", err
 	}
 
@@ -143,6 +161,23 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 	}()
 
 	m.activePort = profile.LocalPort
+
+	// Release lock to allow Monitor to acquire it if process exits immediately
+	m.mu.Unlock()
+
+	// Wait briefly to catch immediate startup errors (like port in use, auth fail)
+	time.Sleep(500 * time.Millisecond)
+
+	// Re-acquire lock to check status
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.cmd != cmd {
+		// The monitor goroutine has run and cleared m.cmd => Process exited!
+		m.tunnelState = "error"
+		return "failed", fmt.Errorf("tunnel process exited immediately (check logs or port conflict)")
+	}
+
 	return "started", nil
 }
 

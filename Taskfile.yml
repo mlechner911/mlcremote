@@ -36,6 +36,14 @@ tasks:
 
   icons:
     desc: Generate icons from raw assets
+    sources:
+      - icons/icons.yml
+      - icons/raw/**/*
+    generates:
+      - frontend/src/generated/icons.tsx
+      - frontend/src/generated/icons-sprite.svg
+      - desktop/wails/frontend/src/generated/icons.tsx
+      - desktop/wails/frontend/src/generated/icons-sprite.svg
     cmds:
       - cmd: cd cmd/icon-gen && go run . --manifest ../../icons/icons.yml --raw ../../icons/raw --out ../../frontend/src/generated
       - cmd: cd cmd/icon-gen && go run . --manifest ../../icons/icons.yml --raw ../../icons/raw --out ../../desktop/wails/frontend/src/generated
@@ -156,12 +164,31 @@ tasks:
   # ============================================================================
   # FRONTEND
   # ============================================================================
+  frontend:install:
+    desc: Install frontend dependencies
+    dir: '{{.FRONTEND_DIR}}'
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.package-lock.json
+    cmds:
+      - npm install
+
   frontend:build:
     desc: Build React Frontend
     dir: '{{.FRONTEND_DIR}}'
-    deps: [icons]
+    deps: [icons, frontend:install]
+    sources:
+      - src/**/*
+      - public/**/*
+      - index.html
+      - package.json
+      - tsconfig.json
+      - vite.config.ts
+    generates:
+      - dist/index.html
     cmds:
-      - npm install
       - npx orval
       - npm run build
 
@@ -216,7 +243,8 @@ tasks:
     deps: [payload:all]
     cmds:
       - docker build -t mlcremote-builder -f docker/build-linux/Dockerfile .
-      - docker run --rm -v "{{.ROOT_DIR}}/dist/linux:/out" mlcremote-builder
+      # Mount source, output, and create volumes for caches to speed up re-builds
+      - docker run --rm -v "{{.ROOT_DIR}}/dist/linux:/out" -v "{{.ROOT_DIR}}:/app" -v mlcrm-go:/go/pkg/mod -v mlcrm-npm:/root/.npm -v mlcrm-node-modules:/app/desktop/wails/frontend/node_modules mlcremote-builder
     vars:
       ROOT_DIR:
         sh: pwd
@@ -243,6 +271,17 @@ tasks:
       - task: installer
       - task: linux:bin
       - echo "Release build complete. Check {{.DIST_DIR}}/"
+
+  # ============================================================================
+  # GIT WORKFLOW
+  # ============================================================================
+  push:
+    desc: Build installer, commit binary, and push to remote
+    deps: [installer]
+    cmds:
+      - git add {{.DIST_DIR}}/*installer.exe
+      - 'git commit -m "chore: update installer binary" || echo "Nothing to commit"'
+      - git push
 
   clean:
     desc: Clean all artifacts

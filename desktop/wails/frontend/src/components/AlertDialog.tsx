@@ -1,4 +1,5 @@
 import React from 'react'
+import ReactDOM from 'react-dom'
 import { Icon } from '../generated/icons'
 import { useI18n } from '../utils/i18n'
 
@@ -32,9 +33,9 @@ export default function AlertDialog({
     const isQuestion = type === 'question'
     const isProgress = type === 'progress'
 
-    return (
+    return ReactDOM.createPortal(
         <div style={{
-            position: 'fixed', inset: 0, zIndex: 10000,
+            position: 'fixed', inset: 0, zIndex: 10001,
             background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }} onClick={isProgress ? undefined : onClose}>
@@ -97,6 +98,7 @@ export default function AlertDialog({
             <style>{`
                 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
             `}</style>
-        </div>
+        </div>,
+        document.body
     )
 }

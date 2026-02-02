@@ -35,6 +35,7 @@ type healthInfo struct {
 	StartTime    string  `json:"start_time,omitempty"`
 	PasswordAuth bool    `json:"password_auth"`
 	AuthRequired bool    `json:"auth_required"`
+	HomeDir      string  `json:"home_dir,omitempty"`
 }
 
 // Health returns a handler that serves health info.
@@ -49,13 +50,16 @@ func Health(passwordAuth bool, authRequired bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var info healthInfo
 		info.Status = "ok"
-		info.Version = "0.3.2"
+		info.Version = "0.3.4" // Backend patch bump
 		info.PasswordAuth = passwordAuth
 		info.AuthRequired = authRequired
 		info.PID = os.Getpid()
 		info.StartTime = startTime.Format("2006-01-02 15:04:05")
 		if hn, err := os.Hostname(); err == nil {
 			info.Host = hn
+		}
+		if home, err := os.UserHomeDir(); err == nil {
+			info.HomeDir = home
 		}
 
 		info.OS = runtime.GOOS

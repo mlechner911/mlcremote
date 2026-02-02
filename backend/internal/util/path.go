@@ -74,5 +74,6 @@ func SanitizePath(root string, req string) (string, error) {
 	// Strategy 2: Treat as relative to root
 	clean := filepath.Clean(strings.TrimPrefix(req, "/"))
 	candidate := filepath.Join(root, clean)
+	// fmt.Printf("[DEBUG] SanitizePath Strategy 2: req=%s clean=%s candidate=%s\n", req, clean, candidate)
 	return validate(candidate)
 }

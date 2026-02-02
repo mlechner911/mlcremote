@@ -117,5 +117,9 @@
     "path": "Chemin",
     "type": "Type",
     "directory": "Répertoire",
-    "binary_download_msg": "(Fichier binaire ou non pris en charge)"
+    "binary_download_msg": "(Fichier binaire ou non pris en charge)",
+    "open_terminal_here": "Ouvrir le terminal ici",
+    "upload_file": "Téléverser un fichier",
+    "copy_to_local": "Copier dans le presse-papiers local",
+    "paste_from_local": "Coller du presse-papiers local"
 }

@@ -1,4 +1,5 @@
 import React from 'react'
+import { triggerDownload } from './utils/download'
 import { statPath, saveSettings, makeUrl, DirEntry, getToken, uploadFile, renameFile, deleteFile, subscribeToEvents } from './api'
 import { HealthInfo, Settings } from './api/generated.schemas'
 import { useAuth } from './context/AuthContext'
@@ -68,21 +69,25 @@ function AppInner() {
   // reloadSignal is used to force-refresh the file explorer.
   // We can update it when health updates (successful auth).
   const [reloadSignal, setReloadSignal] = React.useState<number>(0)
+  const [selectedPath, setSelectedPath] = React.useState<string>('')
+  const [explorerDir, setExplorerDir] = React.useState<string>('')
+  const [focusRequest, setFocusRequest] = React.useState<number>(0)
+
   const prevHealthRef = React.useRef<HealthInfo | null>(null)
   React.useEffect(() => {
     // Only trigger reload when we transition from no-health to health (e.g. login/connect)
     if (!prevHealthRef.current && health) {
       setReloadSignal(Date.now())
+      // Default to home directory if no root is set
+      if ((!explorerDir || explorerDir === '/') && (health as any).home_dir) {
+        const home = (health as any).home_dir
+        console.log('[App] Defaulting root to home:', home)
+        setExplorerDir(home)
+        setSelectedPath(home)
+      }
     }
     prevHealthRef.current = health
-  }, [health])
-
-  const [selectedPath, setSelectedPath] = React.useState<string>('')
-  const [explorerDir, setExplorerDir] = React.useState<string>('')
-  const [focusRequest, setFocusRequest] = React.useState<number>(0)
-
-
-  // -- Layout State --
+  }, [health, explorerDir])
 
   /* Hook Integration */
   const {
@@ -612,7 +617,8 @@ function AppInner() {
               icon: <Icon name={getIcon('info')} />,
               action: () => {
                 setSelectedPath(contextMenu.entry.path)
-                openFile(SPECIAL_TAB_IDS.METADATA)
+                // Pass 'metadata' intent to force defaultMode='metadata' in UnifiedView
+                openFile(SPECIAL_TAB_IDS.METADATA, undefined, undefined, 'metadata')
               }
             },
             ...(contextMenu.entry.isDir ? [
@@ -706,14 +712,7 @@ function AppInner() {
                 label: t('download', 'Download'),
                 icon: <Icon name="icon-download" />,
                 action: () => {
-                  const token = getToken()
-                  const url = makeUrl(`/api/file?path=${encodeURIComponent(contextMenu.entry.path)}&token=${token}&download=true`)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = contextMenu.entry.name
-                  document.body.appendChild(a)
-                  a.click()
-                  document.body.removeChild(a)
+                  triggerDownload(contextMenu.entry.path)
                 }
               }
             ]),
