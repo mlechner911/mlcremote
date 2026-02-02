@@ -5,7 +5,7 @@ MLCRemote provides a rich set of features for file management and editing. This 
 ## File Previews
 The unified "Smart Preview" system automatically detects file types and renders them appropriately.
 
-### 🖼️ Images
+###  Images
 Supported formats (via Image Viewer):
 - `.png`
 - `.jpg` / `.jpeg`
@@ -13,7 +13,7 @@ Supported formats (via Image Viewer):
 - `.webp`
 - `.svg` (Rendered as image, editable as code)
 
-### 🎬 Video
+###  Video
 Supported formats (via HTML5 Video Player):
 - `.mp4`
 - `.webm`
