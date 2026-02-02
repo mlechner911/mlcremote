@@ -49,6 +49,7 @@ desktop/wails/frontend/wailsjs/
 
 # Temporary data
 tmp/
+*.log
 
 # Allow installer binary
 !dist/*installer.exe
