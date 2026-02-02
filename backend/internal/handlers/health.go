@@ -50,7 +50,7 @@ func Health(passwordAuth bool, authRequired bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var info healthInfo
 		info.Status = "ok"
-		info.Version = "0.3.4" // Backend patch bump
+		info.Version = "1.4.6" // Backend patch bump
 		info.PasswordAuth = passwordAuth
 		info.AuthRequired = authRequired
 		info.PID = os.Getpid()

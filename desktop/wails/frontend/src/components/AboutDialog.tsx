@@ -22,7 +22,7 @@ export default function AboutDialog({ onClose }: AboutDialogProps) {
                 <div style={{ textAlign: 'center', marginBottom: 24 }}>
                     <h2 style={{ margin: '0 0 8px', fontSize: '1.5rem' }}>{t('app_title')}</h2>
                     <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                        {t('version')} 1.4.5
+                        {t('version')} 1.4.6
                     </div>
                 </div>
 

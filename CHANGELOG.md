@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.4.6] - 2026-02-02
+- **UI**: Fixed version display in About dialog.
+- **Maintenance**: Minor version bump to align backend and desktop flavors.
+
 ## [1.4.5] - 2026-02-02
 **Server Monitoring & Audio Support**
 - **Real-time Stats**: View CPU, RAM, and Disk usage for connected servers.
