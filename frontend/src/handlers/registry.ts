@@ -9,11 +9,13 @@ import { TextHandler } from '../components/views/TextView'
 import { BinaryHandler } from '../components/views/BinaryView'
 import { UnsupportedHandler } from '../components/views/UnsupportedView'
 
+import { AudioHandler } from '../components/views/AudioView'
 import { SvgHandler } from '../components/views/SvgView'
 
 const handlers: FileHandler[] = [
     ShellHandler,
     PdfHandler,
+    AudioHandler,
     SvgHandler,
     ImageHandler,
     VideoHandler,

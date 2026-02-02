@@ -82,7 +82,7 @@ func (c *FileCollector) loop() {
 }
 
 func (c *FileCollector) collect() {
-	stat := c.collectInternal()
+	stat := c.collectInternal(0)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -102,7 +102,8 @@ func (c *FileCollector) collect() {
 
 // CollectAndSave runs a single collection, saves to file, and returns the stats.
 func (c *FileCollector) CollectAndSave() (SystemStats, error) {
-	stat := c.collectInternal()
+	// Use a 1s warmup to get accurate instantaneous CPU usage
+	stat := c.collectInternal(1 * time.Second)
 
 	// We still update history just in case, though for one-shot CLI it matters less (memory is transient)
 	// But catching the lock is good practice.
@@ -120,13 +121,15 @@ func (c *FileCollector) CollectAndSave() (SystemStats, error) {
 	return stat, nil
 }
 
-func (c *FileCollector) collectInternal() SystemStats {
+func (c *FileCollector) collectInternal(warmup time.Duration) SystemStats {
 	stat := SystemStats{
 		Timestamp: time.Now().Unix(),
 	}
 
 	// CPU
-	if pct, err := cpu.Percent(0, false); err == nil && len(pct) > 0 {
+	// If warmup > 0, this blocks for 'warmup' to measure delta.
+	// If warmup == 0, it measures delta since last call (or 0 if first call).
+	if pct, err := cpu.Percent(warmup, false); err == nil && len(pct) > 0 {
 		stat.CPU = pct[0]
 	}
 

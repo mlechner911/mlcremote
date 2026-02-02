@@ -136,5 +136,18 @@
     "open_terminal_here": "Open Terminal Here",
     "upload_file": "Upload File",
     "copy_to_local": "Copy to Local Clipboard",
-    "paste_from_local": "Paste from Local Clipboard"
+    "paste_from_local": "Paste from Local Clipboard",
+    "audio_playback_failed": "Audio playback failed. The format might not be supported.",
+    "playback_error": "Playback Error",
+    "download_audio": "Download Audio",
+    "audio_preview": "Audio Preview",
+    "audio_not_supported": "Your browser does not support the audio element.",
+    "video_playback_failed": "Video playback failed. The format might not be supported.",
+    "download_video": "Download Video",
+    "video_not_supported": "Your browser does not support the video tag.",
+    "stale_data_tooltip": "Stale Data (Server may be down)",
+    "all_systems_healthy": "All Systems Healthy",
+    "high_usage_tooltip": "High {{label}}: {{value}}%",
+    "ram": "RAM",
+    "disk_short": "DSK"
 }

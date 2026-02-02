@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/mlechner911/mlcremote/desktop/wails/internal/monitoring"
 )
@@ -20,6 +21,9 @@ func (a *App) pollStats(cfg monitoring.MonitoringConfig) (monitoring.Stats, erro
 	// This ensures we get fresh data even if the main server process is not running.
 	// It also persists the data to stats.jsonl.
 	cmd := "~/.mlcremote/bin/dev-server stats"
+	if profile.IsWindows || strings.Contains(strings.ToLower(profile.RemoteOS), "windows") {
+		cmd = "%USERPROFILE%\\.mlcremote\\bin\\dev-server.exe stats"
+	}
 
 	// 3. Run Command
 	output, err := a.SSH.RunCommand(profile.Host, profile.User, profile.Port, "", profile.IdentityFile, cmd)

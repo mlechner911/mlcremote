@@ -58,6 +58,9 @@ are also unusable for small VPS or home servers.
   <img src="screenshots/example.png" width="45%" alt="File Editor">
   <img src="screenshots/image_preview.png" width="45%" alt="Image Preview">
 </p>
+<p align="center">
+  <img src="screenshots/server_monitoring.png" width="91%" alt="Server Monitoring">
+</p>
 
 ## Quick Start (Windows)
 

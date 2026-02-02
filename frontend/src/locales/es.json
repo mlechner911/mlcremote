@@ -121,5 +121,18 @@
     "open_terminal_here": "Abrir terminal aquí",
     "upload_file": "Subir archivo",
     "copy_to_local": "Copiar al portapapeles local",
-    "paste_from_local": "Pegar del portapapeles local"
+    "paste_from_local": "Pegar del portapapeles local",
+    "audio_playback_failed": "La reproducción de audio falló. Formato no compatible.",
+    "playback_error": "Error de reproducción",
+    "download_audio": "Descargar audio",
+    "audio_preview": "Vista previa de audio",
+    "audio_not_supported": "Tu navegador no soporta el elemento de audio.",
+    "video_playback_failed": "La reproducción de video falló. Formato no compatible.",
+    "download_video": "Descargar video",
+    "video_not_supported": "Tu navegador no soporta la etiqueta de video.",
+    "stale_data_tooltip": "Datos obsoletos (El servidor puede estar caído)",
+    "all_systems_healthy": "Todos los sistemas saludables",
+    "high_usage_tooltip": "Alto uso {{label}}: {{value}}%",
+    "ram": "RAM",
+    "disk_short": "DSK"
 }

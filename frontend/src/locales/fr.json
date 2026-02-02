@@ -121,5 +121,18 @@
     "open_terminal_here": "Ouvrir le terminal ici",
     "upload_file": "Téléverser un fichier",
     "copy_to_local": "Copier dans le presse-papiers local",
-    "paste_from_local": "Coller du presse-papiers local"
+    "paste_from_local": "Coller depuis le presse-papiers local",
+    "audio_playback_failed": "La lecture audio a échoué. Format non supporté.",
+    "playback_error": "Erreur de lecture",
+    "download_audio": "Télécharger l'audio",
+    "audio_preview": "Aperçu audio",
+    "audio_not_supported": "Votre navigateur ne supporte pas l'élément audio.",
+    "video_playback_failed": "La lecture vidéo a échoué. Format non supporté.",
+    "download_video": "Télécharger la vidéo",
+    "video_not_supported": "Votre navigateur ne supporte pas la balise vidéo.",
+    "stale_data_tooltip": "Données périmées (Le serveur peut être hors ligne)",
+    "all_systems_healthy": "Tous les systèmes sont sains",
+    "high_usage_tooltip": "Utilisation élevée {{label}}: {{value}}%",
+    "ram": "RAM",
+    "disk_short": "DSK"
 }

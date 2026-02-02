@@ -131,5 +131,18 @@
     "open_terminal_here": "Terminal hier öffnen",
     "upload_file": "Datei hochladen",
     "copy_to_local": "In lokale Zwischenablage kopieren",
-    "paste_from_local": "Aus lokaler Zwischenablage einfügen"
+    "paste_from_local": "Aus lokaler Zwischenablage einfügen",
+    "audio_playback_failed": "Audiowiedergabe fehlgeschlagen. Format nicht unterstützt.",
+    "playback_error": "Wiedergabefehler",
+    "download_audio": "Audio herunterladen",
+    "audio_preview": "Audio-Vorschau",
+    "audio_not_supported": "Dein Browser unterstützt das Audio-Element nicht.",
+    "video_playback_failed": "Videowiedergabe fehlgeschlagen. Format nicht unterstützt.",
+    "download_video": "Video herunterladen",
+    "video_not_supported": "Dein Browser unterstützt das Video-Tag nicht.",
+    "stale_data_tooltip": "Veraltete Daten (Server evtl. nicht erreichbar)",
+    "all_systems_healthy": "Alle Systeme in Ordnung",
+    "high_usage_tooltip": "Hohe Auslastung {{label}}: {{value}}%",
+    "ram": "RAM",
+    "disk_short": "DSK"
 }

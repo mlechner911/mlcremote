@@ -70,17 +70,18 @@ export default function ConnectionSidebar({
                                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color || '#666' }} />
                                 {p.monitoring?.enabled && (
                                     <div style={{
-                                        position: 'absolute', bottom: -4, right: -4,
+                                        position: 'absolute', bottom: -5, right: -5,
                                         background: 'var(--bg-panel)',
                                         borderRadius: '50%',
-                                        padding: 1
+                                        padding: 2,
+                                        boxShadow: '0 0 0 1px var(--bg-panel)'
                                     }}>
                                         {(() => {
                                             if (!isFresh) {
-                                                return <Icon name="icon-warning" size={12} className="muted" title="Stale Data (Server may be down)" />
+                                                return <div title={t('stale_data_tooltip', 'Stale Data (Server may be down)')} style={{ color: 'var(--text-muted)' }}><Icon name="icon-warning" size={14} /></div>
                                             }
                                             if (isHealthy) {
-                                                return <div style={{ color: '#10b981' }} title="All Systems Healthy"><Icon name="icon-check" size={12} /></div>
+                                                return <div style={{ color: '#10b981', filter: 'drop-shadow(0 0 1px rgba(16,185,129,0.3))' }} title={t('all_systems_healthy', 'All Systems Healthy')}><Icon name="icon-check" size={14} /></div>
                                             }
                                             // Determine max usage
                                             const max = Math.max(stat?.cpu || 0, stat?.memory || 0, stat?.disk || 0)
@@ -88,17 +89,17 @@ export default function ConnectionSidebar({
                                             let color = '#f59e0b' // orange
                                             if (max > 90) color = '#ef4444' // red
 
-                                            if ((stat?.cpu || 0) === max) label = 'CPU'
-                                            else if ((stat?.memory || 0) === max) label = 'RAM'
-                                            else label = 'DSK'
+                                            if ((stat?.cpu || 0) === max) label = t('cpu', 'CPU')
+                                            else if ((stat?.memory || 0) === max) label = t('ram', 'RAM')
+                                            else label = t('disk_short', 'DSK') // disk
 
                                             return (
                                                 <div style={{
-                                                    fontSize: 9, fontWeight: 'bold', color: '#fff',
-                                                    background: color, padding: '0 3px', borderRadius: 3,
-                                                    height: 12, display: 'flex', alignItems: 'center',
-                                                    border: '1px solid var(--bg-panel)'
-                                                }} title={`High ${label}: ${max.toFixed(0)}%`}>
+                                                    fontSize: 10, fontWeight: 700, color: '#fff',
+                                                    background: color, padding: '1px 4px', borderRadius: 4,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    boxShadow: '0 0 0 1px var(--bg-panel)'
+                                                }} title={t('high_usage_tooltip', { label, value: max.toFixed(0) })}>
                                                     {label}
                                                 </div>
                                             )

@@ -1,10 +1,13 @@
 # Changelog
 
 ## [1.4.5] - 2026-02-02
-**Server Monitoring**
+**Server Monitoring & Audio Support**
 - **Real-time Stats**: View CPU, RAM, and Disk usage for connected servers.
-- **Visual Health Checks**: Sidebar status icons (Green Check for healthy, Color-coded Badges for critical usage).
-- **One-Shot Collection**: Robust stats gathering via SSH command, preserving data even if the main server process stops.
+- **Visual Health Checks**: Sidebar status icons and color-coded badges for critical usage.
+- **Audio Preview**: Integrated player for `.mp3`, `.wav`, `.ogg`, `.flac`, `.aac`, `.m4a`.
+- **Localization**: Full translation for Monitoring and Audio features (EN, DE, FR, ES).
+- **Documentation**: New `FEATURES.md` listing all 15+ supported syntax highlighting languages.
+- **One-Shot Collection**: Robust stats gathering via SSH command.
 - **Persistence**: Usage history is saved to `stats.jsonl` for historical trends.
 
 ## [1.4.4] - 2026-01-24
