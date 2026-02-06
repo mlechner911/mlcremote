@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.8] - 2026-02-06
+- **System**: Implemented frontend-backend version checking with mismatch warnings.
+- **Improved**: Terminal busy detection now supports both Windows (via child process tracking) and Unix (hybrid IOCTL + child process detection).
+- **UI**: Fixed untranslated strings for status and version info.
+- **UI**: Corrected Markdown edit toggle icon from "shell" to "pencil".
+
+## [1.4.7] - 2026-02-06
+- **UI**: Enabled switching from **Preview** to **Edit** mode for Markdown and SVG files.
+- **Improved**: Tab management now supports view type transitions (e.g. Preview -> Source) for already open tabs.
+
 ## [1.4.6] - 2026-02-02
 - **UI**: Fixed version display in About dialog.
 - **Maintenance**: Minor version bump to align backend and desktop flavors.

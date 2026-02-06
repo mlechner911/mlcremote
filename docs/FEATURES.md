@@ -11,7 +11,7 @@ Supported formats (via Image Viewer):
 - `.jpg` / `.jpeg`
 - `.gif`
 - `.webp`
-- `.svg` (Rendered as image, editable as code)
+- `.svg` (Visual preview with toggle to source code)
 
 ###  Video
 Supported formats (via HTML5 Video Player):
@@ -30,7 +30,7 @@ Supported formats (via HTML5 Audio Player):
 
 ### 📄 Documents
 - **PDF**: Full in-app PDF viewer with pagination and zoom (`.pdf`).
-- **Markdown**: Live preview of Markdown rendering (`.md`, `.markdown`).
+- **Markdown**: Live preview of Markdown rendering with toggle to source code (`.md`, `.markdown`).
 - **Archive**: Read-only content listing for archives (`.zip`, `.tar`, `.tar.gz`, `.tgz`).
 
 ## Syntax Highlighting

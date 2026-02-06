@@ -89,7 +89,7 @@ func WsTerminalHandler(root string, debug bool, serverPort *int) http.HandlerFun
 			log.Printf("WsTerminalHandler: creating session with env: %v", env)
 
 			// create a tracked terminal session so ShutdownAllSessions can close it
-			s, err := newTerminalSession(shell, cwd, env)
+			s, err := newTerminalSession("", shell, cwd, env)
 			if err != nil {
 				log.Printf("failed to start shell for ephemeral ws: %v", err)
 				_ = conn.WriteMessage(websocket.TextMessage, []byte("failed to start shell: "+err.Error()))

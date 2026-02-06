@@ -39,7 +39,11 @@ interface AppHeaderProps {
     uiMode: 'classic' | 'modern'
     onToggleUiMode: (v: 'classic' | 'modern') => void
     i18n: any
+    health: any
+    isOnline: boolean
 }
+
+import { FRONTEND_VERSION } from '../version'
 
 export default function AppHeader(props: AppHeaderProps) {
     const { t } = useTranslation()
@@ -64,7 +68,8 @@ export default function AppHeader(props: AppHeaderProps) {
 
         maxEditorSize, updateMaxEditorSize,
         uiMode, onToggleUiMode,
-        i18n
+        i18n,
+        health, isOnline
     } = props
 
     const handleThemeToggle = () => {
@@ -74,10 +79,29 @@ export default function AppHeader(props: AppHeaderProps) {
         else onToggleTheme('auto')
     }
 
+    const versionMismatch = health && health.version && health.version !== FRONTEND_VERSION
+
     return (
         <header className="app-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <img src="/logo.png" alt="MLCRemote logo" style={{ height: 28, display: 'block' }} onLoad={() => setLogoVisible(true)} onError={() => setLogoVisible(false)} />
+                <div style={{ position: 'relative' }}>
+                    <img
+                        src="/logo.png"
+                        alt="MLCRemote logo"
+                        style={{ height: 28, display: 'block', cursor: 'help' }}
+                        onLoad={() => setLogoVisible(true)}
+                        onError={() => setLogoVisible(false)}
+                        title={`${t('backend_version')}: ${health?.version || t('unknown')} | ${t('frontend_version')}: ${FRONTEND_VERSION}`}
+                    />
+                    {versionMismatch && (
+                        <div
+                            style={{ position: 'absolute', top: -4, right: -4, color: '#f59e0b', background: 'var(--bg)', borderRadius: '50%', display: 'flex' }}
+                            title={t('version_mismatch', { backend: health.version, frontend: FRONTEND_VERSION })}
+                        >
+                            <Icon name="icon-warning" size={12} />
+                        </div>
+                    )}
+                </div>
                 {!logoVisible && <h1 style={{ margin: 0 }}>MLCRemote</h1>}
             </div>
             <div className="status">

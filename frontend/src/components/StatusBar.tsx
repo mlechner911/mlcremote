@@ -3,6 +3,7 @@ import { HealthInfo } from '../api/generated.schemas'
 import { formatBytes } from '../utils/bytes'
 import { Icon } from '../generated/icons'
 import { useTranslation } from 'react-i18next'
+import { FRONTEND_VERSION } from '../version'
 
 type Props = {
     health: HealthInfo | null
@@ -62,6 +63,24 @@ export default function StatusBar({ health, isOnline, hideMemoryUsage, lastHealt
                     }} />
                     <span>{health && health.host ? health.host : (isOnline ? t('connecting') : t('offline', 'Offline'))}</span>
                 </div>
+
+                {/* Version Display & Warning */}
+                {health && health.version && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span className="sep hide-sm" />
+                        <span className="hide-sm" title={`${t('backend_version')}: ${health.version} | ${t('frontend_version')}: ${FRONTEND_VERSION}`}>
+                            v{health.version}
+                        </span>
+                        {health.version !== FRONTEND_VERSION && (
+                            <span
+                                style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', cursor: 'help' }}
+                                title={t('version_mismatch', { backend: health.version, frontend: FRONTEND_VERSION })}
+                            >
+                                <Icon name="icon-alert-triangle" size={14} />
+                            </span>
+                        )}
+                    </div>
+                )}
 
                 {/* Online Status */}
                 <span className={isOnline ? 'ok' : 'err'} title={isOnline ? t('status_connected') : t('disconnected')}>

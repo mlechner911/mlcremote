@@ -223,6 +223,7 @@ func (s *Server) Routes() {
 	// Register LogsHandler
 	s.Mux.Handle("/api/logs", handlers.LogsHandler())
 	s.Mux.HandleFunc("/api/terminal/new", handlers.NewTerminalAPI(s.Root, &s.Port))
+	s.Mux.HandleFunc("/api/terminal/status", handlers.TerminalStatusAPI)
 	s.Mux.HandleFunc("/api/terminal/cwd", handlers.UpdateCwdHandler(s.Watcher, s.Root))
 	s.Mux.HandleFunc("/api/command", handlers.SendCommandHandler(s.Watcher, s.Root))
 	s.Mux.Handle("/api/file", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

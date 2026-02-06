@@ -13,7 +13,7 @@ import { getIcon } from '../../generated/icon-helpers'
 const MAX_PREVIEW_SIZE = 512 * 1024
 
 interface UnifiedViewProps extends ViewProps {
-    onOpen?: (path: string, type?: any) => void
+    onOpen?: (path: string, type?: any, label?: string, intent?: any) => void
     defaultMode?: 'preview' | 'metadata'
 }
 
@@ -149,7 +149,7 @@ export default function UnifiedView({ path, onOpen, defaultMode = 'preview' }: U
                 {canEdit && (
                     <button
                         className="btn btn-sm"
-                        onClick={() => onOpen && onOpen(path, 'editor')}
+                        onClick={() => onOpen && onOpen(path, 'editor', undefined, 'edit')}
                         title={t('open_in_editor')}
                     >
                         <span style={{ marginRight: 6 }}><Icon name={getIcon('edit')} /></span>

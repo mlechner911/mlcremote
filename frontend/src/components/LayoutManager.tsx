@@ -7,6 +7,7 @@ import { getIcon } from '../generated/icon-helpers'
 import { useDialog } from '../context/DialogContext'
 import { SPECIAL_TAB_IDS } from '../constants/specialTabs'
 import { DirEntry } from '../api'
+import { authedFetch } from '../utils/auth'
 
 // Components
 import TabBarComponent from './TabBar'
@@ -168,7 +169,7 @@ export default function LayoutManager(props: LayoutManagerProps) {
             }
         }
 
-        const onClose = (id: string) => {
+        const onClose = async (id: string) => {
             const p = panes[paneId]
             if (!p) return
 
@@ -188,6 +189,27 @@ export default function LayoutManager(props: LayoutManagerProps) {
                     }
                     return { ...prev, [paneId]: { ...p2, tabs: nextTabs, activeTabId: nextActive } }
                 })
+            }
+
+            const tabToClose = pTabs.find(t => t.id === id)
+            if (tabToClose?.type === 'terminal') {
+                try {
+                    const r = await authedFetch(`/api/terminal/status?session=${encodeURIComponent(id)}`)
+                    if (r.ok) {
+                        const j = await r.json()
+                        if (j.busy) {
+                            showDialog({
+                                title: t('terminal_busy', 'Terminal Busy'),
+                                message: t('confirm_close_busy_terminal', 'A process is still running in this terminal. Close anyway?'),
+                                confirmLabel: t('close_anyway', 'Close Anyway'),
+                                onConfirm: doClose
+                            })
+                            return
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Busy check failed', e)
+                }
             }
 
             const hasUnsaved = unsavedChanges[id]
@@ -270,15 +292,14 @@ export default function LayoutManager(props: LayoutManagerProps) {
                                                 return (
                                                     <React.Suspense fallback={<div className="muted">{t('loading')}</div>}>
                                                         <TerminalTab
-                                                            shell={(() => {
-                                                                const urlShell = new URLSearchParams(window.location.search).get('shell')
-                                                                return urlShell || (settings && settings.defaultShell) || 'bash'
-                                                            })()}
-                                                            path={shellCwds[tab.id] || ''}
+                                                            id={tab.id}
+                                                            shell={tab.metadata?.shell || props.settings?.defaultShell || 'bash'}
+                                                            path={tab.path}
                                                             label={tab.label}
                                                             initialCommand={commandSignals[tab.id]?.cmd}
                                                             commandSignal={commandSignals[tab.id]}
-                                                            onExit={() => onClose(tab.id)}
+                                                            onExit={() => onClose && onClose(tab.id)}
+                                                            isActive={tab.id === pActiveId}
                                                         />
                                                     </React.Suspense>
                                                 )

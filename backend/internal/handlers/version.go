@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 )
 
@@ -15,5 +16,8 @@ import (
 func VersionHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"backend":"1.4.6","frontendCompatible":"^1.1"}`))
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"backend":            BackendVersion,
+		"frontendCompatible": FrontendCompatibleVersion,
+	})
 }

@@ -320,11 +320,12 @@ function AppInner() {
           // Always set a new signal with current timestamp to trigger effect
           setCommandSignals(s => ({ ...s, [shellName]: { cmd, ts: Date.now() } }))
 
-          // This will focus if exists, or open new if not
-          // we pass icon and color as extra metadata
+          // we pass icon and color as extra metadata, and the real path (cwd)
           const extra = {
             icon: e.data.icon,
-            iconColor: e.data.color
+            iconColor: e.data.color,
+            path: '/', // Tasks always start in root for now
+            label: name
           }
           openFile(shellName, 'terminal', name, undefined, extra)
         }
@@ -415,7 +416,7 @@ function AppInner() {
                 terminalPath = parts.join('/') || '/'
               }
               setShellCwds(s => ({ ...s, [shellName]: terminalPath }))
-              openFile(shellName, 'terminal', 'Terminal')
+              openFile(shellName, 'terminal', 'Terminal', undefined, { path: terminalPath, label: 'Terminal' })
             }}
             onOpenTrash={() => {
               openFile(SPECIAL_TAB_IDS.TRASH, 'custom', 'Trash')
@@ -627,9 +628,10 @@ function AppInner() {
                 icon: <Icon name={getIcon('terminal')} />,
                 action: () => {
                   const path = contextMenu.entry.path
-                  const id = `shell-${Date.now()}?cwd=${encodeURIComponent(path)}`
+                  const id = `shell-${Date.now()}`
                   // Force type 'terminal' and explicitly use directory path as label
-                  openFile(id, 'terminal', path)
+                  // We also pass path in extra to ensure it's set as tab.path in useWorkspace
+                  openFile(id, 'terminal', path, undefined, { path, label: path })
                 }
               },
               {

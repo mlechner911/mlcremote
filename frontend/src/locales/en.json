@@ -65,9 +65,11 @@
     "size": "Size",
     "mode": "Mode",
     "last_modified": "Last Modified",
+    "last_checked": "Last checked",
     "is_dir": "Is Dir",
     "yes": "Yes",
     "no": "No",
+    "status_connected": "Connected",
     "loading_metadata": "Loading metadata...",
     "open_or_create_file": "Open or create a file to edit",
     "close_others": "Close Others",
@@ -149,5 +151,11 @@
     "all_systems_healthy": "All Systems Healthy",
     "high_usage_tooltip": "High {{label}}: {{value}}%",
     "ram": "RAM",
-    "disk_short": "DSK"
+    "disk_short": "DSK",
+    "backend_version": "Backend Version",
+    "frontend_version": "Frontend Version",
+    "version_mismatch": "Version Mismatch! Your backend ({{backend}}) is older than your frontend ({{frontend}}). Some features might not work correctly.",
+    "terminal_busy": "Terminal Busy",
+    "confirm_close_busy_terminal": "A process is still running in this terminal. Close anyway?",
+    "close_anyway": "Close Anyway"
 }

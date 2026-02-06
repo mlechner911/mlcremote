@@ -38,17 +38,20 @@ var (
 )
 
 // newTerminalSession starts a PTY running the given shell and registers it.
-func newTerminalSession(shell string, cwd string, extraEnv []string) (*terminalSession, error) {
+// If id is empty, a new one is generated.
+func newTerminalSession(id string, shell string, cwd string, extraEnv []string) (*terminalSession, error) {
 	if shell == "" {
-		// shell = detectDefaultShell() // implicitly handled by ResolveRequestedShell or StartShellPTY fallbacks?
-		// Actually StartShellPTY handles fallbacks.
+		// ...
 	}
 	tty, cmd, err := termutil.StartShellPTY(shell, cwd, extraEnv)
 	if err != nil {
 		return nil, err
 	}
+	if id == "" {
+		id = termutil.GenerateSessionID()
+	}
 	s := &terminalSession{
-		id:    termutil.GenerateSessionID(),
+		id:    id,
 		tty:   tty,
 		cmd:   cmd,
 		conns: make(map[*websocket.Conn]struct{}),
@@ -122,8 +125,13 @@ func (s *terminalSession) resize(cols, rows int) error {
 	return nil
 }
 
+// IsBusy returns true if the session has a foreground process running (other than the shell).
+func (s *terminalSession) IsBusy() bool {
+	log.Printf("terminal: IsBusy check for session=%s", s.id)
+	return isBusySession(s)
+}
+
 // close cleanly shuts down the session by closing all websockets and the PTY.
-// we kill the child process if still running after closing the PTY.
 func (s *terminalSession) close() {
 	sessionsMu.Lock()
 	for c := range s.conns {
@@ -202,10 +210,11 @@ func ShutdownAllSessions() {
 // @Router /api/terminal/new [post]
 func NewTerminalAPI(root string, serverPort *int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("HANDLER: NewTerminalAPI called. Params: shell=%s chd=%s", r.URL.Query().Get("shell"), r.URL.Query().Get("cwd"))
 		reqShell := r.URL.Query().Get("shell")
-		shell := termutil.ResolveRequestedShell(reqShell)
 		cwd := r.URL.Query().Get("cwd")
+		id := r.URL.Query().Get("id")
+		log.Printf("HANDLER: NewTerminalAPI called. id=%s shell=%s cwd=%s", id, reqShell, cwd)
+		shell := termutil.ResolveRequestedShell(reqShell)
 		// If a cwd was provided, try to resolve it against the server root.
 		// If it points to a file, use the parent directory. If sanitization
 		// fails, clear cwd and let startShellPTY fall back to defaults.
@@ -235,7 +244,7 @@ func NewTerminalAPI(root string, serverPort *int) http.HandlerFunc {
 		// Use shared helper ensuring we get the correct server port (not the tunnel port from Host header)
 		env := buildSessionEnv(r, token, serverPort)
 
-		s, err := newTerminalSession(shell, cwd, env)
+		s, err := newTerminalSession(id, shell, cwd, env)
 		if err != nil {
 			log.Printf("[ERROR] failed to start session (shell=%s cwd=%s): %v", shell, cwd, err)
 			http.Error(w, "failed to start session: "+err.Error(), http.StatusInternalServerError)
@@ -244,4 +253,23 @@ func NewTerminalAPI(root string, serverPort *int) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"id": s.id})
 	}
+}
+
+// TerminalStatusAPI returns the busy status of a terminal session.
+func TerminalStatusAPI(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("session")
+	s := getSession(id)
+	if s == nil {
+		log.Printf("[DEBUG] TerminalStatusAPI: session NOT FOUND: %q", id)
+		http.Error(w, "session not found", http.StatusNotFound)
+		return
+	}
+	log.Printf("[DEBUG] TerminalStatusAPI: checking status for session=%s", id)
+
+	res := map[string]interface{}{
+		"id":   s.id,
+		"busy": s.IsBusy(),
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(res)
 }

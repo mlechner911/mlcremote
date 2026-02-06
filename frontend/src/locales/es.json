@@ -63,9 +63,11 @@
     "size": "Tamaño",
     "mode": "Modo",
     "last_modified": "Última modificación",
+    "last_checked": "Última comprobación",
     "is_dir": "Es directorio",
     "yes": "Sí",
     "no": "No",
+    "status_connected": "Conectado",
     "loading_metadata": "Cargando metadatos...",
     "open_or_create_file": "Abrir o crear un archivo para editar",
     "close_others": "Cerrar otros",
@@ -134,5 +136,11 @@
     "all_systems_healthy": "Todos los sistemas saludables",
     "high_usage_tooltip": "Alto uso {{label}}: {{value}}%",
     "ram": "RAM",
-    "disk_short": "DSK"
+    "disk_short": "DSK",
+    "backend_version": "Versión del Backend",
+    "frontend_version": "Versión del Frontend",
+    "version_mismatch": "¡Conflicto de versiones! Su backend ({{backend}}) es más antiguo que su frontend ({{frontend}}). Es posible que algunas funciones no funcionen correctamente.",
+    "terminal_busy": "Terminal ocupada",
+    "confirm_close_busy_terminal": "Un proceso todavía se está ejecutando en esta terminal. ¿Cerrar de todos modos?",
+    "close_anyway": "Cerrar de todos modos"
 }

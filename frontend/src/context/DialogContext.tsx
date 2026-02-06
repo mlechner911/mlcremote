@@ -67,11 +67,10 @@ export function DialogProvider({ children }: { children: ReactNode }) {
                 <MessageBox
                     title={dialogState.title}
                     message={dialogState.message}
+                    variant={dialogState.variant}
                     onClose={closeDialog}
                     onConfirm={dialogState.onConfirm ? (val) => {
                         dialogState.onConfirm!(val)
-                        // Automatically close? Usually yes, but sometimes we wait for async?
-                        // Not sure if we should auto-close or not.
                         closeDialog()
                     } : undefined}
                     confirmLabel={dialogState.confirmLabel}

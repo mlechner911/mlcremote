@@ -63,9 +63,11 @@
     "size": "Größe",
     "mode": "Modus",
     "last_modified": "Zuletzt geändert",
+    "last_checked": "Zuletzt geprüft",
     "is_dir": "Ist Verzeichnis",
     "yes": "Ja",
     "no": "Nein",
+    "status_connected": "Verbunden",
     "loading_metadata": "Metadaten werden geladen...",
     "open_or_create_file": "Öffnen oder erstellen Sie eine Datei zum Bearbeiten",
     "close_others": "Andere schließen",
@@ -144,5 +146,11 @@
     "all_systems_healthy": "Alle Systeme in Ordnung",
     "high_usage_tooltip": "Hohe Auslastung {{label}}: {{value}}%",
     "ram": "RAM",
-    "disk_short": "DSK"
+    "disk_short": "DSK",
+    "backend_version": "Backend-Version",
+    "frontend_version": "Frontend-Version",
+    "version_mismatch": "Versionskonflikt! Ihr Backend ({{backend}}) ist älter als Ihr Frontend ({{frontend}}). Einige Funktionen funktionieren möglicherweise nicht korrekt.",
+    "terminal_busy": "Terminal beschäftigt",
+    "confirm_close_busy_terminal": "In diesem Terminal läuft noch ein Prozess. Trotzdem schließen?",
+    "close_anyway": "Trotzdem schließen"
 }

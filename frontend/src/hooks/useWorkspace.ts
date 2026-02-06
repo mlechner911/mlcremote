@@ -140,8 +140,17 @@ export function useWorkspace(maxTabs = 8) {
             }
 
             // Non-singleton: check if tab already exists
-            const existingIndex = currentTabs.findIndex(t => t.id === path && t.intent === intent)
-            if (existingIndex >= 0) return currentTabs
+            const existingIndex = currentTabs.findIndex(t => t.id === path)
+            if (existingIndex >= 0) {
+                const existing = currentTabs[existingIndex]
+                // If type or intent changed, update the tab
+                if (existing.type !== newTab.type || existing.intent !== newTab.intent) {
+                    const tabs = [...currentTabs]
+                    tabs[existingIndex] = { ...existing, ...newTab }
+                    return tabs
+                }
+                return currentTabs
+            }
 
             // Create new non-singleton tab
             return [...currentTabs, newTab]

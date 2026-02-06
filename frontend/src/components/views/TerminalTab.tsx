@@ -9,12 +9,14 @@ import { Icon } from '../../generated/icons'
 import { getIcon } from '../../generated/icon-helpers'
 
 type Props = {
+  id: string
   shell: string
   path: string
   label?: string
   initialCommand?: string
   commandSignal?: { cmd: string, ts: number }
   onExit?: () => void
+  isActive?: boolean
 }
 
 /**
@@ -24,12 +26,18 @@ type Props = {
  * fails it falls back to an ephemeral WS-based PTY. The component handles
  * resize events and exposes copy/paste helpers.
  */
-export default function TerminalTab({ shell, path, label, initialCommand, commandSignal, onExit }: Props) {
+export default function TerminalTab({ id: sessionIdProp, shell, path, label, initialCommand, commandSignal, onExit, isActive }: Props) {
   const { t } = useTranslation()
   const ref = React.useRef<HTMLDivElement | null>(null)
   const termRef = React.useRef<Terminal | null>(null)
   const fitRef = React.useRef<FitAddon | null>(null)
   const wsRef = React.useRef<WebSocket | null>(null)
+
+  React.useEffect(() => {
+    if (isActive && termRef.current) {
+      termRef.current.focus()
+    }
+  }, [isActive])
 
   React.useEffect(() => {
     if (!ref.current) return
@@ -41,6 +49,7 @@ export default function TerminalTab({ shell, path, label, initialCommand, comman
     fit.fit()
     fitRef.current = fit
     termRef.current = term
+    term.focus()
 
     // request a new persistent session from the server
     let sessionId: string | null = null
@@ -79,75 +88,60 @@ export default function TerminalTab({ shell, path, label, initialCommand, comman
       term.onData(d => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(d) })
     }
 
-    // If `path` points to a file, use its parent directory. Ask backend /api/stat
-    // to determine file vs directory. If stat fails, fall back to sending the
-    // original path.
-    const resolveCwd = async (p: string) => {
+    const token = localStorage.getItem('mlcremote_token')
+
+    const constructWsUrl = (baseUrl: string, endpoint: string, params: Record<string, string>) => {
+      let urlObj: URL;
       try {
-        const j = await statPath(p)
-        if (j && j.isDir) return p
-        if (j && !j.isDir) return p.replace(/\/[^/]*$/, '') || '/'
-        return p
-      } catch (_) {
-        return p
+        urlObj = new URL(baseUrl);
+      } catch (e) {
+        urlObj = new URL(baseUrl, location.origin);
       }
+
+      // Convert http to ws
+      if (urlObj.protocol === 'https:') urlObj.protocol = 'wss:';
+      else if (urlObj.protocol === 'http:') urlObj.protocol = 'ws:';
+
+      // Append endpoint to existing path (handling slashes)
+      const existingPath = urlObj.pathname.endsWith('/') ? urlObj.pathname.slice(0, -1) : urlObj.pathname;
+      const endpointPath = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
+      urlObj.pathname = existingPath + endpointPath;
+
+      // Merge params
+      Object.entries(params).forEach(([k, v]) => {
+        urlObj.searchParams.set(k, v);
+      });
+
+      return urlObj.toString();
     }
 
-    resolveCwd(path).then((cwd) => {
-      const token = localStorage.getItem('mlcremote_token')
+    const apiBase = getApiBaseUrl() || location.origin;
+    const wsEndpoint = '/ws/terminal';
+    const commonParams: Record<string, string> = {
+      shell: shell,
+      cwd: path,
+      id: sessionIdProp
+    };
+    if (token) commonParams.token = token;
 
-      const constructWsUrl = (baseUrl: string, endpoint: string, params: Record<string, string>) => {
-        let urlObj: URL;
-        try {
-          urlObj = new URL(baseUrl);
-        } catch (e) {
-          urlObj = new URL(baseUrl, location.origin);
-        }
+    const fetchParams = new URLSearchParams(commonParams);
 
-        // Convert http to ws
-        if (urlObj.protocol === 'https:') urlObj.protocol = 'wss:';
-        else if (urlObj.protocol === 'http:') urlObj.protocol = 'ws:';
+    // Now that makeUrl handles query params in apiBase correctly, we can just use authedFetch naturally
+    authedFetch(`/api/terminal/new?${fetchParams.toString()}`).then(r => r.json()).then(j => {
+      sessionId = j.id
+      const wsParams: Record<string, string> = { ...commonParams, session: sessionId || '' };
+      const wsUrl = constructWsUrl(apiBase, wsEndpoint, wsParams);
 
-        // Append endpoint to existing path (handling slashes)
-        const existingPath = urlObj.pathname.endsWith('/') ? urlObj.pathname.slice(0, -1) : urlObj.pathname;
-        const endpointPath = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
-        urlObj.pathname = existingPath + endpointPath;
+      const socket = new WebSocket(wsUrl);
+      attachWS(socket, t('terminal_connected_session', { id: sessionId }));
+    }).catch((err) => {
+      console.error('[TerminalTab] Persistent session failed', err)
+      // fallback to ephemeral connection
+      const wsParams = { ...commonParams };
+      const wsUrl = constructWsUrl(apiBase, wsEndpoint, wsParams);
 
-        // Merge params
-        Object.entries(params).forEach(([k, v]) => {
-          urlObj.searchParams.set(k, v);
-        });
-
-        return urlObj.toString();
-      }
-
-      const apiBase = getApiBaseUrl() || location.origin;
-      const wsEndpoint = '/ws/terminal';
-      const commonParams: Record<string, string> = {
-        shell: shell,
-        cwd: cwd
-      };
-      if (token) commonParams.token = token;
-
-      const fetchParams = new URLSearchParams(commonParams);
-
-      // Now that makeUrl handles query params in apiBase correctly, we can just use authedFetch naturally
-      authedFetch(`/api/terminal/new?${fetchParams.toString()}`).then(r => r.json()).then(j => {
-        sessionId = j.id
-        const wsParams: Record<string, string> = { ...commonParams, session: sessionId || '' };
-        const wsUrl = constructWsUrl(apiBase, wsEndpoint, wsParams);
-
-        const socket = new WebSocket(wsUrl);
-        attachWS(socket, t('terminal_connected_session', { id: sessionId }));
-      }).catch((err) => {
-        console.error('[TerminalTab] Persistent session failed', err)
-        // fallback to ephemeral connection
-        const wsParams = { ...commonParams };
-        const wsUrl = constructWsUrl(apiBase, wsEndpoint, wsParams);
-
-        const socket = new WebSocket(wsUrl);
-        attachWS(socket, t('terminal_connected_ephemeral'));
-      })
+      const socket = new WebSocket(wsUrl);
+      attachWS(socket, t('terminal_connected_ephemeral'));
     })
 
     const sendResize = () => {
