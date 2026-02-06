@@ -24,9 +24,12 @@ interface BaseProfile {
     color?: string
     tasks: TaskDef[]
     defaultShell?: string
+    /** Force usage of native Go SSH client */
+    useNativeSSH?: boolean
     rootPath?: string
     /** If true, shows developer UI controls (screenshot, server logs, session key) */
     showDeveloperControls?: boolean
+    passphrase?: string
 }
 
 /**

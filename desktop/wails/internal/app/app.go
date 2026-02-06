@@ -38,16 +38,23 @@ type SSHDeployRequest struct {
 	User         string `json:"user"`
 	Port         int    `json:"port"`
 	Password     string `json:"password"`
+	Passphrase   string `json:"passphrase"` // For encrypted keys (target key)
 	IdentityFile string `json:"identityFile"`
+	ProfileID    string `json:"profileID"` // Optional: for per-profile keys
+
+	// Bootstrap credentials (to authorize deployment)
+	BootstrapIdentity   string `json:"bootstrapIdentity"`
+	BootstrapPassphrase string `json:"bootstrapPassphrase"`
 }
 
 // NewApp creates a new App application struct
 func NewApp(payload fs.FS) *App {
 	a := &App{
-		Config:  config.NewManager(),
-		SSH:     ssh.NewManager(),
-		Backend: backend.NewManager(payload),
+		Config: config.NewManager(),
+		SSH:    ssh.NewManager(),
 	}
+	// Initialize backend with SSH manager
+	a.Backend = backend.NewManager(payload, a.SSH)
 	a.Monitoring = monitoring.NewService(a.pollStats)
 	return a
 }
@@ -95,20 +102,27 @@ func (a *App) DeduplicateProfiles() (int, error) {
 	return a.Config.DeduplicateProfiles()
 }
 
-// DeploySSHKey installs the user's public key to the remote server using a password.
-// It connects via SSH using the provided password and appends the public key from IdentityFile
+// DeploySSHKey installs the user's public key to the remote server using a password or existing key.
+// It connects via SSH using the provided password (or bootstrap key) and appends the public key from IdentityFile
 // to the remote authorized_keys.
 func (a *App) DeploySSHKey(req SSHDeployRequest) error {
-	return a.SSH.DeployPublicKey(req.Host, req.User, req.Port, req.Password, req.IdentityFile)
+	return a.SSH.DeployPublicKey(req.Host, req.User, req.Port, req.Password, req.IdentityFile, req.BootstrapIdentity, req.BootstrapPassphrase)
 }
 
 // ProbeConnection checks if the SSH connection can be established with the given identity file
 func (a *App) ProbeConnection(req SSHDeployRequest) (string, error) {
+	if req.Passphrase != "" {
+		return a.SSH.ProbeEncryptedKey(req.Host, req.User, req.Port, req.IdentityFile, req.Passphrase)
+	}
 	return a.SSH.ProbePublicKey(req.Host, req.User, req.Port, req.IdentityFile)
 }
 
-// VerifyPassword checks if the provided password is valid for the remote user
+// VerifyPassword checks if the provided password is valid for the remote user,
+// OR if the provided identity file (and optional passphrase) works.
 func (a *App) VerifyPassword(req SSHDeployRequest) (string, error) {
+	if req.IdentityFile != "" {
+		return a.ProbeConnection(req)
+	}
 	return a.SSH.VerifyPassword(req.Host, req.User, req.Port, req.Password)
 }
 
@@ -127,6 +141,19 @@ func (a *App) SetupManagedIdentity(req SSHDeployRequest) (string, error) {
 	}
 
 	keyName := "id_mlcremote_ed25519"
+	if req.ProfileID != "" {
+		// Sanitize profile ID? Assuming uuid or simple string.
+		// Be safe: replace special chars?
+		safeID := strings.Map(func(r rune) rune {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+				return r
+			}
+			return -1
+		}, req.ProfileID)
+		if safeID != "" {
+			keyName = fmt.Sprintf("id_mlcremote_%s_ed25519", safeID)
+		}
+	}
 
 	// Check if the key already exists to avoid overwriting
 	// We use GenerateEd25519Key which now handles check-or-generate logic if implemented correctly,
@@ -135,18 +162,25 @@ func (a *App) SetupManagedIdentity(req SSHDeployRequest) (string, error) {
 	// Assuming GenerateEd25519Key is idempotent or we accept overwrite for "Setup" action.
 	// Users usually "Setup" once or explicitly to reset.
 
-	privPath, _, err := a.SSH.GenerateEd25519Key(keyName)
+	privPath, _, err := a.SSH.GenerateEd25519Key(keyName, req.Passphrase)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate identity: %w", err)
 	}
 
 	// Deploy the public key using the password
-	err = a.SSH.DeployPublicKey(req.Host, req.User, req.Port, req.Password, privPath)
+	err = a.SSH.DeployPublicKey(req.Host, req.User, req.Port, req.Password, privPath, "", "")
 	if err != nil {
 		return "", fmt.Errorf("failed to deploy public key: %w", err)
 	}
 
 	return privPath, nil
+}
+
+// ChangeKeyPassphrase updates the passphrase for a given key file.
+func (a *App) ChangeKeyPassphrase(identityFile string, oldPass string, newPass string) error {
+	// Security check: ensure file is within allowed paths?
+	// For now, allow any user file.
+	return a.SSH.ChangePassphrase(identityFile, oldPass, newPass)
 }
 
 // GetManagedIdentity returns the public key of the managed identity.
@@ -157,7 +191,7 @@ func (a *App) GetManagedIdentity() (string, error) {
 	}
 	keyName := "id_mlcremote_ed25519"
 	// GenerateEd25519Key is now idempotent (gets or generates)
-	_, pubKey, err := a.SSH.GenerateEd25519Key(keyName)
+	_, pubKey, err := a.SSH.GenerateEd25519Key(keyName, "")
 	if err != nil {
 		return "", fmt.Errorf("failed to get managed identity: %w", err)
 	}
@@ -172,7 +206,7 @@ func (a *App) GetManagedIdentityPath() (string, error) {
 	// We can reuse GenerateEd25519Key logic to resolve the path without regenerating if it exists
 	// But GenerateEd25519Key returns (path, pub, err).
 	keyName := "id_mlcremote_ed25519"
-	path, _, err := a.SSH.GenerateEd25519Key(keyName)
+	path, _, err := a.SSH.GenerateEd25519Key(keyName, "")
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve managed identity path: %w", err)
 	}
@@ -245,7 +279,7 @@ func (a *App) RunTask(profile config.ConnectionProfile, task config.TaskDef, pas
 	}
 
 	// Just call SSH manager
-	return a.SSH.RunCommand(profile.Host, profile.User, profile.Port, password, idFile, task.Command)
+	return a.SSH.RunCommand(profile.Host, profile.User, profile.Port, password, idFile, profile.Passphrase, task.Command)
 }
 
 // ClipboardCopy downloads remote files to a local temp directory and sets them on the OS clipboard.

@@ -26,7 +26,7 @@ func (a *App) pollStats(cfg monitoring.MonitoringConfig) (monitoring.Stats, erro
 	}
 
 	// 3. Run Command
-	output, err := a.SSH.RunCommand(profile.Host, profile.User, profile.Port, "", profile.IdentityFile, cmd)
+	output, err := a.SSH.RunCommand(profile.Host, profile.User, profile.Port, "", profile.IdentityFile, profile.Passphrase, cmd)
 	if err != nil {
 		// Self-healing: If permission denied (exit 126), try to chmod +x and retry
 		if strings.Contains(err.Error(), "Permission denied") || strings.Contains(err.Error(), "126") {
@@ -35,9 +35,9 @@ func (a *App) pollStats(cfg monitoring.MonitoringConfig) (monitoring.Stats, erro
 				// Windows doesn't need chmod, but if we are here it's likely not windows or using WSL
 				// Just retry for now or skip.
 			} else {
-				_, _ = a.SSH.RunCommand(profile.Host, profile.User, profile.Port, "", profile.IdentityFile, fixCmd)
+				_, _ = a.SSH.RunCommand(profile.Host, profile.User, profile.Port, "", profile.IdentityFile, profile.Passphrase, fixCmd)
 				// Retry
-				output, err = a.SSH.RunCommand(profile.Host, profile.User, profile.Port, "", profile.IdentityFile, cmd)
+				output, err = a.SSH.RunCommand(profile.Host, profile.User, profile.Port, "", profile.IdentityFile, profile.Passphrase, cmd)
 				if err != nil {
 					return monitoring.Stats{}, err
 				}

@@ -59,3 +59,20 @@ esac
 ```
 
 *> **Note:** The exact validation logic depends on the specific commands MLCRemote sends. You may need to inspect the debug logs or `SSH_ORIGINAL_COMMAND` to refine the allowlist.*
+
+## 4. Passphrase Protection (Encrypted Keys)
+
+As of version **v1.5.0**, MLCRemote supports SSH keys protected by a passphrase.
+
+### Why use a passphrase?
+Adding a passphrase encrypts your private key file on disk. This adds a critical layer of security:
+-   **Theft Protection:** If your laptop is stolen or your `~/.ssh` folder is compromised, the attacker cannot use your key without the passphrase.
+-   **Compliance:** Many enterprise security policies require all private keys to be encrypted at rest.
+
+### How it works in MLCRemote
+When you connect using a protected key:
+1.  MLCRemote detects that the key is encrypted.
+2.  You are prompted to enter the passphrase.
+3.  The application uses its **Native SSH Client** to decrypt the key **in memory**.
+4.  The unencrypted key is **never written to disk** (unlike some other tools that create temporary key files).
+5.  Supported Key Types: `ed25519` (recommended), `rsa`, `ecdsa`.

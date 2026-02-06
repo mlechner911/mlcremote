@@ -39,6 +39,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
     const [promptManaged, setPromptManaged] = useState<ConnectionProfile | null>(null) // Prompt for managed identity
     const [managedPath, setManagedPath] = useState('')
     const [promptSession, setPromptSession] = useState<{ p: ConnectionProfile, info: SessionInfo } | null>(null)
+    const [promptPassphrase, setPromptPassphrase] = useState<ConnectionProfile | null>(null) // Prompt for passphrase
     const [alertState, setAlertState] = useState<{
         open: boolean, title: string, message: string, type: DialogType, onConfirm?: () => void, cancelText?: string, confirmText?: string
     }>({ open: false, title: '', message: '', type: 'info' })
@@ -165,6 +166,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 remoteHost: '127.0.0.1',
                 remotePort: 8443,
                 identityFile: p.identityFile,
+                passphrase: p.passphrase,
                 extraArgs: [...(p.extraArgs || [])],
                 mode: p.mode,
                 rootPath: p.rootPath
@@ -237,7 +239,15 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 }, token, task)
             } else {
                 // Check if it's an auth error
-                if (res.toLowerCase().includes('permission denied') || res.toLowerCase().includes('publickey')) {
+                if (res === 'passphrase-required') {
+                    setPromptPassphrase(p)
+                    setStatus('')
+                } else if (res === 'passphrase-invalid') {
+                    // Re-open with error
+                    // @ts-ignore
+                    setPromptPassphrase({ ...p, error: t('incorrect_passphrase') || "Incorrect Passphrase" })
+                    setStatus('')
+                } else if (res.toLowerCase().includes('permission denied') || res.toLowerCase().includes('publickey')) {
                     setPromptDeploy(p)
                     setStatus('')
                 } else if (res === 'unknown-host') {
@@ -308,7 +318,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
         performConnect(p, task)
     }
 
-    const onDeployKey = async (password: string) => {
+    const onDeployKey = async (password: string, passphrase?: string, bootstrapKey?: string) => {
         if (!promptDeploy) return
         setDeployLoading(true)
         try {
@@ -317,7 +327,11 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 user: promptDeploy.user,
                 port: promptDeploy.port || 22,
                 password: password,
-                identityFile: promptDeploy.identityFile
+                passphrase: "", // Target key passphrase (not used for auth here usually)
+                identityFile: promptDeploy.identityFile,
+                profileID: "",
+                bootstrapIdentity: bootstrapKey || "",
+                bootstrapPassphrase: passphrase || "" // Use passphrase input for bootstrap key if key selected
             })
             // Success! Clear prompt and retry
             const p = promptDeploy
@@ -330,7 +344,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
         }
     }
 
-    const onSetupManagedIdentity = async (password: string) => {
+    const onSetupManagedIdentity = async (password: string, passphrase?: string) => {
         if (!promptManaged) return
         setDeployLoading(true)
         try {
@@ -340,6 +354,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                 user: promptManaged.user,
                 port: promptManaged.port || 22,
                 password: password,
+                passphrase: passphrase || "", // Pass the optional passphrase specific for the NEW key
                 identityFile: "" // Not relevant for this call
             })
 
@@ -360,14 +375,26 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
             // Refresh list
             refreshProfiles()
 
+            // If we have a passphrase, we MUST include it in the profile we connect with immediately
+            // But we DON'T save it to disk (handled by SaveProfile above which saves clean profile)
+            // We inject it into the runtime profile for connection
+            const connectProfile = { ...promptManaged, passphrase: passphrase }
+
             // Auto connect with new key
-            handleConnect(promptManaged)
+            handleConnect(connectProfile)
 
         } catch (e: any) {
             showAlert('Error', t('status_failed') + ": " + (e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e)))
         } finally {
             setDeployLoading(false)
         }
+    }
+
+    const onPassphraseConfirm = (passphrase: string) => {
+        if (!promptPassphrase) return
+        const p = { ...promptPassphrase, passphrase }
+        setPromptPassphrase(null)
+        performConnect(p)
     }
 
     const selectedProfile = profiles.find(p => p.id === selectedId)
@@ -446,7 +473,12 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                             loading={loading}
                             onConnect={(task) => handleConnect(selectedProfile, task)}
                             onEdit={() => setEditing(true)}
-                            onTest={() => testConnection(selectedProfile)}
+                            onTest={async () => {
+                                const res = await testConnection(selectedProfile)
+                                if (res === 'auth-failed' || res === 'no-key' || res === 'permission denied' || (typeof res === 'string' && res.includes('publickey'))) {
+                                    setPromptDeploy(selectedProfile)
+                                }
+                            }}
 
                             isTesting={isTesting}
                             testStatus={testStatus}
@@ -511,6 +543,7 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                     onCancel={() => setPromptDeploy(null)}
                     loading={deployLoading}
                     isPremium={isPremium}
+                    allowBootstrapKey={true}
                     onUseManagedIdentity={() => {
                         setPromptManaged(promptDeploy)
                         setPromptDeploy(null)
@@ -524,6 +557,20 @@ export default function LaunchScreen({ onConnected, onLocked, onOpenSettings }: 
                     onConfirm={onSetupManagedIdentity}
                     onCancel={() => setPromptManaged(null)}
                     loading={deployLoading}
+                    showNewPassphrase={true}
+                />
+            )}
+            {promptPassphrase && (
+                <PasswordDialog
+                    title={t('enter_passphrase') || "Enter Passphrase"}
+                    description={t('enter_passphrase_msg') || "This SSH key is protected by a passphrase. Please enter it to unlock the key."}
+                    onConfirm={onPassphraseConfirm}
+                    onCancel={() => setPromptPassphrase(null)}
+                    allowBootstrapKey={false}
+                    passwordLabel="Passphrase"
+                    placeholder="Passphrase"
+                    // @ts-ignore
+                    errorMessage={promptPassphrase.error}
                 />
             )}
             <AlertDialog

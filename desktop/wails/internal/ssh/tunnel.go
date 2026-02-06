@@ -25,6 +25,8 @@ type TunnelProfile struct {
 	RemotePort   int      `json:"remotePort"`
 	IdentityFile string   `json:"identityFile"`
 	Password     string   `json:"password"`
+	Passphrase   string   `json:"passphrase"`
+	UseNativeSSH bool     `json:"useNativeSSH"`
 	ExtraArgs    []string `json:"extraArgs"`
 	Mode         string   `json:"mode"`         // "default" or "parallel"
 	DefaultShell string   `json:"defaultShell"` // e.g. "bash" or "powershell"
@@ -37,6 +39,7 @@ type Manager struct {
 	tunnelState string
 	stopping    bool
 	activePort  int
+	cancelFunc  context.CancelFunc // For stopping native tunnel
 }
 
 func NewManager() *Manager {
@@ -94,6 +97,16 @@ func (m *Manager) StartTunnel(ctx context.Context, profile TunnelProfile) (strin
 	if m.cmd != nil {
 		m.mu.Unlock()
 		return "already-running", nil
+	}
+
+	// Use Native Tunnel if Passphrase is set or explicitly requested
+	// Native tunnel is required for Passphrase support to avoid writing decrypted keys to disk.
+	if profile.Passphrase != "" || profile.UseNativeSSH || profile.Mode == "native" {
+		ctx, cancel := context.WithCancel(ctx)
+		m.cancelFunc = cancel
+		m.mu.Unlock() // StartNativeTunnel manages its own locking for state updates
+
+		return m.StartNativeTunnel(ctx, profile)
 	}
 
 	// Construct args
@@ -193,6 +206,15 @@ func (m *Manager) StopTunnel() (string, error) {
 
 	// Signal intentional stop
 	m.stopping = true
+
+	// Stop native tunnel if running
+	if m.cancelFunc != nil {
+		m.cancelFunc()
+		m.cancelFunc = nil
+		m.tunnelState = "disconnected"
+		m.activePort = 0
+		return "stopped", nil
+	}
 
 	if m.cmd != nil && m.cmd.Process != nil {
 		if err := m.cmd.Process.Kill(); err != nil {

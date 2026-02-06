@@ -78,10 +78,10 @@ export default function ConnectionSidebar({
                                     }}>
                                         {(() => {
                                             if (!isFresh) {
-                                                return <div title={t('stale_data_tooltip', 'Stale Data (Server may be down)')} style={{ color: 'var(--text-muted)' }}><Icon name="icon-warning" size={14} /></div>
+                                                return <div title={t('stale_data_tooltip')} style={{ color: 'var(--text-muted)' }}><Icon name="icon-warning" size={14} /></div>
                                             }
                                             if (isHealthy) {
-                                                return <div style={{ color: '#10b981', filter: 'drop-shadow(0 0 1px rgba(16,185,129,0.3))' }} title={t('all_systems_healthy', 'All Systems Healthy')}><Icon name="icon-check" size={14} /></div>
+                                                return <div style={{ color: '#10b981', filter: 'drop-shadow(0 0 1px rgba(16,185,129,0.3))' }} title={t('all_systems_healthy')}><Icon name="icon-check" size={14} /></div>
                                             }
                                             // Determine max usage
                                             const max = Math.max(stat?.cpu || 0, stat?.memory || 0, stat?.disk || 0)
@@ -89,9 +89,9 @@ export default function ConnectionSidebar({
                                             let color = '#f59e0b' // orange
                                             if (max > 90) color = '#ef4444' // red
 
-                                            if ((stat?.cpu || 0) === max) label = t('cpu', 'CPU')
-                                            else if ((stat?.memory || 0) === max) label = t('ram', 'RAM')
-                                            else label = t('disk_short', 'DSK') // disk
+                                            if ((stat?.cpu || 0) === max) label = t('cpu')
+                                            else if ((stat?.memory || 0) === max) label = t('ram')
+                                            else label = t('disk_short') // disk
 
                                             return (
                                                 <div style={{

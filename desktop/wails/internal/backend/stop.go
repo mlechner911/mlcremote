@@ -15,22 +15,13 @@ func (m *Manager) StopBackend(profileJSON string) (string, error) {
 		return "", fmt.Errorf("failed to detect remote OS: %w", err)
 	}
 
-	// 2. Prepare SSH
-	target, sshBaseArgs, err := m.prepareSSHArgs(profileJSON)
-	if err != nil {
-		return "", err
+	// 2. Prepare closure
+	runRemote := func(cmd string) (string, error) {
+		return m.runSSH(profileJSON, cmd)
 	}
 
 	// 3. Get Remote System
 	remoteSys := getRemoteSystem(targetOS)
-
-	// Helper to run
-	runRemote := func(cmd string) (string, error) {
-		args := append([]string{}, sshBaseArgs...)
-		args = append(args, target, cmd)
-		out, err := createSilentCmd("ssh", args...).CombinedOutput()
-		return strings.TrimSpace(string(out)), err
-	}
 
 	// 4. Read PID
 	pidFile := remoteSys.JoinPath(RemoteBaseDir, PidFile)

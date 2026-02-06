@@ -15,6 +15,36 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// getSignerForIdentity loads and parses a private key, optionally using a passphrase.
+func (m *Manager) getSignerForIdentity(identityFile string, passphrase string) (ssh.Signer, error) {
+	keyData, err := os.ReadFile(identityFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// 1. Try generic parse (handles unencrypted keys)
+	signer, err := ssh.ParsePrivateKey(keyData)
+	if err == nil {
+		return signer, nil
+	}
+
+	// 2. If it requires a passphrase...
+	if _, ok := err.(*ssh.PassphraseMissingError); ok {
+		if passphrase != "" {
+			return ssh.ParsePrivateKeyWithPassphrase(keyData, []byte(passphrase))
+		}
+		return nil, fmt.Errorf("passphrase required for key")
+	}
+
+	// 3. If standard parse failed but we have a passphrase, try encrypted parse anyway
+	// (Some formats might not return PassphraseMissingError explicitly?)
+	if passphrase != "" {
+		return ssh.ParsePrivateKeyWithPassphrase(keyData, []byte(passphrase))
+	}
+
+	return nil, err
+}
+
 // ProbePublicKey attempts to connect via SSH using the specified identity file.
 // Returns "ok", "auth-failed", "no-key", or a detailed error description.
 func (m *Manager) ProbePublicKey(host string, user string, port int, identityFile string) (string, error) {
@@ -37,11 +67,34 @@ func (m *Manager) ProbePublicKey(host string, user string, port int, identityFil
 		return "key-error", fmt.Errorf("failed to read key: %w", err)
 	}
 
+	// Try parsing without passphrase first
 	signer, err := ssh.ParsePrivateKey(keyData)
 	if err != nil {
+		if _, ok := err.(*ssh.PassphraseMissingError); ok {
+			return "passphrase-required", nil
+		}
 		return "key-invalid", fmt.Errorf("failed to parse private key: %w", err)
 	}
 
+	return m.probeWithSigner(host, user, port, signer)
+}
+
+// ProbeEncryptedKey attempts to connect using an identity file and a passphrase
+func (m *Manager) ProbeEncryptedKey(host string, user string, port int, identityFile string, passphrase string) (string, error) {
+	keyData, err := os.ReadFile(identityFile)
+	if err != nil {
+		return "key-error", err
+	}
+
+	signer, err := ssh.ParsePrivateKeyWithPassphrase(keyData, []byte(passphrase))
+	if err != nil {
+		return "passphrase-invalid", nil // or return err if we want details
+	}
+
+	return m.probeWithSigner(host, user, port, signer)
+}
+
+func (m *Manager) probeWithSigner(host string, user string, port int, signer ssh.Signer) (string, error) {
 	config := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{
@@ -54,18 +107,13 @@ func (m *Manager) ProbePublicKey(host string, user string, port int, identityFil
 	addr := fmt.Sprintf("%s:%d", host, port)
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
-		// Differentiate between network error and auth error
-		// This is tricky with Go's SSH lib, as it returns a generic error string for auth failures
 		errStr := err.Error()
-		fmt.Printf("[DEBUG] ProbePublicKey: Dial failed (err=%s). Auth error? %v\n", errStr, containsAuthError(errStr))
 		if containsAuthError(errStr) {
 			return "auth-failed", nil
 		}
 		return "unreachable", err
 	}
 	defer client.Close()
-	fmt.Println("[DEBUG] ProbePublicKey: Success")
-
 	return "ok", nil
 }
 
@@ -118,9 +166,9 @@ func (m *Manager) VerifyPassword(host string, user string, port int, password st
 	return "ok", nil
 }
 
-// DeployPublicKey connects via password and adds the local public key to authorized_keys
-func (m *Manager) DeployPublicKey(host string, user string, port int, password string, identityFile string) error {
-	fmt.Printf("[DEBUG] DeployPublicKey: host=%s user=%s identity=%s\n", host, user, identityFile)
+// DeployPublicKey connects via password or bootstrap key and adds the local public key to authorized_keys
+func (m *Manager) DeployPublicKey(host string, user string, port int, password string, identityFile string, bootstrapId string, bootstrapPass string) error {
+	fmt.Printf("[DEBUG] DeployPublicKey: host=%s user=%s identity=%s bootstrap=%s\n", host, user, identityFile, bootstrapId)
 	if identityFile == "" {
 		identityFile = m.FindDefaultIdentity()
 		fmt.Printf("[DEBUG] DeployPublicKey: Found default identity: %s\n", identityFile)
@@ -145,11 +193,27 @@ func (m *Manager) DeployPublicKey(host string, user string, port int, password s
 		return fmt.Errorf("public key file is empty")
 	}
 
+	auths := []ssh.AuthMethod{}
+	if bootstrapId != "" {
+		// Try key
+		keyAuth, err := m.getSignerForIdentity(bootstrapId, bootstrapPass)
+		if err == nil {
+			auths = append(auths, ssh.PublicKeys(keyAuth))
+		} else {
+			fmt.Printf("[DEBUG] DeployPublicKey: Failed to load bootstrap key: %v\n", err)
+		}
+	}
+	if password != "" {
+		auths = append(auths, ssh.Password(password))
+	}
+
+	if len(auths) == 0 {
+		return fmt.Errorf("no authentication methods provided (password or bootstrap key)")
+	}
+
 	config := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(password),
-		},
+		User:            user,
+		Auth:            auths,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
@@ -157,7 +221,7 @@ func (m *Manager) DeployPublicKey(host string, user string, port int, password s
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
 		fmt.Printf("[DEBUG] DeployPublicKey: SSH Dial failed: %v\n", err)
-		return fmt.Errorf("failed to connect via password: %w", err)
+		return fmt.Errorf("failed to connect via auth methods: %w", err)
 	}
 	defer client.Close()
 

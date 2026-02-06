@@ -15,7 +15,7 @@
   <br>
 </div>
 
-**Status:** Production Ready (v1.5.1)
+**Status:** Production Ready (v1.5.0)
 
 ## Why MLCRemote?
 
@@ -36,9 +36,9 @@ are also unusable for small VPS or home servers.
 | **🚀 Instant Access** | Connect to any server in seconds. The app automatically deploys a lightweight, static Go binary to handle all operations. |
 | **📁 Rich File Manager** | Drag & Drop uploads, context menus, trash support, and full file operations (Copy/Move/Delete). |
 | **💻 Terminal & PTY** | Integrated, resize-aware SSH terminal with multiple tabs and full encoding support. |
-| **� Admin Tools** | Monitor system health, manage processes (HTOP style), and execute one-click maintenance scripts via Quick Jobs. |
-| **�🖼️ Media Preview** | View images, PDFs, Markdown, Videos, and Code directly in the remote file manager. |
-| **🔒 Secure Tunneling** | All traffic flows through a secure SSH tunnel. No extra ports need to be opened on your firewall. |
+| **🛡️ Admin Tools** | Monitor system health, manage processes (HTOP style), and execute one-click maintenance scripts via Quick Jobs. |
+| **🖼️ Media Preview** | View images, PDFs, Markdown, Videos, and Code directly in the remote file manager. |
+| **🔒 Secure Tunneling** | Native Go SSH implementation supports **Passphrase Protected Keys** and robust tunneling. |
 | **⚡ Smart Workflow** | Persistent workspace state, split-view editing, and rapid-fire navigation. |
 | **📋 Smart Clipboard** | Seamlessly copy/paste files between your local machine and the remote server (Bidirectional). |
 
@@ -106,6 +106,7 @@ task dev:headless
 MLCRemote prioritizes security:
 *   **Zero-Trust:** We don't store your passwords.
 *   **Managed Keys:** We generate standard Ed25519 keys stored in your OS's secure profile.
+*   **Native SSH Client:** We use a secure, native Go SSH implementation that keeps decrypted keys in memory, never writing them to disk.
 *   **Sandboxed:** The remote agent runs as a standard user process.
 
 See [SSH Security Setup](docs/SSH_SECURITY_SETUP.md) for hardening guides.

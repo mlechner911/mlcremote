@@ -21,6 +21,8 @@ type ConnectionProfile struct {
 	Port                  int               `json:"port"`
 	LocalPort             int               `json:"localPort"`
 	IdentityFile          string            `json:"identityFile"`
+	Passphrase            string            `json:"passphrase,omitempty"` // Runtime only, not saved
+	Password              string            `json:"password,omitempty"`   // Runtime only, not saved
 	IsWindows             bool              `json:"isWindows"`
 	LastUsed              int64             `json:"lastUsed"`
 	ExtraArgs             []string          `json:"extraArgs"`
@@ -29,6 +31,7 @@ type ConnectionProfile struct {
 	RemoteVersion         string            `json:"remoteVersion"`         // e.g. 1.0.0
 	Mode                  string            `json:"mode"`                  // "default" or "parallel"
 	RootPath              string            `json:"rootPath"`              // Optional root directory override
+	UseNativeSSH          bool              `json:"useNativeSSH"`          // Force usage of native Go SSH client
 	ShowDeveloperControls bool              `json:"showDeveloperControls"` // Show developer UI (screenshot, logs, session copy)
 	Tasks                 []TaskDef         `json:"tasks"`
 	Monitoring            *MonitoringConfig `json:"monitoring,omitempty"`

@@ -27,11 +27,17 @@ func (a *App) StartTunnel(profile string) (string, error) {
 
 // StartTunnelWithProfile starts a tunnel using a structured JSON profile.
 func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
-	// 1. Parse generic profile for Config Service
-	var cp config.ConnectionProfile
-	if err := json.Unmarshal([]byte(profileJSON), &cp); err != nil {
+	// 1. Parse generic profile with Passphrase (but don't save it)
+	var req struct {
+		config.ConnectionProfile
+		Passphrase string `json:"passphrase"`
+	}
+	if err := json.Unmarshal([]byte(profileJSON), &req); err != nil {
 		return "failed", fmt.Errorf("invalid profile JSON: %w", err)
 	}
+	// Force native SSH for now as requested
+	req.ConnectionProfile.UseNativeSSH = true
+	cp := req.ConnectionProfile
 	fmt.Printf("[DEBUG] StartTunnel: Raw JSON: %s\n", profileJSON)
 	fmt.Printf("[DEBUG] StartTunnel: Parsed Mode: '%s'\n", cp.Mode)
 
@@ -59,6 +65,12 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		// We pass the raw JSON because Backend service expects it (to avoid re-marshalling)
 		os, arch, err := a.Backend.DetectRemoteOS(profileJSON)
 		if err != nil {
+			if strings.Contains(err.Error(), "passphrase required") {
+				return "passphrase-required", nil
+			}
+			if strings.Contains(err.Error(), "decryption password incorrect") || strings.Contains(err.Error(), "password incorrect") {
+				return "passphrase-invalid", nil
+			}
 			return "failed", fmt.Errorf("failed to detect remote OS: %w", err)
 		}
 		osArch = fmt.Sprintf("%s/%s", os, arch)
@@ -94,7 +106,9 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 
 	runtime.EventsEmit(a.ctx, "connection-status", "deploying_agent")
 
-	forceNew := cp.Mode == "parallel"
+	// Default to false to enable hash-based update checks
+	// Only force new deployment if explicitly needed (e.g., after failed deployment)
+	forceNew := false
 	parts := strings.Split(osArch, "/")
 	// Parts length checked above
 	targetOS := remotesystem.RemoteOS(parts[0])
@@ -150,6 +164,8 @@ func (a *App) StartTunnelWithProfile(profileJSON string) (string, error) {
 		RemoteHost:   "127.0.0.1", // Agent binds to 127.0.0.1 explicitly now
 		RemotePort:   remotePort,
 		IdentityFile: cp.IdentityFile,
+		Passphrase:   req.Passphrase,
+		UseNativeSSH: cp.UseNativeSSH,
 		ExtraArgs:    cp.ExtraArgs,
 		Mode:         cp.Mode,
 	}

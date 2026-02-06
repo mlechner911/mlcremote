@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Icon } from '../generated/icons'
 import { ConnectionProfile } from '../types'
 import { useI18n } from '../utils/i18n'
-import { ProbeConnection, DeploySSHKey, VerifyPassword, GetManagedIdentityPath, PickIdentityFile } from '../wailsjs/go/app/App'
+import { ProbeConnection, DeploySSHKey, VerifyPassword, GetManagedIdentityPath, PickIdentityFile, ChangeKeyPassphrase } from '../wailsjs/go/app/App'
 import PasswordDialog from './PasswordDialog'
 import AlertDialog, { DialogType } from './AlertDialog'
 import { useConnectionTester } from '../hooks/useConnectionTester'
@@ -126,12 +126,25 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
         open: boolean, title: string, message: string, type: DialogType, onConfirm?: () => void, cancelText?: string, confirmText?: string
     }>({ open: false, title: '', message: '', type: 'info' })
 
-    const showAlert = (title: string, message: string, type: DialogType = 'error') => {
-        setAlertState({ open: true, title, message, type })
+    const [showManageKeyDialog, setShowManageKeyDialog] = useState(false)
+
+    const handleKeyPassphraseChange = async (oldPass: string, newPass?: string) => {
+        try {
+            // @ts-ignore
+            await ChangeKeyPassphrase(identityFile, oldPass, newPass || "")
+            showAlert('Success', t('passphrase_updated') || "Key passphrase updated successfully", 'info')
+            setShowManageKeyDialog(false)
+        } catch (e: any) {
+            showAlert('Error', t('status_failed') + ": " + (e.message || e))
+        }
+    }
+
+    const showAlert = (title: string, message: string, type: DialogType = 'error', confirmText?: string, cancelText?: string, onConfirm?: () => void) => {
+        setAlertState({ open: true, title, message, type, confirmText, cancelText, onConfirm })
     }
 
     const { testStatus, setTestStatus, isTesting, testConnection } = useConnectionTester()
-    const [passwordReason, setPasswordReason] = useState<'auth-failed' | 'no-key'>('no-key')
+    const [passwordReason, setPasswordReason] = useState<'auth-failed' | 'no-key' | 'passphrase-required'>('no-key')
 
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -189,11 +202,16 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
 
         if (res === 'auth-failed' || res === 'no-key') {
             const msg = res === 'auth-failed' ? t('auth_failed_pwd_fallback') : t('no_key_pwd_fallback')
-            if (window.confirm(msg)) {
+            showAlert('Info', msg, 'info', t('ok'), t('cancel'), () => {
                 setPasswordAction('test')
                 setPasswordReason(res as any)
                 setShowPasswordDialog(true)
-            }
+            })
+        } else if (res === 'passphrase-required' || (typeof res === 'string' && res.includes('passphrase'))) {
+            // Found formatted error? Or simple string match
+            setPasswordAction('test')
+            setPasswordReason('passphrase-required')
+            setShowPasswordDialog(true)
         }
     }
 
@@ -203,13 +221,27 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             return
         }
 
-        // Test Password
+        // Test Password or Passphrase
         setTestStatus(t('status_checking'))
         try {
-            // @ts-ignore
-            const res = await VerifyPassword({
-                host, user, port: Number(port), password, identityFile: ''
-            })
+            let res = ""
+            if (passwordReason === 'passphrase-required') {
+                // Verify using Key + Passphrase
+                // Reuse VerifyPassword but with key and passphrase
+                // @ts-ignore
+                res = await VerifyPassword({
+                    host, user, port: Number(port),
+                    password: "", // No password auth
+                    passphrase: password, // Passphrase here
+                    identityFile: identityFile
+                })
+            } else {
+                // Verify using Password Auth
+                // @ts-ignore
+                res = await VerifyPassword({
+                    host, user, port: Number(port), password, identityFile: ''
+                })
+            }
 
             if (res === 'ok') {
                 setIsVerified(true)
@@ -218,10 +250,10 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
 
                 // If we have a local key (auth-failed), offer to deploy
                 if (passwordReason === 'auth-failed') {
-                    setTimeout(async () => {
-                        if (window.confirm(t('add_key_question'))) {
+                    setTimeout(() => {
+                        showAlert('Info', t('add_key_question'), 'info', t('ok'), t('cancel'), async () => {
                             await performDeploy(password)
-                        }
+                        })
                     }, 100)
                 } else if (passwordReason === 'no-key') {
                     // No local key found, show instructions on how to generate one
@@ -371,6 +403,21 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
                                 </div>
                             )}
                         </div>
+
+                        {/* Key Management UI */}
+                        {(authType === 'custom' || authType === 'managed') && identityFile && (
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -8 }}>
+                                <button
+                                    type="button"
+                                    className="btn small"
+                                    style={{ fontSize: '0.8rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: 6 }}
+                                    onClick={() => setShowManageKeyDialog(true)}
+                                >
+                                    <Icon name="icon-shield" size={12} />
+                                    {t('manage_key_passphrase') || "Manage Passphrase"}
+                                </button>
+                            </div>
+                        )}
                     </>
                 )}
 
@@ -539,10 +586,24 @@ export default function ProfileEditor({ profile, onSave, onCancel, isPremium }: 
             {
                 showPasswordDialog && (
                     <PasswordDialog
-                        title={passwordAction === 'deploy' ? t('deploy_key_msg') : t('password')}
-                        description={t('enter_remote_password')}
+                        title={passwordAction === 'deploy' ? t('deploy_key_msg') : (passwordReason === 'passphrase-required' ? (t('enter_passphrase') || "Enter Passphrase") : t('password'))}
+                        description={passwordReason === 'passphrase-required' ? (t('enter_passphrase_msg') || "Enter passphrase to unlock key") : t('enter_remote_password')}
                         onConfirm={handlePasswordConfirm}
                         onCancel={() => setShowPasswordDialog(false)}
+                        passwordLabel={passwordReason === 'passphrase-required' ? (t('enter_passphrase') || "Passphrase") : undefined}
+                    />
+                )
+            }
+            {
+                showManageKeyDialog && (
+                    <PasswordDialog
+                        title={t('manage_key_passphrase') || "Manage Key Passphrase"}
+                        description={t('manage_key_desc') || "Change, add, or remove the passphrase for this key."}
+                        onConfirm={handleKeyPassphraseChange}
+                        onCancel={() => setShowManageKeyDialog(false)}
+                        showNewPassphrase={true}
+                        passwordLabel={t('current_passphrase') || "Current Passphrase (empty if none)"}
+                        passphraseLabel={t('new_passphrase') || "New Passphrase (empty to remove)"}
                     />
                 )
             }
