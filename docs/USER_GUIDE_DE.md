@@ -28,10 +28,13 @@ Willkommen beim **MLCRemote** Benutzerhandbuch. Dieses Dokument enthält alle In
 - **Native Erfahrung**: Schnelle, reaktionsfähige Desktop-Benutzeroberfläche mit Betriebssystemintegration.
 - **Admin-Fokussiert**: Ideal zum Bearbeiten von `/etc/` Konfigurationsdateien, Überprüfen von `systemd`-Logs oder Ausführen von Wartungsskripten.
 
+## Release Notes (v1.5.0)
+- **Neu**: **Sicherheitswarnungen beim Trennen** hinzugefügt. Die Anwendung prüft nun vor dem Trennen der Verbindung auf aktive Terminal-Prozesse und nicht gespeicherte Dateiänderungen, um versehentlichen Datenverlust zu vermeiden.
+- **Verbessert**: **Premium Dialog UI** mit Glassmorphism-Effekten, flüssigen Animationen und typspezifischen, lebendigen Icons implementiert.
+- **Verbessert**: Dedizierte **Schließen-Schaltfläche (X)** zu allen Premium-Dialogen hinzugefügt.
+- **Neu**: Vollständige Lokalisierung (EN, DE, ES, FR) für alle neuen UI-Elemente und Warnmeldungen.
+
 ## Release Notes (v1.2.4)
-- **Behoben**: Ein Problem wurde gelöst, bei dem Remote-Prozesse (z.B. `btop`) als Zombie-Prozesse weiterliefen, nachdem die Sitzung beendet wurde. Das System beendet nun korrekt die gesamte Prozessgruppe.
-- **Behoben**: Drag-and-Drop Datei-Upload in der Seitenleiste wiederhergestellt.
-- **Behoben**: "Kopieren/Einfügen" Text-Buttons im Terminal durch Icons ersetzt.
 
 ## Installation
 
@@ -94,6 +97,8 @@ Wenn MLCRemote eine bestehende Backend-Sitzung auf dem Server erkennt, werden Ih
 *   **Sitzung beitreten** (Join Session): Verbinden Sie sich mit der laufenden Sitzung. Nützlich, wenn Sie die App versehentlich geschlossen haben.
 *   **Sitzung neu starten** (Restart Session): Beendet das bestehende Backend und startet ein neues. Verwenden Sie dies, wenn das Backend nicht reagiert.
 *   **Neue Instanz starten** (Start New Instance): Startet eine *parallele* Backend-Instanz auf einem anderen Port. Verwenden Sie dies, um mehrere unabhängige Sitzungen gleichzeitig auf demselben Server auszuführen.
+
+*   **Sicheres Trennen**: Wenn Sie auf **Trennen** klicken, führt die App eine Sicherheitsprüfung durch. Falls noch Terminal-Prozesse aktiv sind oder Dateien nicht gespeichert wurden, erscheint ein Warn-Dialog mit einer Liste dieser Elemente. Sie können wählen, ob Sie abbrechen und Ihre Arbeit speichern möchten, oder ob Sie das Trennen fortsetzen wollen.
 
 **Sitzung teilen (Token Sharing)**:
 Sobald Sie verbunden sind, können Sie auf die Schaltfläche **Sitzung teilen** (Schlüssel-Symbol) in der oberen Kopfzeile klicken, um das sichere Sitzungstoken zu kopieren. Sie können dieses Token mit Kollegen teilen, die SSH-Zugriff auf den Server haben, damit diese sich mit Ihrer Sitzung verbinden können.

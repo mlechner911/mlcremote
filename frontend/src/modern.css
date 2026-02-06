@@ -270,6 +270,7 @@
     max-width: 460px;
     animation: premium-scale-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     color: #e6edf3;
+    position: relative;
 }
 
 .theme-light .premium-dialog {
@@ -314,4 +315,30 @@
     justify-content: flex-end;
     gap: 12px;
     margin-top: 24px;
+}
+
+.premium-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    opacity: 0.6;
+}
+
+.premium-close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text);
+    opacity: 1;
+}
+
+.theme-light .premium-close-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.0] - 2026-02-06
+- **UI**: Implemented **Premium Dialog UI** with glassmorphism, smooth animations, and type-specific vibrant icon boxes.
+- **Safety**: Added **Disconnect Warnings** to prevent data loss by alerting the user to active terminal processes or unsaved file changes before closing a session.
+- **Improved**: Added a dedicated **Close (X)** button to all premium dialogs for enhanced usability.
+- **Localization**: Added full translations for disconnect warnings and premium UI elements in EN, DE, ES, and FR.
+
 ## [1.4.8] - 2026-02-06
 - **System**: Implemented frontend-backend version checking with mismatch warnings.
 - **Improved**: Terminal busy detection now supports both Windows (via child process tracking) and Unix (hybrid IOCTL + child process detection).

@@ -28,10 +28,13 @@ Welcome to the **MLCRemote** User Guide. This document provides everything you n
 - **Native Experience**: Fast, responsive desktop UI with OS integration.
 - **Admin Focused**: Ideal for editing `/etc/` config files, checking `systemd` logs, or running maintenance scripts.
 
+## Release Notes (v1.5.0)
+- **New**: Added **Disconnect Safety Warnings**. The application now checks for active terminal processes and unsaved file changes before disconnecting, preventing accidental data loss.
+- **Improved**: Implemented a **Premium Dialog UI** with glassmorphism, smooth animations, and type-specific vibrant icons.
+- **Improved**: Added a dedicated **Close (X)** button to all premium dialogs.
+- **New**: Full localization (EN, DE, ES, FR) for all new UI elements and warning messages.
+
 ## Release Notes (v1.2.4)
-- **Fixed**: Resolved issue where remote processes (e.g., `btop`) would remain running as zombies after the session was closed. The system now correctly terminates the entire process group.
-- **Fixed**: Restored drag-and-drop file upload functionality in the sidebar.
-- **Fixed**: Replaced "Copy/Paste" text buttons in terminal with proper icons.
 
 ## Installation
 
@@ -95,6 +98,8 @@ If MLCRemote detects an existing backend session on the server, you will be pres
 *   **Join Session**: Connect to the running session. Useful if you accidentally closed the app.
 *   **Restart Session**: Terminates the existing backend and starts a fresh one. Use this if the backend is unresponsive.
 *   **Start New Instance**: Starts a *parallel* backend instance on a different port. Use this to run multiple independent sessions on the same server simultaneously.
+
+*   **Disconnecting Safely**: When you click **Disconnect**, the app will perform a safety check. If you have active terminal processes or unsaved files, a warning dialog will appear listing the items. You can choose to cancel and save your work, or proceed with the disconnection.
 
 **Token Sharing**:
 Once connected, you can click the **Share Session** button (Key icon) in the top header to copy the secure session token. You can share this with colleagues who have SSH access to the server so they can connect to your session.

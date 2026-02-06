@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
+import { useDialog } from '../context/DialogContext'
 
 export default function AuthOverlay() {
     const { t } = useTranslation()
@@ -10,6 +11,7 @@ export default function AuthOverlay() {
         showTokenInput, setShowTokenInput,
         login, setToken
     } = useAuth()
+    const { showDialog } = useDialog()
 
     const [password, setPassword] = React.useState('')
     const [token, setTokenInput] = React.useState('')
@@ -20,12 +22,12 @@ export default function AuthOverlay() {
         <>
             {/* Unified authentication chooser/modal */}
             {showAuthChooser && (
-                <div className="login-overlay">
-                    <div className="login-box">
-                        <h3>{t('auth_not_authenticated', 'Not Authenticated')}</h3>
-                        <p>{t('auth_required_msg', 'You need to sign in or provide an access key to continue.')}</p>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                            <button className="btn" onClick={() => { setShowAuthChooser(false); setShowLogin(true) }}>
+                <div className="premium-overlay">
+                    <div className="premium-dialog">
+                        <h3 style={{ margin: '0 0 12px 0' }}>{t('auth_not_authenticated', 'Not Authenticated')}</h3>
+                        <p style={{ margin: '0 0 20px 0', opacity: 0.9 }}>{t('auth_required_msg', 'You need to sign in or provide an access key to continue.')}</p>
+                        <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                            <button className="btn primary" onClick={() => { setShowAuthChooser(false); setShowLogin(true) }}>
                                 {t('open')} ({t('password', 'password')})
                             </button>
                             <button className="btn" onClick={() => { setShowAuthChooser(false); setShowTokenInput(true) }}>
@@ -38,30 +40,32 @@ export default function AuthOverlay() {
 
             {/* Password input modal (shown when user chooses to sign in) */}
             {showLogin && (
-                <div className="login-overlay">
-                    <div className="login-box">
-                        <h3>{t('sign_in', 'Sign in')}</h3>
-                        <p>{t('auth_enter_password', 'Please enter the server password to obtain an access token.')}</p>
+                <div className="premium-overlay">
+                    <div className="premium-dialog">
+                        <h3 style={{ margin: '0 0 12px 0' }}>{t('sign_in', 'Sign in')}</h3>
+                        <p style={{ margin: '0 0 20px 0', opacity: 0.9 }}>{t('auth_enter_password', 'Please enter the server password to obtain an access token.')}</p>
                         <input
                             type="password"
                             placeholder={t('password', 'Password')}
+                            style={{ width: '100%', marginBottom: 20 }}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
-                                    login(password).catch((e: any) => alert(t('login_failed', 'Login failed') + ': ' + (e?.message || e)))
+                                    login(password).catch((e: any) => showDialog({ title: t('login_failed'), message: e?.message || e, variant: 'error' }))
                                 }
                             }}
+                            autoFocus
                         />
-                        <div style={{ marginTop: 8 }}>
-                            <button className="btn" onClick={async () => {
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <button className="btn primary" onClick={async () => {
                                 try {
                                     await login(password)
                                 } catch (e: any) {
-                                    alert(t('login_failed', 'Login failed') + ': ' + (e?.message || e))
+                                    showDialog({ title: t('login_failed'), message: e?.message || e, variant: 'error' })
                                 }
                             }}>{t('open')}</button>
-                            <button className="btn link" style={{ marginLeft: 8 }} onClick={() => { setShowLogin(false); setShowAuthChooser(true) }}>{t('back', 'Back')}</button>
+                            <button className="btn link" onClick={() => { setShowLogin(false); setShowAuthChooser(true) }}>{t('back', 'Back')}</button>
                         </div>
                     </div>
                 </div>
@@ -69,13 +73,14 @@ export default function AuthOverlay() {
 
             {/* Token input modal (shown when user chooses to provide an access key) */}
             {showTokenInput && (
-                <div className="login-overlay">
-                    <div className="login-box">
-                        <h3>{t('auth_enter_token', 'Enter Access Token')}</h3>
-                        <p>{t('auth_token_msg', 'The server requires an access token. Paste it here to continue.')}</p>
+                <div className="premium-overlay">
+                    <div className="premium-dialog">
+                        <h3 style={{ margin: '0 0 12px 0' }}>{t('auth_enter_token', 'Enter Access Token')}</h3>
+                        <p style={{ margin: '0 0 20px 0', opacity: 0.9 }}>{t('auth_token_msg', 'The server requires an access token. Paste it here to continue.')}</p>
                         <input
                             type="text"
                             placeholder={t('token', 'token')}
+                            style={{ width: '100%', marginBottom: 20 }}
                             value={token}
                             onChange={(e) => setTokenInput(e.target.value)}
                             onKeyDown={(e) => {
@@ -83,20 +88,21 @@ export default function AuthOverlay() {
                                     try {
                                         setToken(token.trim())
                                     } catch (e: any) {
-                                        alert(t('token_failed', 'Failed to store token') + ': ' + (e?.message || e))
+                                        showDialog({ title: t('token_failed'), message: e?.message || e, variant: 'error' })
                                     }
                                 }
                             }}
+                            autoFocus
                         />
-                        <div style={{ marginTop: 8 }}>
-                            <button className="btn" onClick={async () => {
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <button className="btn primary" onClick={async () => {
                                 try {
                                     setToken(token.trim())
                                 } catch (e: any) {
-                                    alert(t('token_failed', 'Failed to store token') + ': ' + (e?.message || e))
+                                    showDialog({ title: t('token_failed'), message: e?.message || e, variant: 'error' })
                                 }
                             }}>{t('use_token', 'Use token')}</button>
-                            <button className="btn link" style={{ marginLeft: 8 }} onClick={() => { setShowTokenInput(false); setShowAuthChooser(true) }}>{t('back', 'Back')}</button>
+                            <button className="btn link" onClick={() => { setShowTokenInput(false); setShowAuthChooser(true) }}>{t('back', 'Back')}</button>
                         </div>
                     </div>
                 </div>

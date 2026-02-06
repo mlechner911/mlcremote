@@ -103,7 +103,8 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
 
     // --- Clipboard Implementation ---
     const [activeRemotePath, setActiveRemotePath] = React.useState<string>('')
-    const [alertState, setAlertState] = React.useState<{ open: boolean, title: string, message: string, type: 'info' | 'error' | 'question' | 'progress', progress?: number } | null>(null)
+    const [alertState, setAlertState] = React.useState<{ open: boolean, title: string, message: string, type: 'info' | 'error' | 'question' | 'progress', progress?: number, onConfirm?: () => void } | null>(null)
+    const safetyCheckResolverRef = React.useRef<{ resolve: (status: any) => void, timeout: number } | null>(null)
 
     const showAlert = (title: string, message: string, type: 'info' | 'error' | 'question' | 'progress' = 'info', progress?: number) => {
         setAlertState({ open: true, title, message, type, progress })
@@ -142,10 +143,16 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                     })
                     .catch((err: any) => showAlert("Clipboard Error", "Copy failed: " + err, 'error'))
             }
-            if (e.data.type === 'paste-from-local') {
+            if (e.data.type === 'paste_from_local') {
                 handlePasteToRemote(e.data.path)
             }
-
+            if (e.data.type === 'exit-safety-status') {
+                if (safetyCheckResolverRef.current) {
+                    clearTimeout(safetyCheckResolverRef.current.timeout)
+                    safetyCheckResolverRef.current.resolve(e.data)
+                    safetyCheckResolverRef.current = null
+                }
+            }
         }
         window.addEventListener('message', handleMessage)
 
@@ -230,8 +237,49 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
 
     const [isDisconnecting, setIsDisconnecting] = React.useState(false)
 
-    const handleDisconnectWrapper = () => {
+    const handleDisconnectWrapper = async () => {
+        if (!iframeRef.current || !iframeRef.current.contentWindow) {
+            onDisconnect()
+            return
+        }
+
         setIsDisconnecting(true)
+
+        // Request safety check from IDE frontend
+        const status = await new Promise<{ busyTerminals: string[], unsavedFiles: string[] }>((resolve) => {
+            const timeout = window.setTimeout(() => {
+                console.warn("Safety check timed out")
+                resolve({ busyTerminals: [], unsavedFiles: [] })
+                safetyCheckResolverRef.current = null
+            }, 1000)
+
+            safetyCheckResolverRef.current = { resolve, timeout: timeout as any }
+            iframeRef.current!.contentWindow!.postMessage({ type: 'check-exit-safety' }, '*')
+        })
+
+        if (status.busyTerminals.length > 0 || status.unsavedFiles.length > 0) {
+            let message = ""
+            if (status.busyTerminals.length > 0) {
+                message += (t('busy_terminals_warning') + ":\n- " + status.busyTerminals.join('\n- ') + "\n\n")
+            }
+            if (status.unsavedFiles.length > 0) {
+                message += (t('unsaved_files_warning') + ":\n- " + status.unsavedFiles.join('\n- ') + "\n\n")
+            }
+            message += t('confirm_disconnect_anyway')
+
+            setAlertState({
+                open: true,
+                title: t('unsaved_changes_title'),
+                message,
+                type: 'question',
+                onConfirm: () => {
+                    onDisconnect()
+                }
+            })
+            setIsDisconnecting(false)
+            return
+        }
+
         onDisconnect()
     }
 
@@ -379,6 +427,7 @@ export default function RemoteView({ url, profileName, profileId, profileColor, 
                         message={alertState.message}
                         type={alertState.type}
                         progress={alertState.progress}
+                        onConfirm={alertState.onConfirm}
                         onClose={() => setAlertState(null)}
                     />
                 )

@@ -51,7 +51,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
       // Fallback Warning
       if (p === '' && fallback && !fallbackWarned.current) {
         if (showMessageBox) showMessageBox(t('warning'), t('root_fallback_warning', "The configured root directory does not exist. Using home directory instead."))
-        else alert(t('root_fallback_warning', "The configured root directory does not exist. Using home directory instead."))
+        else console.warn(t('root_fallback_warning', "The configured root directory does not exist. Using home directory instead."))
         fallbackWarned.current = true
       }
 
@@ -238,7 +238,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
         load(path)
       } catch (e: any) {
         if (showMessageBox) showMessageBox(t('error'), t('status_failed') + ': ' + e.message)
-        else alert(t('status_failed') + ': ' + e.message)
+        else console.error(t('status_failed') + ': ' + e.message)
       }
     }
 
@@ -260,7 +260,8 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
       const parts = item.path.split('/')
       parts.pop() // remove old name
       if (newName.includes('/')) {
-        alert(t('error') + ': Invalid filename')
+        if (showMessageBox) showMessageBox(t('error'), 'Invalid filename')
+        else console.error(t('error') + ': Invalid filename')
         return
       }
       const newPath = [...parts, newName].join('/')
@@ -268,7 +269,7 @@ export default function FileExplorer({ onSelect, showHidden, onToggleHidden, aut
       load(path)
     } catch (e: any) {
       if (showMessageBox) showMessageBox(t('error'), t('status_failed') + ': ' + e.message)
-      else alert(t('status_failed') + ': ' + e.message)
+      else console.error(t('status_failed') + ': ' + e.message)
     }
   }
 

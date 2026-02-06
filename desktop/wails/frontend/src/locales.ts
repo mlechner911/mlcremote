@@ -144,7 +144,11 @@ export const translations = {
         monitoring: "Server Monitoring",
         enable_monitoring: "Enable Health Monitoring",
         check_interval: "Check Interval (minutes)",
-        min_interval_10: "(Minimum 10 minutes)"
+        min_interval_10: "(Minimum 10 minutes)",
+        busy_terminals_warning: "Active processes in terminals",
+        unsaved_files_warning: "Unsaved changes in files",
+        confirm_disconnect_anyway: "Are you sure you want to disconnect?",
+        unsaved_changes_title: "Unsaved Changes & Active Processes",
     },
     de: {
         app_title: "MLCRemote Desktop",
@@ -289,7 +293,11 @@ export const translations = {
         monitoring: "Server-Überwachung",
         enable_monitoring: "Gesundheitsüberwachung aktivieren",
         check_interval: "Prüfintervall (Minuten)",
-        min_interval_10: "(Mindestens 10 Minuten)"
+        min_interval_10: "(Mindestens 10 Minuten)",
+        busy_terminals_warning: "Aktive Prozesse in Terminals",
+        unsaved_files_warning: "Nicht gespeicherte Änderungen in Dateien",
+        confirm_disconnect_anyway: "Sind Sie sicher, dass Sie die Verbindung trennen möchten?",
+        unsaved_changes_title: "Ungespeicherte Änderungen & aktive Prozesse",
     },
     es: {
         app_title: "MLCRemote Desktop",
@@ -414,7 +422,11 @@ export const translations = {
         reconnecting: "Reconectando...",
         reconnect_failed: "Fallo al reconectar",
         show_developer_controls: "Mostrar Controles de Desarrollador",
-        show_developer_controls_desc: "Habilitar captura de pantalla, registros del servidor y controles de clave de sesión."
+        show_developer_controls_desc: "Habilitar captura de pantalla, registros del servidor y controles de clave de sesión.",
+        busy_terminals_warning: "Procesos activos en terminales",
+        unsaved_files_warning: "Cambios no guardados en archivos",
+        confirm_disconnect_anyway: "¿Está seguro de que desea desconectarse?",
+        unsaved_changes_title: "Cambios sin guardar y procesos activos",
     },
     fr: {
         app_title: "MLCRemote Desktop",
@@ -538,7 +550,11 @@ export const translations = {
         reconnecting: "Connexion...",
         reconnect_failed: "Échec de reconnexion",
         show_developer_controls: "Afficher les Contrôles Développeur",
-        show_developer_controls_desc: "Activer la capture d'écran, les journaux du serveur et les contrôles de clé de session."
+        show_developer_controls_desc: "Activer la capture d'écran, les journaux du serveur et les contrôles de clé de session.",
+        busy_terminals_warning: "Processus actifs dans les terminaux",
+        unsaved_files_warning: "Modifications non enregistrées dans les fichiers",
+        confirm_disconnect_anyway: "Êtes-vous sûr de vouloir vous déconnecter ?",
+        unsaved_changes_title: "Modifications non enregistrées et processus actifs",
     }
 };
 

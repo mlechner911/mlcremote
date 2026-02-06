@@ -202,6 +202,7 @@ export default function LayoutManager(props: LayoutManagerProps) {
                                 title: t('terminal_busy', 'Terminal Busy'),
                                 message: t('confirm_close_busy_terminal', 'A process is still running in this terminal. Close anyway?'),
                                 confirmLabel: t('close_anyway', 'Close Anyway'),
+                                variant: 'warning',
                                 onConfirm: doClose
                             })
                             return
@@ -218,6 +219,7 @@ export default function LayoutManager(props: LayoutManagerProps) {
                     title: t('unsaved_changes_title', 'Unsaved Changes'),
                     message: t('confirm_close_unsaved', 'You have unsaved changes. Close anyway?'),
                     confirmLabel: t('close_discard', 'Close & Discard'),
+                    variant: 'warning',
                     onConfirm: () => {
                         setUnsavedChanges(prev => {
                             const next = { ...prev }

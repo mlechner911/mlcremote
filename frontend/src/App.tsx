@@ -1,6 +1,7 @@
 import React from 'react'
 import { triggerDownload } from './utils/download'
 import { statPath, saveSettings, makeUrl, DirEntry, getToken, uploadFile, renameFile, deleteFile, subscribeToEvents } from './api'
+import { authedFetch } from './utils/auth'
 import { HealthInfo, Settings } from './api/generated.schemas'
 import { useAuth } from './context/AuthContext'
 import { useAppSettings } from './hooks/useAppSettings'
@@ -284,7 +285,7 @@ function AppInner() {
 
   // -- Effects --
 
-  type oureventtypes = 'set-theme' | 'screenshot' | 'run-task' | 'app-ready' | 'set-tasks' | 'open-logs' | 'refresh-path'
+  type oureventtypes = 'set-theme' | 'screenshot' | 'run-task' | 'app-ready' | 'set-tasks' | 'open-logs' | 'refresh-path' | 'check-exit-safety'
 
   // Listen for messages from parent (Desktop wrapper)
   React.useEffect(() => {
@@ -345,6 +346,50 @@ function AppInner() {
         console.log("[MLCRemote] Refreshing path:", path)
         setRefreshSignal({ path, ts: Date.now() })
       }
+      if (eventtype === 'check-exit-safety') {
+        const check = async () => {
+          const busyTerminals: string[] = []
+          const unsavedFiles: string[] = []
+
+          // Check unsaved files
+          for (const [path, isDirty] of Object.entries(unsavedRef.current)) {
+            if (isDirty) unsavedFiles.push(path)
+          }
+
+          // Check terminals
+          const allPanes = panesRef.current
+          const terminalTabs: { id: string, label: string }[] = []
+
+          for (const pane of Object.values(allPanes)) {
+            for (const tab of pane.tabs) {
+              if (tab.type === 'terminal') {
+                terminalTabs.push({ id: tab.id, label: tab.label })
+              }
+            }
+          }
+
+          if (terminalTabs.length > 0) {
+            await Promise.all(terminalTabs.map(async (t) => {
+              try {
+                const r = await authedFetch(`/api/terminal/status?session=${encodeURIComponent(t.id)}`)
+                if (r.ok) {
+                  const j = await r.json()
+                  if (j.busy) busyTerminals.push(t.label)
+                }
+              } catch (e) {
+                console.warn('Busy check failed for', t.id, e)
+              }
+            }))
+          }
+
+          window.parent.postMessage({
+            type: 'exit-safety-status',
+            busyTerminals,
+            unsavedFiles
+          }, '*')
+        }
+        check()
+      }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
@@ -358,6 +403,11 @@ function AppInner() {
 
   const [reloadTriggers, setReloadTriggers] = React.useState<Record<string, number>>({})
   const [unsavedChanges, setUnsavedChanges] = React.useState<Record<string, boolean>>({})
+
+  const panesRef = React.useRef(panes)
+  const unsavedRef = React.useRef(unsavedChanges)
+  React.useEffect(() => { panesRef.current = panes }, [panes])
+  React.useEffect(() => { unsavedRef.current = unsavedChanges }, [unsavedChanges])
 
 
   // Stable handler
@@ -478,7 +528,7 @@ function AppInner() {
 
                         openFile(p, 'editor')
                       } catch (e: any) {
-                        showDialog({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}` })
+                        showDialog({ title: 'Broken Link', message: `Cannot open file: ${e.message || 'stat failed'}`, variant: 'error' })
                         return
                       }
                     })()
@@ -509,6 +559,7 @@ function AppInner() {
                       title: t('change_root', 'Change Root'),
                       message: t('enter_new_root_path', 'Enter absolute path for new root directory:'),
                       inputType: 'text',
+                      variant: 'info',
                       defaultValue: currentRoot,
                       confirmLabel: t('change', 'Change'),
                       onConfirm: async (newPath) => {
@@ -651,7 +702,7 @@ function AppInner() {
                       setRefreshSignal({ path: contextMenu.entry.path, ts: Date.now() })
                     } catch (err) {
                       console.error(err)
-                      alert(t('upload_failed', 'Upload failed'))
+                      showDialog({ title: t('error'), message: t('upload_failed', 'Upload failed'), variant: 'error' })
                     }
                   }
                   input.click()
@@ -728,6 +779,7 @@ function AppInner() {
                   title: t('rename'),
                   message: t('rename_prompt', { name: item.name }),
                   inputType: 'text',
+                  variant: 'info',
                   defaultValue: item.name,
                   confirmLabel: t('rename'),
                   onConfirm: async (newName) => {
@@ -737,7 +789,7 @@ function AppInner() {
                       const parts = item.path.split('/')
                       parts.pop()
                       if (newName.includes('/')) {
-                        alert(t('error') + ': Invalid filename') // TODO: Toast
+                        showDialog({ title: t('error'), message: 'Invalid filename', variant: 'error' })
                         return
                       }
                       const newPath = [...parts, newName].join('/')
@@ -748,7 +800,7 @@ function AppInner() {
                     } catch (e: any) {
                       // Reuse message box for error? Or separate Alert?
                       // For now alert, but we should use a Toast or Error Dialog
-                      alert(t('status_failed') + ': ' + e.message)
+                      showDialog({ title: t('error'), message: t('status_failed') + ': ' + e.message, variant: 'error' })
                     }
                   }
                 })
@@ -763,6 +815,7 @@ function AppInner() {
                 showDialog({
                   title: t('delete'),
                   message: t('delete_confirm', { path: item.path }),
+                  variant: 'warning',
                   confirmLabel: t('delete'),
                   cancelLabel: t('cancel'),
                   onConfirm: async () => {
@@ -773,7 +826,7 @@ function AppInner() {
                       const parentPath = parts.join('/') || '/'
                       setRefreshSignal({ path: parentPath, ts: Date.now() })
                     } catch (e: any) {
-                      showDialog({ title: 'Error', message: t('status_failed') + ': ' + e.message })
+                      showDialog({ title: 'Error', message: t('status_failed') + ': ' + e.message, variant: 'error' })
                     }
                   }
                 })

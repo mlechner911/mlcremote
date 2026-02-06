@@ -4,6 +4,7 @@ import FileTree from './FileTree'
 import { DirEntry, TaskDef, uploadFile } from '../api' // imported for type usage
 import { Icon } from '../generated/icons'
 import { getIcon } from '../generated/icon-helpers'
+import { useDialog } from '../context/DialogContext'
 import ContextMenu from './ContextMenu'
 
 export interface ActivityBarProps {
@@ -103,6 +104,7 @@ export function ActivityBar(props: ActivityBarProps) {
 
 export function SidebarPanel(props: SidebarPanelProps) {
     const { t } = useTranslation()
+    const { showDialog } = useDialog()
     const { showHidden, selectedPath, onSelect, root = '/', onRefresh, onOpen, onContextMenu, refreshSignal, onChangeRoot } = props
     const [isDragOver, setIsDragOver] = React.useState(false)
     const [uploading, setUploading] = React.useState(false)
@@ -131,9 +133,9 @@ export function SidebarPanel(props: SidebarPanelProps) {
                 )
                 await Promise.all(uploads)
                 if (onRefresh) onRefresh()
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Upload failed", err)
-                alert(t('status_failed'))
+                showDialog({ title: t('error'), message: t('status_failed') + ': ' + (err.message || 'unknown error'), variant: 'error' })
             } finally {
                 setUploading(false)
             }
