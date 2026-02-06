@@ -28,7 +28,23 @@ func (a *App) pollStats(cfg monitoring.MonitoringConfig) (monitoring.Stats, erro
 	// 3. Run Command
 	output, err := a.SSH.RunCommand(profile.Host, profile.User, profile.Port, "", profile.IdentityFile, cmd)
 	if err != nil {
-		return monitoring.Stats{}, err
+		// Self-healing: If permission denied (exit 126), try to chmod +x and retry
+		if strings.Contains(err.Error(), "Permission denied") || strings.Contains(err.Error(), "126") {
+			fixCmd := "chmod +x ~/.mlcremote/bin/dev-server"
+			if profile.IsWindows {
+				// Windows doesn't need chmod, but if we are here it's likely not windows or using WSL
+				// Just retry for now or skip.
+			} else {
+				_, _ = a.SSH.RunCommand(profile.Host, profile.User, profile.Port, "", profile.IdentityFile, fixCmd)
+				// Retry
+				output, err = a.SSH.RunCommand(profile.Host, profile.User, profile.Port, "", profile.IdentityFile, cmd)
+				if err != nil {
+					return monitoring.Stats{}, err
+				}
+			}
+		} else {
+			return monitoring.Stats{}, err
+		}
 	}
 
 	// 4. Parse Output
