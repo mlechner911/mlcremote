@@ -7,9 +7,6 @@ import (
 	"os"
 	"runtime"
 	"time"
-
-	cpuutil "github.com/shirou/gopsutil/v3/cpu"
-	memutil "github.com/shirou/gopsutil/v3/mem"
 )
 
 // startTime is set when the package initializes
@@ -71,23 +68,13 @@ func Health(passwordAuth bool, authRequired bool) http.HandlerFunc {
 		info.GoSys = ms.Sys
 		info.GoNumGC = ms.NumGC
 
-		// try gopsutil first (cross-platform)
-		if vm, err := memutil.VirtualMemory(); err == nil {
-			info.SysMemTotal = vm.Total
-			info.SysMemFree = vm.Available
-		} else {
-			if total, free := util.ReadMemInfo(); total > 0 {
-				info.SysMemTotal = total
-				info.SysMemFree = free
-			}
+		if total, free := util.ReadMemInfo(); total > 0 {
+			info.SysMemTotal = total
+			info.SysMemFree = free
 		}
 
-		if percents, err := cpuutil.Percent(120*time.Millisecond, false); err == nil && len(percents) > 0 {
-			info.CPUPercent = percents[0]
-		} else {
-			if cpu := util.SampleCPUPercent(120 * time.Millisecond); cpu >= 0 {
-				info.CPUPercent = cpu
-			}
+		if cpu := util.SampleCPUPercent(120 * time.Millisecond); cpu >= 0 {
+			info.CPUPercent = cpu
 		}
 
 		if rss := util.ReadProcRSS(); rss > 0 {

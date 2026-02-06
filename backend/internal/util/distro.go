@@ -1,46 +1,32 @@
 package util
 
 import (
-	"bufio"
-	"os"
+	"fmt"
 	"runtime"
-	"strings"
+
+	"github.com/shirou/gopsutil/v3/host"
 )
 
-// GetDistroInfo tries to identify the OS distribution/version.
+// GetDistroInfo identifies the OS distribution/version using gopsutil.
 func GetDistroInfo() string {
-	if runtime.GOOS == "windows" {
-		return "Windows" // precise version is harder without syscalls/exec, keeping simple
+	info, err := host.Info()
+	if err != nil {
+		return runtime.GOOS // Fallback
 	}
-	if runtime.GOOS == "linux" {
-		// try /etc/os-release
-		f, err := os.Open("/etc/os-release")
-		if err == nil {
-			defer f.Close()
-			scanner := bufio.NewScanner(f)
-			var name, version string
-			for scanner.Scan() {
-				line := scanner.Text()
-				if strings.HasPrefix(line, "PRETTY_NAME=") {
-					return strings.Trim(strings.TrimPrefix(line, "PRETTY_NAME="), "\"")
-				}
-				if strings.HasPrefix(line, "NAME=") {
-					name = strings.Trim(strings.TrimPrefix(line, "NAME="), "\"")
-				}
-				if strings.HasPrefix(line, "VERSION=") {
-					version = strings.Trim(strings.TrimPrefix(line, "VERSION="), "\"")
-				}
-			}
-			if name != "" {
-				if version != "" {
-					return name + " " + version
-				}
-				return name
-			}
-		}
+
+	if runtime.GOOS == "windows" {
+		return fmt.Sprintf("Windows %s (%s)", info.Platform, info.PlatformVersion)
 	}
 	if runtime.GOOS == "darwin" {
-		return "macOS"
+		return fmt.Sprintf("macOS %s", info.PlatformVersion)
 	}
-	return runtime.GOOS
+	if runtime.GOOS == "linux" {
+		if info.Platform != "" {
+			if info.PlatformVersion != "" {
+				return fmt.Sprintf("%s %s", info.Platform, info.PlatformVersion)
+			}
+			return info.Platform
+		}
+	}
+	return fmt.Sprintf("%s %s", info.Platform, info.PlatformVersion)
 }
