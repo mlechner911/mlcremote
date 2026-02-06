@@ -15,7 +15,7 @@
   <br>
 </div>
 
-**Status:** Production Ready (v1.5.0)
+**Status:** Production Ready (v1.5.1)
 
 ## Why MLCRemote?
 

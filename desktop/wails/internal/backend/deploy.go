@@ -274,9 +274,12 @@ func (m *Manager) uploadAssets(runRemote func(string) (string, error), remoteSys
 				createSilentCmd("scp", scpMd5Args...).Run()
 				runRemote(fmt.Sprintf("chmod +x ~/%s/%s", remoteBinDir, md5Name))
 			}
-			runRemote(fmt.Sprintf("chmod +x ~/%s/%s", remoteBinDir, binName))
+			runRemote(fmt.Sprintf("chmod +x ~/%s/%s", remoteBinDir, md5Name))
 		}
 	}
+
+	// Always ensure binary is executable (fix for interrupted deployments)
+	runRemote(fmt.Sprintf("chmod +x ~/%s/%s", remoteBinDir, binName))
 
 	// Upload startup script
 	scriptName, scriptContent := remoteSys.GetStartupScript()

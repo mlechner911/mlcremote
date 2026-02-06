@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.5.1] - 2026-02-06
+- **Fix**: Resolved "Permission denied" error on remote stats polling. The agent deployment now ensures the binary is executable (`chmod +x`) even if the file hash indicates it is already up to date. This fixes issues caused by interrupted deployments.
+
 ## [1.5.0] - 2026-02-06
 - **UI**: Implemented **Premium Dialog UI** with glassmorphism, smooth animations, and type-specific vibrant icon boxes.
 - **Safety**: Added **Disconnect Warnings** to prevent data loss by alerting the user to active terminal processes or unsaved file changes before closing a session.
