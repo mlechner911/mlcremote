@@ -167,7 +167,7 @@ xpra start :100 --start=./dist/desktop-linux-$(uname -m)/MLCRemote --bind-tcp=12
 ```powershell
 # On Windows (SSH tunnel + attach)
 ssh -L 10000:127.0.0.1:10000 user@remote-host
-xpra.exe attach tcp:localhost:10000
+xpra.exe attach tcp:localhost:10000wails build -tags webkit2_41 || wails build -tags webkit2 || wails build
 ```
 - Convenience target:
 ```bash
