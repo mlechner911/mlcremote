@@ -1,0 +1,3 @@
+[submodule ".mlcai"]
+	path = .mlcai
+	url = mlc@nas.local:/var/services/homes/mlc/repositories/dochub/mlcremote-mlcai.git
