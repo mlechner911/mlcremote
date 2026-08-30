@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "codebase-memory": {
+      "args": [
+        "--stdio"
+      ],
+      "command": "/home/mlc/.local/bin/cbm-server"
+    },
+    "mlc-dochub": {
+      "args": [
+        "-dochub-url",
+        "http://localhost:8600/dochub",
+        "-project-id",
+        "mlcremote"
+      ],
+      "command": "dochub-mcp"
+    }
+  }
+}
