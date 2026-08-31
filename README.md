@@ -91,6 +91,9 @@ If you are developing on a remote Linux machine without a display, you can use `
 
 ```bash
 # Install xvfb
+
+> **[mlcgo.eu](https://mlcgo.eu)** — tools, libraries and manuals · [Product page](https://mlcgo.eu/products/mlcremote/)
+
 sudo apt install xvfb
 
 # Run with virtual framebuffer
