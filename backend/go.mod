@@ -2,6 +2,8 @@ module lightdev
 
 go 1.21
 
+toolchain go1.25.13
+
 require (
 	github.com/creack/pty v1.1.21
 	github.com/fsnotify/fsnotify v1.9.0

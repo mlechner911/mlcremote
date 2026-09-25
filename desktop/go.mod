@@ -2,7 +2,7 @@ module lightdev-desktop
 
 go 1.22.0
 
-toolchain go1.24.2
+toolchain go1.25.13
 
 require github.com/wailsapp/wails/v2 v2.11.0
 
