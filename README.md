@@ -119,4 +119,7 @@ MIT © Michael Lechner.
 
 Free and Open Source Software. You can use, modify, and distribute this software freely.
 
+<!-- mlcai-private -->
+## Project documentation (`.mlcai/`)
 
+`.mlcai/` is a **private git submodule**: internal planning, backlog and work notes, maintained with the MLC Doc Hub. It is not publicly accessible — clone **without** `--recurse-submodules`; the build does not need it. Links into `.mlcai/` only work with access (`git submodule update --init .mlcai`).
