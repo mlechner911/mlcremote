@@ -1,6 +1,0 @@
-[submodule ".mlcai"]
-	path = .mlcai
-	url = mlc@nas.local:/var/services/homes/mlc/repositories/dochub/mlcremote-mlcai.git
-[submodule "mlcprodweb"]
-	path = mlcprodweb
-	url = mlc@nas.local:/volume1/homes/mlc/repositories/product/mlcremote.git
